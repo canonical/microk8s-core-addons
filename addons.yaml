@@ -53,6 +53,8 @@ microk8s-addons:
         - arm64
         - amd64
         - s390x
+      alias_of: hostpath-storage
+      deprecated: true
 
     - name: "registry"
       description: "Private image registry exposed on localhost:32000"

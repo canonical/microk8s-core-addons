@@ -51,12 +51,30 @@ microk8s-addons:
         - arm64
         - s390x
 
+      # NEW-IN-VERSION: 1.24
+      #
+      # If this field is set, this addon is an alias for another addon defined in
+      # this repository. Addon aliases are recognised by the "microk8s enable"
+      # and "microk8s disable" commands, and will not appear in the output of
+      # the "microk8s status".
+      #
+      # Aliases are only meant for backwards-compatibility purposes.
+      alias_of: ""
+
     - name: addon2
       description: My second awesome addon, supported for amd64 only
       version: "1.0.0"
       check_status: "pod/addon2"
       supported_architectures:
         - amd64
+
+    - name: addon2-alias
+      description: Alias to my second awesome addon
+      version: "1.0.0"
+      check_status: "pod/addon2"
+      supported_architectures:
+        - amd64
+      alias_of: addon2
 ```
 
 ## Adding new addons

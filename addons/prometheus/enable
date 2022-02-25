@@ -24,22 +24,22 @@ get_kube_prometheus () {
     KUBE_PROMETHEUS_ERSION=$(echo $KUBE_PROMETHEUS_VERSION | sed 's/v//g')
     echo "Fetching kube-prometheus version $KUBE_PROMETHEUS_VERSION."
     run_with_sudo mkdir -p "${SNAP_DATA}/kube-prometheus"
-    run_with_sudo mkdir -p "${SNAP_DATA}/tmp/kube-prometheus"
+    run_with_sudo mkdir -p "/tmp/kube-prometheus"
 
     fetch_as https://github.com/prometheus-operator/kube-prometheus/archive/${KUBE_PROMETHEUS_VERSION}.tar.gz "$SNAP_DATA/tmp/kube-prometheus/kube-prometheus.tar.gz"
     run_with_sudo tar --no-same-owner -xzvf "$SNAP_DATA/tmp/kube-prometheus/kube-prometheus.tar.gz" -C "$SNAP_DATA/tmp/kube-prometheus/"
-    run_with_sudo cp -R "$SNAP_DATA/tmp/kube-prometheus/kube-prometheus-${KUBE_PROMETHEUS_ERSION}/manifests/" "${SNAP_DATA}/kube-prometheus"
+    run_with_sudo cp -R "/tmp/kube-prometheus/kube-prometheus-${KUBE_PROMETHEUS_ERSION}/manifests/" "${SNAP_DATA}/kube-prometheus"
 
-    run_with_sudo rm -rf "$SNAP_DATA/tmp/kube-prometheus"
+    run_with_sudo rm -rf "/tmp/kube-prometheus"
   fi
 }
 
 
 set_replicas_to_one() {
   # alert manager must be set to 1 replica
-  run_with_sudo $SNAP/bin/sed -i 's@replicas: .@replicas: 1@g' ${SNAP_DATA}/kube-prometheus/manifests/alertmanager-alertmanager.yaml
+  $SNAP/bin/sed -i 's@replicas: .@replicas: 1@g' ${SNAP_DATA}/kube-prometheus/manifests/alertmanager-alertmanager.yaml
   # prometheus must be set to 1 replica
-  run_with_sudo $SNAP/bin/sed -i 's@replicas: .@replicas: 1@g' ${SNAP_DATA}/kube-prometheus/manifests/prometheus-prometheus.yaml
+  $SNAP/bin/sed -i 's@replicas: .@replicas: 1@g' ${SNAP_DATA}/kube-prometheus/manifests/prometheus-prometheus.yaml
 
 }
 
@@ -91,7 +91,7 @@ return $?
 
 update_grafana_datasource() {
   DS=$(add_loki_datasource)
-  run_with_sudo $SNAP/bin/sed -i "s@datasources.yaml:.*@datasources.yaml: $DS@g" ${SNAP_DATA}/kube-prometheus/manifests/grafana-dashboardDatasources.yaml
+  $SNAP/bin/sed -i "s@datasources.yaml:.*@datasources.yaml: $DS@g" ${SNAP_DATA}/kube-prometheus/manifests/grafana-dashboardDatasources.yaml
 }
 
 

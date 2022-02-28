@@ -114,6 +114,7 @@ def main(
         # Deploy CRDs and RBAC rules for mayastor
         DIR / "operator-rbac.yaml",
         DIR / "mayastorpool-crd.yaml",
+        DIR / "etcd-cluster-crd.yaml",
         # Deploy etcd and nats.io
         DIR / "etcd-operator-rbac.yaml",
         DIR / "etcd-operator-deployment.yaml",

@@ -21,7 +21,7 @@ spec:
       - name: etcd-operator
         # TODO(neoaggelos): https://github.com/neoaggelos/etcd-operator/pull/1
         # Update to a working build once PR is merged upstream
-        image: neoaggelos/etcd-operator:0.10.0-5N
+        image: neoaggelos/etcd-operator:0.10.0-5
         command:
         - /operator
         env:

@@ -1,0 +1,35 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: etcd-operator
+  namespace: mayastor
+  labels:
+    app: etcd-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: etcd-operator
+  template:
+    metadata:
+      labels:
+        app: etcd-operator
+    spec:
+      serviceAccountName: etcd-operator-sa
+      containers:
+      - name: etcd-operator
+        # TODO(neoaggelos): https://github.com/neoaggelos/etcd-operator/pull/1
+        # Update to a working build once PR is merged upstream
+        image: neoaggelos/etcd-operator:0.10.0-5N
+        command:
+        - /operator
+        env:
+        - name: MY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name

@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+
+import os
+import pathlib
+import subprocess
+
+DIR = pathlib.Path(__file__).parent.absolute()
+KUBECTL = os.path.expandvars("$SNAP/microk8s-kubectl.wrapper")
+
+if __name__ == "__main__":
+    subprocess.run(
+        [
+            KUBECTL,
+            "delete",
+            "-f",
+            DIR / "operator-rbac.yaml",
+            # DIR / "mayastorpool-crd.yaml",
+            DIR / "etcd-operator-rbac.yaml",
+            DIR / "etcd-operator-deployment.yaml",
+            DIR / "etcd-cluster.yaml",
+            DIR / "nats-deployment.yaml",
+            DIR / "csi-daemonset.yaml",
+            DIR / "core-agents-deployment.yaml",
+            DIR / "rest-deployment.yaml",
+            DIR / "rest-service.yaml",
+            DIR / "csi-deployment.yaml",
+            DIR / "msp-deployment.yaml",
+            DIR / "mayastor-daemonset.yaml",
+            DIR / "mayastor-1-sc.yaml",
+            DIR / "mayastor-3-sc.yaml",
+        ]
+    )

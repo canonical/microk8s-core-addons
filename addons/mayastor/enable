@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+
+import os
+import pathlib
+import socket
+import subprocess
+import sys
+
+import click
+
+DIR = pathlib.Path(__file__).parent.absolute()
+
+KUBECTL = os.path.expandvars("$SNAP/microk8s-kubectl.wrapper")
+MICROK8S_STATUS = os.path.expandvars("$SNAP/microk8s-status.wrapper")
+
+
+def ensure_hugepages_enabled():
+    click.echo("Checking for HugePages...")
+    enabled = False
+    try:
+        with open("/sys/kernel/mm/transparent_hugepage/enabled") as fin:
+            enabled = "always" in fin.read()
+    except OSError:
+        pass
+
+    if not enabled:
+        click.echo(
+            """
+HugePages are not available or enabled. Please make sure HugePages are enabled.
+
+To enable HugePages:
+
+    echo vm.nr_hugepages = 1024 | sudo tee -a /etc/sysctl.d/20-microk8s-hugepages.conf
+
+Please restart your system after enablement.
+""",
+            err=True,
+        )
+        sys.exit(1)
+
+    click.echo("Checking for HugePages... OK")
+
+
+def ensure_kernel_required_modules():
+    click.echo("Checking for nvme_tcp module...")
+    output = subprocess.check_output(["lsmod"]).decode()
+    if "nvme_tcp" not in output:
+        click.echo(
+            """
+Kernel module 'nvme_tcp' is missing or not loaded. For Ubuntu, enable with:
+
+    sudo apt-get install linux-modules-extra-$(uname -r)
+    sudo modprobe nvme-tcp
+
+Note that the 'nvme_tcp' module is needed in all cluster nodes.
+""",
+            err=True,
+        )
+        sys.exit(1)
+
+    click.echo("Checking for nvme_tcp module... OK")
+
+
+def ensure_dns():
+    click.echo("Checking for DNS...")
+    output = subprocess.check_output([MICROK8S_STATUS, "-a", "dns"]).decode()
+    if "enabled" not in output:
+        click.echo(
+            """
+DNS addon is not enabled. Please enable with:
+
+    microk8s enable dns
+""",
+            err=True,
+        )
+        sys.exit(1)
+
+    click.echo("Checking for DNS... OK")
+
+
+@click.command()
+@click.option("--skip-hugepages-check", is_flag=True, default=False)
+@click.option("--skip-kernel-check", is_flag=True, default=False)
+@click.option("--skip-dns-check", is_flag=True, default=False)
+@click.option("--create-storage-classes", is_flag=True, default=True)
+@click.option("--skip-label-nodes", is_flag=True, default=False)
+@click.option("--label-nodes", multiple=True, default=[socket.gethostname()])
+def main(
+    skip_hugepages_check: bool,
+    skip_kernel_check: bool,
+    skip_dns_check: bool,
+    create_storage_classes: bool,
+    skip_label_nodes: bool,
+    label_nodes: list,
+):
+    if not skip_hugepages_check:
+        ensure_hugepages_enabled()
+
+    if not skip_kernel_check:
+        ensure_kernel_required_modules()
+
+    if not skip_dns_check:
+        ensure_dns()
+
+    # Create mayastor namespace. Ignore failures (e.g. if namespace exists)
+    subprocess.run([KUBECTL, "create", "namespace", "mayastor"])
+
+    # Deploy CRDs and RBAC rules for mayastor
+    subprocess.run(
+        [
+            KUBECTL,
+            "apply",
+            "-f",
+            DIR / "operator-rbac.yaml",
+            DIR / "mayastorpool-crd.yaml",
+        ]
+    )
+
+    # Deploy etcd and nats.io
+    subprocess.check_call(
+        [
+            KUBECTL,
+            "apply",
+            "-f",
+            DIR / "etcd-operator-rbac.yaml",
+            DIR / "etcd-operator-deployment.yaml",
+            DIR / "etcd-cluster.yaml",
+            DIR / "nats-deployment.yaml",
+        ]
+    )
+
+    # Deploy mayastor control plane
+    subprocess.check_call(
+        [
+            KUBECTL,
+            "apply",
+            "-f",
+            DIR / "csi-daemonset.yaml",
+            DIR / "core-agents-deployment.yaml",
+            DIR / "rest-deployment.yaml",
+            DIR / "rest-service.yaml",
+            DIR / "csi-deployment.yaml",
+            DIR / "msp-deployment.yaml",
+            DIR / "mayastor-daemonset.yaml",
+        ]
+    )
+
+    if create_storage_classes:
+        subprocess.check_call(
+            [
+                KUBECTL,
+                "apply",
+                "-f",
+                DIR / "mayastor-1-sc.yaml",
+                DIR / "mayastor-3-sc.yaml",
+            ]
+        )
+
+    if skip_label_nodes:
+        label_nodes = []
+
+    for node in label_nodes:
+        subprocess.check_call(
+            [KUBECTL, "label", "node", str(node), "openebs.io/engine=mayastor"]
+        )
+
+
+if __name__ == "__main__":
+    main()

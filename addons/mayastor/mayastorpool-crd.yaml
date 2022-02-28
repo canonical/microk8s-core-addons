@@ -1,0 +1,142 @@
+---
+# Source: mayastor-control-plane/templates/mayastorpoolcrd.yaml
+{
+  "apiVersion": "apiextensions.k8s.io/v1",
+  "kind": "CustomResourceDefinition",
+  "metadata": {
+    "name": "mayastorpools.openebs.io"
+  },
+  "spec": {
+    "group": "openebs.io",
+    "names": {
+      "categories": [],
+      "kind": "MayastorPool",
+      "plural": "mayastorpools",
+      "shortNames": [
+        "msp"
+      ],
+      "singular": "mayastorpool"
+    },
+    "scope": "Namespaced",
+    "versions": [
+      {
+        "additionalPrinterColumns": [
+          {
+            "description": "node the pool is on",
+            "jsonPath": ".spec.node",
+            "name": "node",
+            "type": "string"
+          },
+          {
+            "description": "pool status",
+            "jsonPath": ".status.state",
+            "name": "status",
+            "type": "string"
+          },
+          {
+            "description": "total bytes",
+            "format": "int64",
+            "jsonPath": ".status.capacity",
+            "name": "capacity",
+            "type": "integer"
+          },
+          {
+            "description": "used bytes",
+            "format": "int64",
+            "jsonPath": ".status.used",
+            "name": "used",
+            "type": "integer"
+          },
+          {
+            "description": "available bytes",
+            "format": "int64",
+            "jsonPath": ".status.available",
+            "name": "available",
+            "type": "integer"
+          }
+        ],
+        "name": "v1alpha1",
+        "schema": {
+          "openAPIV3Schema": {
+            "description": "Auto-generated derived type for MayastorPoolSpec via `CustomResource`",
+            "properties": {
+              "spec": {
+                "description": "The pool spec which contains the parameters we use when creating the pool",
+                "properties": {
+                  "disks": {
+                    "description": "The disk device the pool is located on",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "node": {
+                    "description": "The node the pool is placed on",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "disks",
+                  "node"
+                ],
+                "type": "object"
+              },
+              "status": {
+                "description": "Status of the pool which is driven and changed by the controller loop",
+                "nullable": true,
+                "properties": {
+                  "available": {
+                    "description": "Available number of bytes",
+                    "format": "uint64",
+                    "minimum": 0.0,
+                    "type": "integer"
+                  },
+                  "capacity": {
+                    "description": "Capacity as number of bytes",
+                    "format": "uint64",
+                    "minimum": 0.0,
+                    "type": "integer"
+                  },
+                  "state": {
+                    "description": "The state of the pool",
+                    "enum": [
+                      "Creating",
+                      "Created",
+                      "Online",
+                      "Unknown",
+                      "Error"
+                    ],
+                    "type": "string"
+                  },
+                  "used": {
+                    "description": "Used number of bytes",
+                    "format": "uint64",
+                    "minimum": 0.0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "available",
+                  "capacity",
+                  "state",
+                  "used"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "spec"
+            ],
+            "title": "MayastorPool",
+            "type": "object"
+          }
+        },
+        "served": true,
+        "storage": true,
+        "subresources": {
+          "status": {}
+        }
+      }
+    ]
+  }
+}

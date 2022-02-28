@@ -50,10 +50,11 @@ def main(device: list, create: list, node: str):
     next_create = len(glob.glob(str(MAYASTOR_DATA / "*.img"))) + 1
     for size in create:
         next_create += 1
-        dev = MAYASTOR_DATA / "{}.img".format(next_create)
-        subprocess.run(["sudo", "truncate", "-s", str(size), dev])
+        host_path = MAYASTOR_DATA / "{}.img".format(next_create)
+        container_path = "/data/{}.img".format(next_create)
+        subprocess.run(["sudo", "truncate", "-s", str(size), host_path])
         subprocess.run(
-            [KUBECTL, "apply", "-f", "-"], input=format_pool(pool_template, node, dev)
+            [KUBECTL, "apply", "-f", "-"], input=format_pool(pool_template, node, container_path)
         )
 
 

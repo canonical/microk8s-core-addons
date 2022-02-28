@@ -138,7 +138,7 @@ microk8s-addons:
       supported_architectures:
         - amd64
 
-    - name: "mayastor-node"
+    - name: "mayastor-pool"
       description: "OpenEBS MayaStor pool"
       version: "0.1.0"
       check_status: "${SNAP_COMMON}/mayastor/data/1.img"

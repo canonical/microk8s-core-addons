@@ -47,7 +47,7 @@ def main(device: list, create: list, node: str):
             [KUBECTL, "apply", "-f", "-"], input=format_pool(pool_template, node, dev)
         )
 
-    next_create = len(glob.glob(MAYASTOR_DATA / "*.img")) + 1
+    next_create = len(glob.glob(str(MAYASTOR_DATA / "*.img"))) + 1
     for size in create:
         next_create += 1
         dev = MAYASTOR_DATA / "{}.img".format(next_create)

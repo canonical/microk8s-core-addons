@@ -40,7 +40,7 @@ def main(device: list, create: list, node: str):
         return 1
 
     with open(DIR / "mayastorpool-pool.yaml") as fin:
-        pool_template = yaml.load(fin)
+        pool_template = yaml.safe_load(fin)
 
     for dev in device:
         subprocess.run(

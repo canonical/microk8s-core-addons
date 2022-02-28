@@ -24,7 +24,7 @@ def format_pool(pool_template: dict, node: str, device: str):
     pool["spec"]["node"] = node
     pool["spec"]["disks"] = [device]
 
-    return yaml.dump(pool)
+    return yaml.dump(pool).encode()
 
 
 @click.command()

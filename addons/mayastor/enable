@@ -42,7 +42,7 @@ Please restart your system after enablement.
         )
         sys.exit(1)
 
-    click.echo("Checking for HugePages... OK")
+    click.echo("Checking for HugePages (>= 1024)... OK")
 
 
 def ensure_kernel_required_modules():
@@ -55,6 +55,7 @@ Kernel module 'nvme_tcp' is missing or not loaded. For Ubuntu, enable with:
 
     sudo apt-get install linux-modules-extra-$(uname -r)
     sudo modprobe nvme-tcp
+    echo 'nvme-tcp' | sudo tee -a /etc/modules-load.d/microk8s-mayastor.conf
 
 Note that the 'nvme_tcp' module is needed in all cluster nodes.
 """,
@@ -109,56 +110,33 @@ def main(
     # Create mayastor namespace. Ignore failures (e.g. if namespace exists)
     subprocess.run([KUBECTL, "create", "namespace", "mayastor"])
 
-    # Deploy CRDs and RBAC rules for mayastor
-    subprocess.run(
-        [
-            KUBECTL,
-            "apply",
-            "-f",
-            DIR / "operator-rbac.yaml",
-            DIR / "mayastorpool-crd.yaml",
-        ]
-    )
-
-    # Deploy etcd and nats.io
-    subprocess.check_call(
-        [
-            KUBECTL,
-            "apply",
-            "-f",
-            DIR / "etcd-operator-rbac.yaml",
-            DIR / "etcd-operator-deployment.yaml",
-            DIR / "etcd-cluster.yaml",
-            DIR / "nats-deployment.yaml",
-        ]
-    )
-
-    # Deploy mayastor control plane
-    subprocess.check_call(
-        [
-            KUBECTL,
-            "apply",
-            "-f",
-            DIR / "csi-daemonset.yaml",
-            DIR / "core-agents-deployment.yaml",
-            DIR / "rest-deployment.yaml",
-            DIR / "rest-service.yaml",
-            DIR / "csi-deployment.yaml",
-            DIR / "msp-deployment.yaml",
-            DIR / "mayastor-daemonset.yaml",
-        ]
-    )
+    manifests = [
+        # Deploy CRDs and RBAC rules for mayastor
+        DIR / "operator-rbac.yaml",
+        DIR / "mayastorpool-crd.yaml",
+        # Deploy etcd and nats.io
+        DIR / "etcd-operator-rbac.yaml",
+        DIR / "etcd-operator-deployment.yaml",
+        DIR / "etcd-cluster.yaml",
+        DIR / "nats-deployment.yaml",
+        # Mayastor Control Plane
+        DIR / "csi-daemonset.yaml",
+        DIR / "core-agents-deployment.yaml",
+        DIR / "rest-deployment.yaml",
+        DIR / "rest-service.yaml",
+        DIR / "csi-deployment.yaml",
+        DIR / "msp-deployment.yaml",
+        DIR / "mayastor-daemonset.yaml",
+    ]
 
     if create_storage_classes:
-        subprocess.check_call(
-            [
-                KUBECTL,
-                "apply",
-                "-f",
+        manifests.extend([
                 DIR / "mayastor-1-sc.yaml",
                 DIR / "mayastor-3-sc.yaml",
-            ]
-        )
+        ])
+
+    for manifest in manifests:
+        subprocess.check_call([KUBECTL, "apply", "-f", manifest])
 
     if skip_label_nodes:
         label_nodes = []

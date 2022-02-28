@@ -2,6 +2,7 @@
 
 import os
 import pathlib
+import re
 import socket
 import subprocess
 import sys
@@ -15,12 +16,15 @@ MICROK8S_STATUS = os.path.expandvars("$SNAP/microk8s-status.wrapper")
 
 
 def ensure_hugepages_enabled():
-    click.echo("Checking for HugePages...")
+    click.echo("Checking for HugePages (>= 1024)...")
     enabled = False
     try:
-        with open("/sys/kernel/mm/transparent_hugepage/enabled") as fin:
-            enabled = "always" in fin.read()
-    except OSError:
+        with open("/proc/meminfo") as fin:
+            match = re.findall(r'HugePages_Total:[\s\t]*(\d+)', fin.read())
+
+        nr_hugepages = int(match[0])
+        enabled = nr_hugepages >= 1024
+    except (OSError, IndexError, ValueError):
         pass
 
     if not enabled:
@@ -28,7 +32,7 @@ def ensure_hugepages_enabled():
             """
 HugePages are not available or enabled. Please make sure HugePages are enabled.
 
-To enable HugePages:
+To enable HugePages (mayastor requires at least 1024):
 
     echo vm.nr_hugepages = 1024 | sudo tee -a /etc/sysctl.d/20-microk8s-hugepages.conf
 

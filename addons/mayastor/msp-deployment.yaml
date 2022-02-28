@@ -63,4 +63,4 @@ spec:
       - name: data
         hostPath:
           path: /var/snap/microk8s/common/mayastor/data
-          type: Directory
+          type: DirectoryOrCreate

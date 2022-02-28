@@ -55,3 +55,7 @@ def main(device: list, create: list, node: str):
         subprocess.run(
             [KUBECTL, "apply", "-f", "-"], input=format_pool(pool_template, node, dev)
         )
+
+
+if __name__ == "__main__":
+    main()

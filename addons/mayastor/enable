@@ -20,7 +20,7 @@ def ensure_hugepages_enabled():
     enabled = False
     try:
         with open("/proc/meminfo") as fin:
-            match = re.findall(r'HugePages_Total:[\s\t]*(\d+)', fin.read())
+            match = re.findall(r"HugePages_Total:[\s\t]*(\d+)", fin.read())
 
         nr_hugepages = int(match[0])
         enabled = nr_hugepages >= 1024
@@ -131,10 +131,12 @@ def main(
     ]
 
     if create_storage_classes:
-        manifests.extend([
+        manifests.extend(
+            [
                 DIR / "mayastor-1-sc.yaml",
                 DIR / "mayastor-3-sc.yaml",
-        ])
+            ]
+        )
 
     for manifest in manifests:
         subprocess.check_call([KUBECTL, "apply", "-f", manifest])

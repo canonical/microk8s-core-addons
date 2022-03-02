@@ -25,8 +25,15 @@ spec:
       # To resolve services from mayastor's namespace
       dnsPolicy: ClusterFirstWithHostNet
       nodeSelector:
-        openebs.io/engine: mayastor
         kubernetes.io/arch: amd64
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: microk8s.io/mayastor
+                operator: NotIn
+                values: [disable]
       initContainers:
       - name: message-bus-probe
         image: busybox:latest

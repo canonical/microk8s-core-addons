@@ -20,12 +20,10 @@ from validators import (
 from utils import (
     microk8s_enable,
     wait_for_pod_state,
-    wait_for_namespace_termination,
     microk8s_disable,
     microk8s_reset,
-    is_container,
 )
-from subprocess import PIPE, STDOUT, CalledProcessError, check_call, run, check_output
+from subprocess import CalledProcessError, check_call
 
 
 class TestAddons(object):
@@ -112,12 +110,6 @@ class TestAddons(object):
         microk8s_enable("dashboard")
         print("Validating dashboard")
         validate_dns_dashboard()
-        print("Enabling dashboard-ingress")
-        microk8s_enable("dashboard-ingress")
-        print("Validating dashboard-ingress")
-        validate_dashboard_ingress()
-        print("Disabling dashboard-ingress")
-        microk8s_disable("dashboard-ingress")
         print("Enabling hostpath-storage")
         microk8s_enable("hostpath-storage")
         print("Validating hostpath-storage")

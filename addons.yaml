@@ -137,10 +137,3 @@ microk8s-addons:
       check_status: "daemonset.apps/mayastor"
       supported_architectures:
         - amd64
-
-    - name: "mayastor-pool"
-      description: "OpenEBS MayaStor pool"
-      version: "0.1.0"
-      check_status: "${SNAP_COMMON}/mayastor/data/1.img"
-      supported_architectures:
-        - amd64

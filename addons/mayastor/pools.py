@@ -36,13 +36,6 @@ def format_pool(pool_template: dict, node: str, device: str):
 @click.option("--size", multiple=True)
 @click.option("--node", default=socket.gethostname())
 def add(device: list, size: list, node: str):
-    if node != socket.gethostname():
-        click.echo(
-            "ERROR: Creating mayastor pools in other nodes is not supported yet",
-            err=True,
-        )
-        sys.exit(1)
-
     with open(DIR / "mayastorpool-pool-template.yaml") as fin:
         pool_template = yaml.safe_load(fin)
 
@@ -50,6 +43,17 @@ def add(device: list, size: list, node: str):
         subprocess.run(
             [KUBECTL, "apply", "-f", "-"], input=format_pool(pool_template, node, dev)
         )
+
+    if not size:
+        sys.exit(0)
+
+    # TODO: use a pod with a hostpath volume to create the image file on any node
+    if node != socket.gethostname():
+        click.echo(
+            "ERROR: Creating mayastor pools in other nodes is not supported yet",
+            err=True,
+        )
+        sys.exit(1)
 
     next_create = len(glob.glob(str(MAYASTOR_DATA / "*.img"))) + 1
     for image_size in size:
@@ -95,6 +99,7 @@ def remove(pool: str, force: bool, purge: bool):
     if not purge:
         sys.exit(0)
 
+    # TODO: use a pod with a hostpath volume to remove the image file on any node
     if msp.get("spec", {}).get("node", "") != socket.gethostname():
         click.echo(
             "ERROR: Purging mayastor pools in other nodes is not supported yet",

@@ -5,5 +5,5 @@ metadata:
   name: pool-$node-$device
   namespace: mayastor
 spec:
-  node: $node-$device
+  node: $node
   disks: ["aio://$device"]

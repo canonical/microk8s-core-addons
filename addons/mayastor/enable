@@ -155,15 +155,18 @@ Mayastor has been installed and will be available shortly.
 
 To manage mayastorpools, you can use the following commands:
 
-- Create a pool using an image file with 10G maximum size:
+Create a pool using an image file with 10G maximum size:
+
     {DIR / 'pools.py'} add --node {socket.gethostname()} --size 10G
 
-- Create a pool using an existing block device:
+Create a pool using an existing block device:
+
     {DIR / 'pools.py'} add --node {socket.gethostname()} --device /dev/vdb
 
-- Delete a pool:
+Delete a pool:
+
     {DIR / 'pools.py'} remove pool-{socket.gethostname()}-0.img
-    {DIR / 'pools.py'} remove pool-{socket.gethostname()}-0.img --purge
+    {DIR / 'pools.py'} remove pool-{socket.gethostname()}-0.img --purge --force
 
 Mayastor will run for all nodes in your MicroK8s cluster by default. You can
 remove mayastor from any node using the 'microk8s.io/mayastor=disable'.

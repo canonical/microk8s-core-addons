@@ -55,6 +55,10 @@ def add(device: list, size: list, node: str):
         )
         sys.exit(1)
 
+    if not MAYASTOR_DATA.exists():
+        click.echo("Creating mayastor data directory")
+        os.makedirs(MAYASTOR_DATA, exist_ok=True)
+
     next_create = len(glob.glob(str(MAYASTOR_DATA / "*.img"))) + 1
     for image_size in size:
         next_create += 1
@@ -65,9 +69,11 @@ def add(device: list, size: list, node: str):
             [KUBECTL, "apply", "-f", "-"], input=format_pool(pool_template, node, container_path)
         )
 
+
 @pools.command("list")
 def list():
     subprocess.run([KUBECTL, "get", "msp", "-n", "mayastor"])
+
 
 @pools.command("remove")
 @click.argument("pool")

@@ -133,4 +133,4 @@ spec:
           type: DirectoryOrCreate
       - name: init-scripts
         configMap:
-          name: mayastor-init-scripts-configmap
+          name: mayastor-init-scripts

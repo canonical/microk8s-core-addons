@@ -31,7 +31,54 @@ def format_pool(pool_template: dict, node: str, device: str):
     return yaml.dump(pool).encode()
 
 
-@pools.command('add')
+def run_on_node(node: str, command: list):
+    overrides = json.dumps(
+        {
+            "spec": {
+                "containers": [
+                    {
+                        "name": "truncate",
+                        "image": "alpine",
+                        "command": command,
+                        "tty": True,
+                        "volumeMounts": [{"name": "data", "mountPath": "/data"}],
+                    },
+                ],
+                "restartPolicy": "Never",
+                "nodeSelector": {"kubernetes.io/hostname": node},
+                "volumes": [
+                    {
+                        "name": "data",
+                        "hostPath": {
+                            "path": MAYASTOR_DATA.as_posix(),
+                            "type": "DirectoryOrCreate",
+                        },
+                    },
+                ],
+            }
+        }
+    )
+
+    click.echo("Running {} on node {}".format(command, node))
+
+    return subprocess.run(
+        [
+            KUBECTL,
+            "run",
+            "--rm",
+            "-it",
+            "-n",
+            "mayastor",
+            "temp-{}-{}".format(command[0], os.urandom(3).hex()),
+            "--overrides",
+            overrides,
+            "--image",
+            "alpine",
+        ]
+    )
+
+
+@pools.command("add")
 @click.option("--device", multiple=True)
 @click.option("--size", multiple=True)
 @click.option("--node", default=socket.gethostname())
@@ -47,26 +94,12 @@ def add(device: list, size: list, node: str):
     if not size:
         sys.exit(0)
 
-    # TODO: use a pod with a hostpath volume to create the image file on any node
-    if node != socket.gethostname():
-        click.echo(
-            "ERROR: Creating mayastor pools in other nodes is not supported yet",
-            err=True,
-        )
-        sys.exit(1)
-
-    if not MAYASTOR_DATA.exists():
-        click.echo("Creating mayastor data directory")
-        os.makedirs(MAYASTOR_DATA, exist_ok=True)
-
-    next_create = len(glob.glob(str(MAYASTOR_DATA / "*.img"))) + 1
     for image_size in size:
-        next_create += 1
-        host_path = MAYASTOR_DATA / "{}.img".format(next_create)
-        container_path = "/data/{}.img".format(next_create)
-        subprocess.run(["sudo", "truncate", "-s", str(image_size), host_path])
+        container_path = "/data/{}.img".format(os.urandom(3).hex())
+        run_on_node(node, ["truncate", "-s", str(image_size), container_path])
         subprocess.run(
-            [KUBECTL, "apply", "-f", "-"], input=format_pool(pool_template, node, container_path)
+            [KUBECTL, "apply", "-f", "-"],
+            input=format_pool(pool_template, node, container_path),
         )
 
 
@@ -82,7 +115,7 @@ def list():
 def remove(pool: str, force: bool, purge: bool):
     result = subprocess.run(
         [KUBECTL, "get", "msp", "-n", "mayastor", pool, "-o", "json"],
-        stdout=subprocess.PIPE
+        stdout=subprocess.PIPE,
     )
 
     if result.returncode != 0:
@@ -105,19 +138,11 @@ def remove(pool: str, force: bool, purge: bool):
     if not purge:
         sys.exit(0)
 
-    # TODO: use a pod with a hostpath volume to remove the image file on any node
-    if msp.get("spec", {}).get("node", "") != socket.gethostname():
-        click.echo(
-            "ERROR: Purging mayastor pools in other nodes is not supported yet",
-            err=True,
-        )
-        sys.exit(1)
-
+    node = msp.get("spec", {}).get("node", "")
     for disk in msp.get("spec", []).get("disks", []):
         if disk.startswith("/data/") and disk.endswith(".img"):
-            image_file = MAYASTOR_DATA / disk[len("/data/") :]
-            click.echo("Removing {}".format(image_file))
-            os.unlink(image_file)
+            run_on_node(node, ["rm", disk])
+
 
 if __name__ == "__main__":
     pools.main()

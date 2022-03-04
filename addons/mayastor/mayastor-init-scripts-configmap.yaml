@@ -3,6 +3,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: mayastor-init-scripts
+  namespace: mayastor
 data:
   initialize-pool.sh: |
     if [ -f /data/microk8s.img ]; then

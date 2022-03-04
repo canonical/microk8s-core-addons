@@ -1,0 +1,44 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: etcdclusters.etcd.database.coreos.com
+spec:
+  scope: Namespaced
+  group: etcd.database.coreos.com
+  names:
+    kind: EtcdCluster
+    listKind: EtcdClusterList
+    plural: etcdclusters
+    shortNames:
+    - etcd
+    singular: etcdcluster
+  conversion:
+    strategy: None
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.size
+      name: size
+      type: number
+    - jsonPath: .spec.version
+      name: version
+      type: string
+    - jsonPath: .status.serviceName
+      name: service
+      type: string
+    - jsonPath: .status.phase
+      name: phase
+      type: string
+    - jsonPath: .status.conditions[-1].type
+      name: status
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: age
+      type: date
+    name: v1beta3
+    schema:
+      openAPIV3Schema:
+        type: object
+        x-kubernetes-preserve-unknown-fields: true
+    served: true
+    storage: true

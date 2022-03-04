@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+
+import json
+import os
+import pathlib
+import shutil
+import subprocess
+import sys
+
+import click
+
+DIR = pathlib.Path(__file__).parent.absolute()
+KUBECTL = os.path.expandvars("$SNAP/microk8s-kubectl.wrapper")
+MAYASTOR_DATA = pathlib.Path(os.path.expandvars("$SNAP_COMMON/mayastor/data"))
+
+
+@click.command()
+@click.option("--remove-storage", is_flag=True, default=False)
+@click.option("--force", is_flag=True, default=False)
+@click.option("--remove-crd", is_flag=True, default=False)
+def main(remove_storage: bool, force: bool, remove_crd: bool):
+    pools = subprocess.check_output(
+        [KUBECTL, "get", "msp", "-n", "mayastor", "-o", "json"],
+    )
+
+    try:
+        j = json.loads(pools)
+    except json.JSONDecodeError as e:
+        click.echo("Failed to parse existing pools: {}".format(e), err=True)
+        sys.exit(1)
+
+    used = [p for p in j.get("items", []) if p.get("status", {}).get("used", 0) > 0]
+    if not force and used:
+        click.echo("The following pools are in use, please run with --force", err=True)
+        for p in used:
+            click.echo("{} ({})".format(p["metadata"]["name"], p["status"]), err=True)
+        sys.exit(1)
+
+    # if pools are in use, do not remove the CRD
+    if force and used:
+        remove_crd = False
+
+    manifests = [
+        DIR / "operator-rbac.yaml",
+        DIR / "etcd-operator-rbac.yaml",
+        DIR / "etcd-operator-deployment.yaml",
+        DIR / "etcd-cluster.yaml",
+        DIR / "nats-deployment.yaml",
+        DIR / "csi-daemonset.yaml",
+        DIR / "core-agents-deployment.yaml",
+        DIR / "rest-deployment.yaml",
+        DIR / "rest-service.yaml",
+        DIR / "csi-deployment.yaml",
+        DIR / "msp-deployment.yaml",
+        DIR / "mayastor-daemonset.yaml",
+        DIR / "mayastor-1-sc.yaml",
+        DIR / "mayastor-3-sc.yaml",
+    ]
+
+    if remove_crd:
+        manifests.append(DIR / "mayastorpool-crd.yaml")
+
+    for manifest in manifests:
+        subprocess.run([KUBECTL, "delete", "-f", manifest])
+
+    if remove_storage and MAYASTOR_DATA.exists():
+        click.echo("Removing {}".format(MAYASTOR_DATA))
+        shutil.rmtree(MAYASTOR_DATA, ignore_errors=True)
+
+
+if __name__ == "__main__":
+    main()

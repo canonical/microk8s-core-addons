@@ -42,7 +42,7 @@ spec:
         # Initialize a pool backed by an image file
       - name: initialize-pool
         image: alpine:latest
-        command: ['sh', '-c', '/scripts/initialize-pool.sh']
+        command: ['sh', '/scripts/initialize-pool.sh']
         volumeMounts:
         - name: data
           mountPath: /data

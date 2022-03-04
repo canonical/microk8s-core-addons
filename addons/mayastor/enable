@@ -142,7 +142,8 @@ def main(
     if not create_storage_classes:
         click.echo("No storage classes have been created, please configure manually")
 
-    click.echo(f"""
+    click.echo(
+        f"""
 =============================================================
 
 Mayastor has been installed and will be available shortly.
@@ -152,7 +153,8 @@ Mayastor will run for all nodes in your MicroK8s cluster by default. Use the
 
     microk8s.kubectl label node {socket.gethostname()} microk8s.io/mayastor=disable
 
-""")
+"""
+    )
 
 
 if __name__ == "__main__":

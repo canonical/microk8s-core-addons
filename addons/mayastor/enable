@@ -88,15 +88,11 @@ DNS addon is not enabled. Please enable with:
 @click.option("--skip-kernel-check", is_flag=True, default=False)
 @click.option("--skip-dns-check", is_flag=True, default=False)
 @click.option("--create-storage-classes", is_flag=True, default=True)
-@click.option("--create-pool/--no-create-pool", is_flag=True, default=True)
-@click.option("--create-pool-size", default='10G')
 def main(
     skip_hugepages_check: bool,
     skip_kernel_check: bool,
     skip_dns_check: bool,
     create_storage_classes: bool,
-    create_pool: bool,
-    create_pool_size: str,
 ):
     if not skip_hugepages_check:
         ensure_hugepages_enabled()
@@ -113,6 +109,8 @@ def main(
     manifests = [
         # Deploy CRDs and RBAC rules for mayastor
         DIR / "operator-rbac.yaml",
+        DIR / "mayastor-daemonset-rbac.yaml",
+        DIR / "mayastor-init-scripts-configmap.yaml",
         DIR / "mayastorpool-crd.yaml",
         DIR / "etcd-cluster-crd.yaml",
         # Deploy etcd and nats.io
@@ -144,35 +142,10 @@ def main(
     if not create_storage_classes:
         click.echo("No storage classes have been created, please configure manually")
 
-    if create_pool:
-        click.echo("Creating default pool with size {}".format(create_pool_size))
-        subprocess.check_call([DIR / "pools.py", "add", "--size", create_pool_size])
-    else:
-        click.echo("No storage pools have been created, please configure manually")
-
     click.echo(f"""
 =============================================================
 
 Mayastor has been installed and will be available shortly.
-
-To manage mayastorpools, you can use the following commands:
-
-    function mayastor-pool {{
-        echo "{DIR / "pools.py"} $@" | sudo snap run --shell microk8s
-    }}
-
-Create a pool using an image file with 10G maximum size:
-
-    mayastor-pool add --node {socket.gethostname()} --size 10G
-
-Create a pool using an existing block device:
-
-    mayastor-pool add --node {socket.gethostname()} --device /dev/vdb
-
-Delete a pool:
-
-    mayastor-pool remove pool-{socket.gethostname()}-0.img
-    mayastor-pool remove pool-{socket.gethostname()}-0.img --purge --force
 
 Mayastor will run for all nodes in your MicroK8s cluster by default. Use the
 'microk8s.io/mayastor=disable' label to disable any node. For example:

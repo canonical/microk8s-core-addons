@@ -21,6 +21,7 @@ spec:
       labels:
         app: mayastor
     spec:
+      serviceAccount: mayastor-daemonset-service-account
       hostNetwork: true
       # To resolve services from mayastor's namespace
       dnsPolicy: ClusterFirstWithHostNet
@@ -38,6 +39,15 @@ spec:
       - name: message-bus-probe
         image: busybox:latest
         command: ['sh', '-c', 'until nc -vz nats 4222; do echo "Waiting for message bus..."; sleep 1; done;']
+        # Initialize a pool backed by an image file
+      - name: initialize-pool
+        image: alpine:latest
+        command: ['sh', '-c', '/scripts/initialize-pool.sh']
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: init-scripts
+          mountPath: /scripts
       containers:
       - name: mayastor
         image: mayadata/mayastor:v1.0.1
@@ -121,3 +131,6 @@ spec:
         hostPath:
           path: /var/snap/microk8s/common/mayastor/data
           type: DirectoryOrCreate
+      - name: init-scripts
+        configMap:
+          name: mayastor-init-scripts-configmap

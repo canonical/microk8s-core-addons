@@ -88,7 +88,7 @@ DNS addon is not enabled. Please enable with:
 @click.option("--skip-kernel-check", is_flag=True, default=False)
 @click.option("--skip-dns-check", is_flag=True, default=False)
 @click.option("--create-storage-classes", is_flag=True, default=True)
-@click.option("--create-pool", is_flag=True, default=True)
+@click.option("--create-pool/--no-create-pool", is_flag=True, default=True)
 @click.option("--create-pool-size", default='10G')
 def main(
     skip_hugepages_check: bool,

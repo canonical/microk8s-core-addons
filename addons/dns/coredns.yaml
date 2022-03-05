@@ -170,7 +170,6 @@ rules:
       - services
       - pods
       - namespaces
-      - endpointslices
     verbs:
       - list
       - watch

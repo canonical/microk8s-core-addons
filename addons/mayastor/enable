@@ -13,6 +13,7 @@ DIR = pathlib.Path(__file__).parent.absolute()
 
 KUBECTL = os.path.expandvars("$SNAP/microk8s-kubectl.wrapper")
 MICROK8S_STATUS = os.path.expandvars("$SNAP/microk8s-status.wrapper")
+MICROK8S_ENABLE = os.path.expandvars("$SNAP/microk8s-enable.wrapper")
 
 
 def ensure_hugepages_enabled():
@@ -66,19 +67,14 @@ Note that the 'nvme_tcp' module is needed in all cluster nodes.
     click.echo("Checking for nvme_tcp module... OK")
 
 
-def ensure_dns():
+def ensure_dns(addon_name: str):
     click.echo("Checking for DNS...")
-    output = subprocess.check_output([MICROK8S_STATUS, "-a", "dns"]).decode()
+    output = subprocess.check_output([MICROK8S_STATUS, "-a", addon_name]).decode()
     if "enabled" not in output:
-        click.echo(
-            """
-DNS addon is not enabled. Please enable with:
-
-    microk8s enable dns
-""",
-            err=True,
-        )
-        sys.exit(1)
+        p = subprocess.run([MICROK8S_ENABLE, addon_name])
+        if p.returncode != 0:
+            click.echo("Failed to enable DNS", err=True)
+            sys.exit(1)
 
     click.echo("Checking for DNS... OK")
 
@@ -86,12 +82,12 @@ DNS addon is not enabled. Please enable with:
 @click.command()
 @click.option("--skip-hugepages-check", is_flag=True, default=False)
 @click.option("--skip-kernel-check", is_flag=True, default=False)
-@click.option("--skip-dns-check", is_flag=True, default=False)
+@click.option("--dns-addon", default="core/dns")
 @click.option("--create-storage-classes", is_flag=True, default=True)
 def main(
     skip_hugepages_check: bool,
     skip_kernel_check: bool,
-    skip_dns_check: bool,
+    dns_addon: str,
     create_storage_classes: bool,
 ):
     if not skip_hugepages_check:
@@ -100,8 +96,8 @@ def main(
     if not skip_kernel_check:
         ensure_kernel_required_modules()
 
-    if not skip_dns_check:
-        ensure_dns()
+    if dns_addon:
+        ensure_dns(dns_addon)
 
     # Create mayastor namespace. Ignore failures (e.g. if namespace exists)
     subprocess.run([KUBECTL, "create", "namespace", "mayastor"])

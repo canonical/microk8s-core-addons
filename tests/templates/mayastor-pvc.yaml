@@ -1,0 +1,31 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: mayastor-test-pvc
+spec:
+  storageClassName: mayastor-1
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 1Gi
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: mayastor-test-pod
+spec:
+  containers:
+    - name: mayastor-test-container
+      image: busybox
+      command:
+        ["/bin/sh", "-c", "while true; do date >> /mnt/dates; sleep 2; done"]
+      volumeMounts:
+        - name: volume
+          mountPath: "/mnt"
+  restartPolicy: "Never"
+  volumes:
+    - name: volume
+      persistentVolumeClaim:
+        claimName: mayastor-test-pvc

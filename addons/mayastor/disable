@@ -41,24 +41,27 @@ def main(remove_storage: bool, force: bool, remove_crd: bool):
         remove_crd = False
 
     manifests = [
-        DIR / "operator-rbac.yaml",
-        DIR / "etcd-operator-rbac.yaml",
-        DIR / "etcd-operator-deployment.yaml",
-        DIR / "etcd-cluster.yaml",
-        DIR / "nats-deployment.yaml",
-        DIR / "csi-daemonset.yaml",
-        DIR / "core-agents-deployment.yaml",
-        DIR / "rest-deployment.yaml",
-        DIR / "rest-service.yaml",
-        DIR / "csi-deployment.yaml",
-        DIR / "msp-deployment.yaml",
-        DIR / "mayastor-daemonset.yaml",
-        DIR / "mayastor-1-sc.yaml",
-        DIR / "mayastor-3-sc.yaml",
+        DIR / "mayastor" / "operator-rbac.yaml",
+        DIR / "etcd" / "etcd-operator-rbac.yaml",
+        DIR / "etcd" / "etcd-operator-deployment.yaml",
+        DIR / "etcd" / "etcd-cluster.yaml",
+        DIR / "nats" / "nats-deployment.yaml",
+        DIR / "mayastor" / "csi-daemonset.yaml",
+        DIR / "mayastor" / "core-agents-deployment.yaml",
+        DIR / "mayastor" / "rest-deployment.yaml",
+        DIR / "mayastor" / "rest-service.yaml",
+        DIR / "mayastor" / "csi-deployment.yaml",
+        DIR / "mayastor" / "msp-deployment.yaml",
+        DIR / "mayastor" / "mayastor-daemonset.yaml",
+        DIR / "mayastor" / "mayastor-1-sc.yaml",
+        DIR / "mayastor" / "mayastor-3-sc.yaml",
     ]
 
     if remove_crd:
-        manifests.append(DIR / "mayastorpool-crd.yaml")
+        manifests.extend([
+            DIR / "mayastor" / "mayastorpool-crd.yaml",
+            DIR / "etcd" / "etcd-cluster-crd.yaml",
+        ])
 
     for manifest in manifests:
         subprocess.run([KUBECTL, "delete", "-f", manifest])

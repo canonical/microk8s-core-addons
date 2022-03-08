@@ -83,7 +83,7 @@ def run_on_node(node: str, command: list):
 @click.option("--size", multiple=True)
 @click.option("--node", default=socket.gethostname())
 def add(device: list, size: list, node: str):
-    with open(DIR / "mayastorpool-pool-template.yaml") as fin:
+    with open(DIR / "mayastor" / "mayastorpool-pool-template.yaml") as fin:
         pool_template = yaml.safe_load(fin)
 
     for dev in device:

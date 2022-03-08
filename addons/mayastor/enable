@@ -108,31 +108,31 @@ def main(
 
     manifests = [
         # Deploy CRDs and RBAC rules for mayastor
-        DIR / "operator-rbac.yaml",
-        DIR / "mayastor-daemonset-rbac.yaml",
-        DIR / "mayastor-init-scripts-configmap.yaml",
-        DIR / "mayastorpool-crd.yaml",
-        DIR / "etcd-cluster-crd.yaml",
+        DIR / "mayastor" / "operator-rbac.yaml",
+        DIR / "mayastor" / "mayastor-daemonset-rbac.yaml",
+        DIR / "mayastor" / "mayastor-init-scripts-configmap.yaml",
+        DIR / "mayastor" / "mayastorpool-crd.yaml",
+        DIR / "etcd" / "etcd-cluster-crd.yaml",
         # Deploy etcd and nats.io
-        DIR / "etcd-operator-rbac.yaml",
-        DIR / "etcd-operator-deployment.yaml",
-        DIR / "etcd-cluster.yaml",
-        DIR / "nats-deployment.yaml",
+        DIR / "etcd" / "etcd-operator-rbac.yaml",
+        DIR / "etcd" / "etcd-operator-deployment.yaml",
+        DIR / "etcd" / "etcd-cluster.yaml",
+        DIR / "nats" / "nats-deployment.yaml",
         # Mayastor Control Plane
-        DIR / "csi-daemonset.yaml",
-        DIR / "core-agents-deployment.yaml",
-        DIR / "rest-deployment.yaml",
-        DIR / "rest-service.yaml",
-        DIR / "csi-deployment.yaml",
-        DIR / "msp-deployment.yaml",
-        DIR / "mayastor-daemonset.yaml",
+        DIR / "mayastor" / "csi-daemonset.yaml",
+        DIR / "mayastor" / "core-agents-deployment.yaml",
+        DIR / "mayastor" / "rest-deployment.yaml",
+        DIR / "mayastor" / "rest-service.yaml",
+        DIR / "mayastor" / "csi-deployment.yaml",
+        DIR / "mayastor" / "msp-deployment.yaml",
+        DIR / "mayastor" / "mayastor-daemonset.yaml",
     ]
 
     if create_storage_classes:
         manifests.extend(
             [
-                DIR / "mayastor-1-sc.yaml",
-                DIR / "mayastor-3-sc.yaml",
+                DIR / "mayastor" / "mayastor-1-sc.yaml",
+                DIR / "mayastor" / "mayastor-3-sc.yaml",
             ]
         )
 

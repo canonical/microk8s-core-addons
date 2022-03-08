@@ -22,10 +22,10 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       initContainers:
         - command:
-          - sh
-          - -c
-          - trap "exit 1" TERM; until nc -vz rest 8081; do echo "Waiting for REST API endpoint
-            to become available"; sleep 1; done;
+            - sh
+            - -c
+            - trap "exit 1" TERM; until nc -vz rest 8081; do echo "Waiting for REST API endpoint
+              to become available"; sleep 1; done;
           image: busybox:latest
           name: rest-probe
       containers:

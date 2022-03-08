@@ -11,34 +11,34 @@ spec:
     listKind: EtcdClusterList
     plural: etcdclusters
     shortNames:
-    - etcd
+      - etcd
     singular: etcdcluster
   conversion:
     strategy: None
   versions:
-  - additionalPrinterColumns:
-    - jsonPath: .spec.size
-      name: size
-      type: number
-    - jsonPath: .spec.version
-      name: version
-      type: string
-    - jsonPath: .status.serviceName
-      name: service
-      type: string
-    - jsonPath: .status.phase
-      name: phase
-      type: string
-    - jsonPath: .status.conditions[-1].type
-      name: status
-      type: string
-    - jsonPath: .metadata.creationTimestamp
-      name: age
-      type: date
-    name: v1beta3
-    schema:
-      openAPIV3Schema:
-        type: object
-        x-kubernetes-preserve-unknown-fields: true
-    served: true
-    storage: true
+    - additionalPrinterColumns:
+        - jsonPath: .spec.size
+          name: size
+          type: number
+        - jsonPath: .spec.version
+          name: version
+          type: string
+        - jsonPath: .status.serviceName
+          name: service
+          type: string
+        - jsonPath: .status.phase
+          name: phase
+          type: string
+        - jsonPath: .status.conditions[-1].type
+          name: status
+          type: string
+        - jsonPath: .metadata.creationTimestamp
+          name: age
+          type: date
+      name: v1beta3
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+      served: true
+      storage: true

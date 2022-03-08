@@ -31,106 +31,111 @@ spec:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-            - matchExpressions:
-              - key: microk8s.io/mayastor
-                operator: NotIn
-                values: [disable]
+              - matchExpressions:
+                  - key: microk8s.io/mayastor
+                    operator: NotIn
+                    values: [disable]
       initContainers:
-      - name: message-bus-probe
-        image: busybox:latest
-        command: ['sh', '-c', 'until nc -vz nats 4222; do echo "Waiting for message bus..."; sleep 1; done;']
-        # Initialize a pool backed by an image file
-      - name: initialize-pool
-        image: alpine:latest
-        command: ['sh', '/scripts/initialize-pool.sh']
-        volumeMounts:
-        - name: data
-          mountPath: /data
-        - name: init-scripts
-          mountPath: /scripts
+        - name: message-bus-probe
+          image: busybox:latest
+          command:
+            [
+              "sh",
+              "-c",
+              'until nc -vz nats 4222; do echo "Waiting for message bus..."; sleep 1; done;',
+            ]
+          # Initialize a pool backed by an image file
+        - name: initialize-pool
+          image: alpine:latest
+          command: ["sh", "/scripts/initialize-pool.sh"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: init-scripts
+              mountPath: /scripts
       containers:
-      - name: mayastor
-        image: mayadata/mayastor:v1.0.1
-        imagePullPolicy: IfNotPresent
-        env:
-        - name: RUST_LOG
-          value: info,mayastor=info
-        - name: NVMF_TCP_MAX_QUEUE_DEPTH
-          value: "32"
-        - name: MY_NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: MY_POD_IP
-          valueFrom:
-            fieldRef:
-              fieldPath: status.podIP
-        args:
-        # The -l argument accepts cpu-list. Indexing starts at zero.
-        # For example -l 1,2,10-20 means use core 1, 2, 10 to 20.
-        # Note: Ensure that the CPU resources are updated accordingly.
-        #       If you use 2 CPUs, the CPU: field should also read 2.
-        - "-N$(MY_NODE_NAME)"
-        - "-g$(MY_POD_IP)"
-        - "-nnats"
-        - "-y/var/local/mayastor/config.yaml"
-        - "-l1"
-        - "-pmayastor-etcd-client"
-        command:
-        - mayastor
-        securityContext:
-          privileged: true
-        volumeMounts:
-        - name: device
-          mountPath: /dev
-        - name: udev
-          mountPath: /run/udev
-        - name: dshm
-          mountPath: /dev/shm
-        - name: configlocation
-          mountPath: /var/local/mayastor/
-        - name: data
-          mountPath: /data/
-        resources:
-          # NOTE: Each container must have mem/cpu limits defined in order to
-          # belong to Guaranteed QoS class, hence can never get evicted in case of
-          # pressure unless they exceed those limits. limits and requests must be the same.
-          limits:
-            cpu: "1"
-            memory: "1Gi"
-            hugepages-2Mi: "2Gi"
-          requests:
-            cpu: "1"
-            memory: "1Gi"
-            hugepages-2Mi: "2Gi"
-        ports:
-        - containerPort: 10124
-          protocol: TCP
-          name: mayastor
+        - name: mayastor
+          image: mayadata/mayastor:v1.0.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: RUST_LOG
+              value: info,mayastor=info
+            - name: NVMF_TCP_MAX_QUEUE_DEPTH
+              value: "32"
+            - name: MY_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          args:
+            # The -l argument accepts cpu-list. Indexing starts at zero.
+            # For example -l 1,2,10-20 means use core 1, 2, 10 to 20.
+            # Note: Ensure that the CPU resources are updated accordingly.
+            #       If you use 2 CPUs, the CPU: field should also read 2.
+            - "-N$(MY_NODE_NAME)"
+            - "-g$(MY_POD_IP)"
+            - "-nnats"
+            - "-y/var/local/mayastor/config.yaml"
+            - "-l1"
+            - "-pmayastor-etcd-client"
+          command:
+            - mayastor
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: device
+              mountPath: /dev
+            - name: udev
+              mountPath: /run/udev
+            - name: dshm
+              mountPath: /dev/shm
+            - name: configlocation
+              mountPath: /var/local/mayastor/
+            - name: data
+              mountPath: /data/
+          resources:
+            # NOTE: Each container must have mem/cpu limits defined in order to
+            # belong to Guaranteed QoS class, hence can never get evicted in case of
+            # pressure unless they exceed those limits. limits and requests must be the same.
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+              hugepages-2Mi: "2Gi"
+            requests:
+              cpu: "1"
+              memory: "1Gi"
+              hugepages-2Mi: "2Gi"
+          ports:
+            - containerPort: 10124
+              protocol: TCP
+              name: mayastor
       volumes:
-      - name: device
-        hostPath:
-          path: /dev
-          type: Directory
-      - name: udev
-        hostPath:
-          path: /run/udev
-          type: Directory
-      - name: dshm
-        emptyDir:
-          medium: Memory
-          sizeLimit: "1Gi"
-      - name: hugepage
-        emptyDir:
-          medium: HugePages
-      - name: configlocation
-        hostPath:
-          path: /var/snap/microk8s/common/mayastor/config
-          type: DirectoryOrCreate
-      - name: data
-        hostPath:
-          path: /var/snap/microk8s/common/mayastor/data
-          type: DirectoryOrCreate
-      - name: init-scripts
-        configMap:
-          name: mayastor-init-scripts
+        - name: device
+          hostPath:
+            path: /dev
+            type: Directory
+        - name: udev
+          hostPath:
+            path: /run/udev
+            type: Directory
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: "1Gi"
+        - name: hugepage
+          emptyDir:
+            medium: HugePages
+        - name: configlocation
+          hostPath:
+            path: /var/snap/microk8s/common/mayastor/config
+            type: DirectoryOrCreate
+        - name: data
+          hostPath:
+            path: /var/snap/microk8s/common/mayastor/data
+            type: DirectoryOrCreate
+        - name: init-scripts
+          configMap:
+            name: mayastor-init-scripts

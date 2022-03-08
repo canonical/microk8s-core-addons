@@ -5,37 +5,37 @@ metadata:
   namespace: mayastor
   name: etcd-operator-role
 rules:
-- apiGroups:
-  - etcd.database.coreos.com
-  resources:
-  - etcdclusters
-  - etcdbackups
-  - etcdrestores
-  verbs:
-  - "*"
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  - services
-  - endpoints
-  - persistentvolumeclaims
-  - events
-  verbs:
-  - "*"
-- apiGroups:
-  - apps
-  resources:
-  - deployments
-  verbs:
-  - "*"
-# The following permissions can be removed if not using S3 backup and TLS
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - get
+  - apiGroups:
+      - etcd.database.coreos.com
+    resources:
+      - etcdclusters
+      - etcdbackups
+      - etcdrestores
+    verbs:
+      - "*"
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - services
+      - endpoints
+      - persistentvolumeclaims
+      - events
+    verbs:
+      - "*"
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - "*"
+  # The following permissions can be removed if not using S3 backup and TLS
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -48,12 +48,12 @@ kind: ClusterRole
 metadata:
   name: etcd-operator-cluster-role
 rules:
-- apiGroups:
-  - ""
-  resources:
-  - nodes
-  verbs:
-  - list
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - list
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -61,9 +61,9 @@ metadata:
   namespace: mayastor
   name: etcd-operator-role-binding
 subjects:
-- kind: ServiceAccount
-  name: etcd-operator-sa
-  namespace: mayastor
+  - kind: ServiceAccount
+    name: etcd-operator-sa
+    namespace: mayastor
 roleRef:
   kind: Role
   apiGroup: rbac.authorization.k8s.io
@@ -74,9 +74,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: etcd-operator-cluster-role-binding
 subjects:
-- kind: ServiceAccount
-  name: etcd-operator-sa
-  namespace: mayastor
+  - kind: ServiceAccount
+    name: etcd-operator-sa
+    namespace: mayastor
 roleRef:
   kind: ClusterRole
   apiGroup: rbac.authorization.k8s.io

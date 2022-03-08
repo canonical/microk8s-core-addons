@@ -8,6 +8,7 @@ metadata:
   labels:
     app: rest
 spec:
+  # EDIT(neoaggelos): change service to ClusterIP from NodePort
   type: ClusterIP
   selector:
     app: rest

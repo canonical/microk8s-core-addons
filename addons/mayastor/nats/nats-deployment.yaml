@@ -6,6 +6,7 @@ metadata:
   name: nats-config
   namespace: mayastor
 data:
+  # EDIT(neoaggelos): use a single-node nats. nats is getting removed, so this is irrelevant
   nats.conf: |
     pid_file: "/var/run/nats/nats.pid"
 

@@ -29,6 +29,7 @@ spec:
         - command:
             - sh
             - -c
+            # EDIT(neoaggelos): etcd endpoint
             - trap "exit 1" TERM; until nc -vz mayastor-etcd-client 2379; do echo "Waiting for etcd...";
               sleep 1; done;
           image: busybox:latest

@@ -1,4 +1,5 @@
 ---
+# https://github.com/openebs/mayastor/blob/develop/deploy/mayastor-daemonset.yaml
 # Source: mayastor/templates/mayastor-daemonset.yaml
 apiVersion: apps/v1
 kind: DaemonSet
@@ -21,12 +22,16 @@ spec:
       labels:
         app: mayastor
     spec:
+      # EDIT(neoaggelos): we add an initContainer that initializes a file-based pool.
       serviceAccount: mayastor-daemonset-service-account
       hostNetwork: true
       # To resolve services from mayastor's namespace
       dnsPolicy: ClusterFirstWithHostNet
-      nodeSelector:
+      nodeSelectorTerms:
         kubernetes.io/arch: amd64
+        # EDIT(neoaggelos): removed openebs.io/engine=mayastor label, we use affinity below
+        # openebs.io/engine: mayastor
+      # EDIT(neoaggelos): deploy to all nodes without `microk8s.io/mayastor=disable` label
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -44,7 +49,7 @@ spec:
               "-c",
               'until nc -vz nats 4222; do echo "Waiting for message bus..."; sleep 1; done;',
             ]
-          # Initialize a pool backed by an image file
+          # EDIT(neoaggelos): Initialize a pool backed by an image file
         - name: initialize-pool
           image: curlimages/curl:v7.81.0
           command: ["sh", "/scripts/initialize-pool.sh"]
@@ -82,6 +87,7 @@ spec:
             - "-nnats"
             - "-y/var/local/mayastor/config.yaml"
             - "-l1"
+            # EDIT(neoaggelos): etcd endpoint
             - "-pmayastor-etcd-client"
           command:
             - mayastor
@@ -132,12 +138,15 @@ spec:
             medium: HugePages
         - name: configlocation
           hostPath:
+            # EDIT(neoaggelos): use a hostpath under $SNAP_COMMON for mayastor configs
             path: /var/snap/microk8s/common/mayastor/config
             type: DirectoryOrCreate
         - name: data
           hostPath:
+            # EDIT(neoaggelos): use a hostpath under $SNAP_COMMON for image files
             path: /var/snap/microk8s/common/mayastor/data
             type: DirectoryOrCreate
+        # EDIT(neoaggelos): use a configmap for our initialization scripts
         - name: init-scripts
           configMap:
             name: mayastor-init-scripts

@@ -66,6 +66,7 @@ spec:
             - name: plugin-dir
               mountPath: /csi
             - name: kubelet-dir
+              # EDIT(neoaggelos): Configure kubelet path for MicroK8s
               mountPath: /var/snap/microk8s/common/var/lib/kubelet
               mountPropagation: "Bidirectional"
           resources:
@@ -79,6 +80,7 @@ spec:
           image: quay.io/k8scsi/csi-node-driver-registrar:v2.1.0
           args:
             - "--csi-address=/csi/csi.sock"
+            # EDIT(neoaggelos): Configure kubelet path for MicroK8s
             - "--kubelet-registration-path=/var/snap/microk8s/common/var/lib/kubelet/plugins/mayastor.openebs.io/csi.sock"
           volumeMounts:
             - name: plugin-dir
@@ -116,13 +118,16 @@ spec:
             type: Directory
         - name: registration-dir
           hostPath:
+            # EDIT(neoaggelos): Configure kubelet path for MicroK8s
             path: /var/snap/microk8s/common/var/lib/kubelet/plugins_registry/
             type: Directory
         - name: plugin-dir
           hostPath:
+            # EDIT(neoaggelos): Configure kubelet path for MicroK8s
             path: /var/snap/microk8s/common/var/lib/kubelet/plugins/mayastor.openebs.io/
             type: DirectoryOrCreate
         - name: kubelet-dir
           hostPath:
+            # EDIT(neoaggelos): Configure kubelet path for MicroK8s
             path: /var/snap/microk8s/common/var/lib/kubelet
             type: Directory

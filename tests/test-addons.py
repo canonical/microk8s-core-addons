@@ -16,6 +16,7 @@ from validators import (
     validate_metallb_config,
     validate_prometheus,
     validate_coredns_config,
+    validate_mayastor
 )
 from utils import (
     microk8s_enable,
@@ -221,3 +222,42 @@ class TestAddons(object):
             os.remove("backupfile.tar.gz")
         check_call("/snap/bin/microk8s.dbctl --debug backup -o backupfile".split())
         check_call("/snap/bin/microk8s.dbctl --debug restore backupfile.tar.gz".split())
+
+    @pytest.mark.skipif(
+        platform.machine() != "x86_64",
+        reason="Metallb tests are only relevant in x86 architectures",
+    )
+    @pytest.mark.skipif(
+        os.environ.get("UNDER_TIME_PRESSURE") == "True",
+        reason="Skipping metallb test as we are under time pressure",
+    )
+    def test_metallb_addon(self):
+        addon = "metallb"
+        ip_ranges = (
+            "192.168.0.105-192.168.0.105,192.168.0.110-192.168.0.111,192.168.1.240/28"
+        )
+        print("Enabling metallb")
+        microk8s_enable("{}:{}".format(addon, ip_ranges), timeout_insec=500)
+        validate_metallb_config(ip_ranges)
+        print("Disabling metallb")
+        microk8s_disable("metallb")
+
+
+    @pytest.mark.skipif(
+        platform.machine() != "x86_64",
+        reason="Mayastor tests are only relevant in x86 architectures",
+    )
+    @pytest.mark.skipif(
+        os.environ.get("UNDER_TIME_PRESSURE") == "True",
+        reason="Skipping metallb test as we are under time pressure",
+    )
+    @pytest.mark.skipif(
+        os.environ.get("TEST_MAYASTOR") != "True",
+        reason="Mayastor tests are skipped without TEST_MAYASTOR=True"
+    )
+    def test_mayastor(self):
+        print("Enabling mayastor")
+        microk8s_enable("mayastor", timeout_insec=500)
+        validate_mayastor()
+        print("Disabling mayastor")
+        microk8s_disable("mayastor")

@@ -285,3 +285,26 @@ def validate_coredns_config(ip_ranges="8.8.8.8,1.1.1.1"):
     for ip_range in ip_ranges.split(","):
         expected_forward_val = expected_forward_val + " " + ip_range
     assert expected_forward_val in out
+
+
+def validate_mayastor():
+    """
+    Validate mayastor. Waits for the mayastor control plane to come up,
+    then ensures that we can create a test pod with a PVC.
+    """
+    wait_for_pod_state("", "mayastor", "running", label="app=mayastor")
+
+    here = os.path.dirname(os.path.abspath(__file__))
+    manifest = os.path.join(here, "templates", "mayastor-pvc.yaml")
+    kubectl("apply -f {}".format(manifest))
+    wait_for_pod_state("mayastor-test-pod", "default", "running")
+
+    attempt = 50
+    while attempt >= 0:
+        output = kubectl("get pvc")
+        if "Bound" in output:
+            break
+        time.sleep(2)
+        attempt -= 1
+
+    kubectl("delete -f {}".format(manifest))

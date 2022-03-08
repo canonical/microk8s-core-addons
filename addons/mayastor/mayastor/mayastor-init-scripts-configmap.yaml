@@ -11,12 +11,9 @@ data:
     fi
 
     # create image
-    truncate -s 100G /data/microk8s.img
+    truncate -s 20G /data/microk8s.img
 
     # create mayastorpool
-    # TODO(neoaggelos): use an image with curl
-    apk add curl
-
     export CACERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
     export TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
     export BODY='{

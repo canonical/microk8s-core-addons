@@ -46,8 +46,10 @@ spec:
             ]
           # Initialize a pool backed by an image file
         - name: initialize-pool
-          image: alpine:latest
+          image: curlimages/curl:v7.81.0
           command: ["sh", "/scripts/initialize-pool.sh"]
+          securityContext:
+            runAsUser: 0
           volumeMounts:
             - name: data
               mountPath: /data

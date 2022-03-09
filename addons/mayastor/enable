@@ -1,0 +1,157 @@
+#!/usr/bin/env python3
+
+import os
+import pathlib
+import re
+import socket
+import subprocess
+import sys
+
+import click
+
+DIR = pathlib.Path(__file__).parent.absolute()
+
+KUBECTL = os.path.expandvars("$SNAP/microk8s-kubectl.wrapper")
+MICROK8S_STATUS = os.path.expandvars("$SNAP/microk8s-status.wrapper")
+MICROK8S_ENABLE = os.path.expandvars("$SNAP/microk8s-enable.wrapper")
+
+
+def ensure_hugepages_enabled():
+    click.echo("Checking for HugePages (>= 1024)...")
+    enabled = False
+    try:
+        with open("/proc/meminfo") as fin:
+            match = re.findall(r"HugePages_Total:[\s\t]*(\d+)", fin.read())
+
+        nr_hugepages = int(match[0])
+        enabled = nr_hugepages >= 1024
+    except (OSError, IndexError, ValueError):
+        pass
+
+    if not enabled:
+        click.echo(
+            """
+HugePages are not available or enabled. Please make sure HugePages are enabled.
+
+To enable HugePages (mayastor requires at least 1024):
+
+    echo vm.nr_hugepages = 1024 | sudo tee -a /etc/sysctl.d/20-microk8s-hugepages.conf
+
+Please restart your system after enablement.
+""",
+            err=True,
+        )
+        sys.exit(1)
+
+    click.echo("Checking for HugePages (>= 1024)... OK")
+
+
+def ensure_kernel_required_modules():
+    click.echo("Checking for nvme_tcp module...")
+    output = subprocess.check_output(["lsmod"]).decode()
+    if "nvme_tcp" not in output:
+        click.echo(
+            """
+Kernel module 'nvme_tcp' is missing or not loaded. For Ubuntu, enable with:
+
+    sudo apt-get install linux-modules-extra-$(uname -r)
+    sudo modprobe nvme-tcp
+    echo 'nvme-tcp' | sudo tee -a /etc/modules-load.d/microk8s-mayastor.conf
+
+Note that the 'nvme_tcp' module is needed in all cluster nodes.
+""",
+            err=True,
+        )
+        sys.exit(1)
+
+    click.echo("Checking for nvme_tcp module... OK")
+
+
+def ensure_dns(addon_name: str):
+    click.echo("Checking for DNS...")
+    output = subprocess.check_output([MICROK8S_STATUS, "-a", addon_name]).decode()
+    if "enabled" not in output:
+        p = subprocess.run([MICROK8S_ENABLE, addon_name])
+        if p.returncode != 0:
+            click.echo("Failed to enable DNS", err=True)
+            sys.exit(1)
+
+    click.echo("Checking for DNS... OK")
+
+
+@click.command()
+@click.option("--skip-hugepages-check", is_flag=True, default=False)
+@click.option("--skip-kernel-check", is_flag=True, default=False)
+@click.option("--dns-addon", default="core/dns")
+@click.option("--create-storage-classes", is_flag=True, default=True)
+def main(
+    skip_hugepages_check: bool,
+    skip_kernel_check: bool,
+    dns_addon: str,
+    create_storage_classes: bool,
+):
+    if not skip_hugepages_check:
+        ensure_hugepages_enabled()
+
+    if not skip_kernel_check:
+        ensure_kernel_required_modules()
+
+    if dns_addon:
+        ensure_dns(dns_addon)
+
+    # Create mayastor namespace. Ignore failures (e.g. if namespace exists)
+    subprocess.run([KUBECTL, "create", "namespace", "mayastor"])
+
+    manifests = [
+        # Deploy CRDs and RBAC rules for mayastor
+        DIR / "mayastor" / "operator-rbac.yaml",
+        DIR / "mayastor" / "mayastor-daemonset-rbac.yaml",
+        DIR / "mayastor" / "mayastor-init-scripts-configmap.yaml",
+        DIR / "mayastor" / "mayastorpool-crd.yaml",
+        DIR / "etcd" / "etcd-cluster-crd.yaml",
+        # Deploy etcd and nats.io
+        DIR / "etcd" / "etcd-operator-rbac.yaml",
+        DIR / "etcd" / "etcd-operator-deployment.yaml",
+        DIR / "etcd" / "etcd-cluster.yaml",
+        DIR / "nats" / "nats-deployment.yaml",
+        # Mayastor Control Plane
+        DIR / "mayastor" / "csi-daemonset.yaml",
+        DIR / "mayastor" / "core-agents-deployment.yaml",
+        DIR / "mayastor" / "rest-deployment.yaml",
+        DIR / "mayastor" / "rest-service.yaml",
+        DIR / "mayastor" / "csi-deployment.yaml",
+        DIR / "mayastor" / "msp-deployment.yaml",
+        DIR / "mayastor" / "mayastor-daemonset.yaml",
+    ]
+
+    if create_storage_classes:
+        manifests.extend(
+            [
+                DIR / "mayastor" / "mayastor-1-sc.yaml",
+                DIR / "mayastor" / "mayastor-3-sc.yaml",
+            ]
+        )
+
+    for manifest in manifests:
+        subprocess.check_call([KUBECTL, "apply", "-f", manifest])
+
+    if not create_storage_classes:
+        click.echo("No storage classes have been created, please configure manually")
+
+    click.echo(
+        f"""
+=============================================================
+
+Mayastor has been installed and will be available shortly.
+
+Mayastor will run for all nodes in your MicroK8s cluster by default. Use the
+'microk8s.io/mayastor=disable' label to disable any node. For example:
+
+    microk8s.kubectl label node {socket.gethostname()} microk8s.io/mayastor=disable
+
+"""
+    )
+
+
+if __name__ == "__main__":
+    main()

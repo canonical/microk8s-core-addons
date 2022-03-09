@@ -1,0 +1,80 @@
+---
+# Source: mayastor-control-plane/templates/csi-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: csi-controller
+  namespace: mayastor
+  labels:
+    app: csi-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: csi-controller
+  template:
+    metadata:
+      labels:
+        app: csi-controller
+    spec:
+      hostNetwork: true
+      serviceAccount: mayastor-service-account
+      dnsPolicy: ClusterFirstWithHostNet
+      initContainers:
+        - command:
+            - sh
+            - -c
+            - trap "exit 1" TERM; until nc -vz rest 8081; do echo "Waiting for REST API endpoint
+              to become available"; sleep 1; done;
+          image: busybox:latest
+          name: rest-probe
+      containers:
+        - name: csi-provisioner
+          image: k8s.gcr.io/sig-storage/csi-provisioner:v2.2.1
+          args:
+            - "--v=2"
+            - "--csi-address=$(ADDRESS)"
+            - "--feature-gates=Topology=true"
+            - "--strict-topology=false"
+            - "--default-fstype=ext4"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: csi-attacher
+          image: k8s.gcr.io/sig-storage/csi-attacher:v3.2.1
+          args:
+            - "--v=2"
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: csi-controller
+          resources:
+            limits:
+              cpu: 32m
+              memory: 128Mi
+            requests:
+              cpu: 16m
+              memory: 64Mi
+          image: mayadata/mcp-csi-controller:v1.0.1
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--csi-socket=/var/lib/csi/sockets/pluginproxy/csi.sock"
+            - "--rest-endpoint=http://rest:8081"
+          env:
+            - name: RUST_LOG
+              value: info
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+      volumes:
+        - name: socket-dir
+          emptyDir: {}

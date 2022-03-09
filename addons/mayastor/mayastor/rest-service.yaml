@@ -1,0 +1,23 @@
+---
+# Source: mayastor-control-plane/templates/rest-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: rest
+  namespace: mayastor
+  labels:
+    app: rest
+spec:
+  # EDIT(neoaggelos): change service to ClusterIP from NodePort
+  type: ClusterIP
+  selector:
+    app: rest
+  ports:
+    - port: 8080
+      name: https
+      targetPort: 8080
+      protocol: TCP
+    - port: 8081
+      name: http
+      targetPort: 8081
+      protocol: TCP

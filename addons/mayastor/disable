@@ -11,14 +11,14 @@ import click
 
 DIR = pathlib.Path(__file__).parent.absolute()
 KUBECTL = os.path.expandvars("$SNAP/microk8s-kubectl.wrapper")
+HELM = os.path.expandvars("$SNAP/microk8s-helm3.wrapper")
 MAYASTOR_DATA = pathlib.Path(os.path.expandvars("$SNAP_COMMON/mayastor/data"))
 
 
 @click.command()
 @click.option("--remove-storage", is_flag=True, default=False)
 @click.option("--force", is_flag=True, default=False)
-@click.option("--remove-crd", is_flag=True, default=False)
-def main(remove_storage: bool, force: bool, remove_crd: bool):
+def main(remove_storage: bool, force: bool):
     pools = subprocess.check_output(
         [KUBECTL, "get", "msp", "-n", "mayastor", "-o", "json"],
     )
@@ -36,39 +36,12 @@ def main(remove_storage: bool, force: bool, remove_crd: bool):
             click.echo("{} ({})".format(p["metadata"]["name"], p["status"]), err=True)
         sys.exit(1)
 
-    # if pools are in use, do not remove the CRD
-    if force and used:
-        remove_crd = False
+    if remove_storage:
+        for pool in j.get("items"):
+            pool_name = pool["metadata"]["name"]
+            subprocess.run([DIR / "pools.py", "remove", pool_name, "--force", "--purge"])
 
-    manifests = [
-        DIR / "mayastor" / "operator-rbac.yaml",
-        DIR / "etcd" / "etcd-operator-rbac.yaml",
-        DIR / "etcd" / "etcd-operator-deployment.yaml",
-        DIR / "etcd" / "etcd-cluster.yaml",
-        DIR / "nats" / "nats-deployment.yaml",
-        DIR / "mayastor" / "csi-daemonset.yaml",
-        DIR / "mayastor" / "core-agents-deployment.yaml",
-        DIR / "mayastor" / "rest-deployment.yaml",
-        DIR / "mayastor" / "rest-service.yaml",
-        DIR / "mayastor" / "csi-deployment.yaml",
-        DIR / "mayastor" / "msp-deployment.yaml",
-        DIR / "mayastor" / "mayastor-daemonset.yaml",
-        DIR / "mayastor" / "mayastor-1-sc.yaml",
-        DIR / "mayastor" / "mayastor-3-sc.yaml",
-    ]
-
-    if remove_crd:
-        manifests.extend([
-            DIR / "mayastor" / "mayastorpool-crd.yaml",
-            DIR / "etcd" / "etcd-cluster-crd.yaml",
-        ])
-
-    for manifest in manifests:
-        subprocess.run([KUBECTL, "delete", "-f", manifest])
-
-    if remove_storage and MAYASTOR_DATA.exists():
-        click.echo("Removing {}".format(MAYASTOR_DATA))
-        shutil.rmtree(MAYASTOR_DATA, ignore_errors=True)
+    subprocess.run([HELM, "uninstall", "mayastor", "-n", "mayastor"])
 
 
 if __name__ == "__main__":

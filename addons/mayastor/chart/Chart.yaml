@@ -1,0 +1,21 @@
+apiVersion: v2
+name: mayastor-aio
+description: A Helm chart to deploy zero-ops Mayastor to a Kubernetes cluster
+
+type: application
+version: 0.0.1
+
+appVersion: "1.0.1"
+
+dependencies:
+  - name: etcd-operator
+    version: 0.0.1
+    repository: https://raw.githubusercontent.com/canonical/etcd-operator/master/chart
+  # TODO(neoaggelos): Replace this with repository after upstream release of our changes
+  - name: mayastor
+    version: 0.0.1
+    repository: https://raw.githubusercontent.com/canonical/mayastor/develop/chart
+  # TODO(neoaggelos): Replace this with repository after upstream release of our changes
+  - name: mayastor-control-plane
+    version: 0.0.1
+    repository: https://raw.githubusercontent.com/canonical/mayastor-control-plane/develop/chart

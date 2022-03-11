@@ -12,6 +12,7 @@ import click
 DIR = pathlib.Path(__file__).parent.absolute()
 
 KUBECTL = os.path.expandvars("$SNAP/microk8s-kubectl.wrapper")
+HELM = os.path.expandvars("$SNAP/microk8s-helm3.wrapper")
 MICROK8S_STATUS = os.path.expandvars("$SNAP/microk8s-status.wrapper")
 MICROK8S_ENABLE = os.path.expandvars("$SNAP/microk8s-enable.wrapper")
 
@@ -67,27 +68,31 @@ Note that the 'nvme_tcp' module is needed in all cluster nodes.
     click.echo("Checking for nvme_tcp module... OK")
 
 
-def ensure_dns(addon_name: str):
-    click.echo("Checking for DNS...")
+def ensure_addon(addon_name: str):
+    click.echo("Checking for addon {}...".format(addon_name))
     output = subprocess.check_output([MICROK8S_STATUS, "-a", addon_name]).decode()
     if "enabled" not in output:
         p = subprocess.run([MICROK8S_ENABLE, addon_name])
         if p.returncode != 0:
-            click.echo("Failed to enable DNS", err=True)
+            click.echo("Failed to enable addon {}".format(addon_name), err=True)
             sys.exit(1)
 
-    click.echo("Checking for DNS... OK")
+    click.echo("Checking for addon {}... OK".format(addon_name))
 
 
 @click.command()
 @click.option("--skip-hugepages-check", is_flag=True, default=False)
 @click.option("--skip-kernel-check", is_flag=True, default=False)
 @click.option("--dns-addon", default="core/dns")
-@click.option("--create-storage-classes", is_flag=True, default=True)
+@click.option("--helm-addon", default="core/helm3")
+@click.option("--default-pool-size", default="20G")
+@click.option("--create-storage-classes/--no-create-storage-classes", is_flag=True, default=True)
 def main(
     skip_hugepages_check: bool,
     skip_kernel_check: bool,
     dns_addon: str,
+    helm_addon: str,
+    default_pool_size: str,
     create_storage_classes: bool,
 ):
     if not skip_hugepages_check:
@@ -97,46 +102,27 @@ def main(
         ensure_kernel_required_modules()
 
     if dns_addon:
-        ensure_dns(dns_addon)
+        ensure_addon(dns_addon)
+    if helm_addon:
+        ensure_addon(helm_addon)
 
     # Create mayastor namespace. Ignore failures (e.g. if namespace exists)
     subprocess.run([KUBECTL, "create", "namespace", "mayastor"])
 
-    manifests = [
-        # Deploy CRDs and RBAC rules for mayastor
-        DIR / "mayastor" / "operator-rbac.yaml",
-        DIR / "mayastor" / "mayastor-daemonset-rbac.yaml",
-        DIR / "mayastor" / "mayastor-init-scripts-configmap.yaml",
-        DIR / "mayastor" / "mayastorpool-crd.yaml",
-        DIR / "etcd" / "etcd-cluster-crd.yaml",
-        # Deploy etcd and nats.io
-        DIR / "etcd" / "etcd-operator-rbac.yaml",
-        DIR / "etcd" / "etcd-operator-deployment.yaml",
-        DIR / "etcd" / "etcd-cluster.yaml",
-        DIR / "nats" / "nats-deployment.yaml",
-        # Mayastor Control Plane
-        DIR / "mayastor" / "csi-daemonset.yaml",
-        DIR / "mayastor" / "core-agents-deployment.yaml",
-        DIR / "mayastor" / "rest-deployment.yaml",
-        DIR / "mayastor" / "rest-service.yaml",
-        DIR / "mayastor" / "csi-deployment.yaml",
-        DIR / "mayastor" / "msp-deployment.yaml",
-        DIR / "mayastor" / "mayastor-daemonset.yaml",
-    ]
 
-    if create_storage_classes:
-        manifests.extend(
-            [
-                DIR / "mayastor" / "mayastor-1-sc.yaml",
-                DIR / "mayastor" / "mayastor-3-sc.yaml",
-            ]
-        )
-
-    for manifest in manifests:
-        subprocess.check_call([KUBECTL, "apply", "-f", manifest])
-
+    args = ["-f", DIR / "chart/values.yaml"]
     if not create_storage_classes:
-        click.echo("No storage classes have been created, please configure manually")
+        click.echo("Storage classes will not be created, please configure manually")
+        args.extend(["--set", "storageClass.create=false"])
+    if default_pool_size:
+        click.echo("Default image size set to {}".format(default_pool_size))
+        args.extend(["--set", "mayastor.imageSize={}".format(default_pool_size)])
+
+    # Fetch dependencies
+    subprocess.check_call([HELM, "dependency", "update"], cwd=DIR / "chart")
+
+    # Install
+    subprocess.check_call([HELM, "install", "mayastor", "-n", "mayastor", DIR / "chart", *args])
 
     click.echo(
         f"""

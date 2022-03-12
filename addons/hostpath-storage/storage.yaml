@@ -19,8 +19,12 @@ spec:
       serviceAccountName: microk8s-hostpath
       containers:
         - name: hostpath-provisioner
-          image: cdkbot/hostpath-provisioner:1.1.0
+          image: neoaggelos/hostpath-provisioner:1.3.0
           env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
             - name: NODE_NAME
               valueFrom:
                 fieldRef:
@@ -44,6 +48,7 @@ metadata:
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
 provisioner: microk8s.io/hostpath
+volumeBindingMode: WaitForFirstConsumer
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -97,6 +102,18 @@ rules:
     verbs:
       - list
       - watch
+  - apiGroups: [""]
+    resources:
+      - pods
+    verbs:
+      - get
+      - create
+      - delete
+  - apiGroups: [""]
+    resources:
+      - nodes
+    verbs:
+      - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

@@ -4,6 +4,6 @@ set -e
 
 source $SNAP/actions/common/utils.sh
 
-rm -rf "${SNAP_COMMON}/addons/community"
+${SNAP}/microk8s-addons.wrapper repo remove community
 
 echo "Community repository is now disabled"

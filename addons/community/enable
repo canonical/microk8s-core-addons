@@ -5,6 +5,6 @@ set -e
 source $SNAP/actions/common/utils.sh
 
 snap_current=`echo "${SNAP}" | sed -e "s,${SNAP_REVISION},current,"`
-"${SNAP}/git.wrapper" clone "${snap_current}/addons/community" "${SNAP_COMMON}/addons/community"
+${SNAP}/microk8s-addons.wrapper repo add community $snap_current/addons/community --force
 
-echo "Community addon is now enabled"
+echo "Community repository is now enabled"

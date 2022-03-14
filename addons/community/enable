@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -e
+
+source $SNAP/actions/common/utils.sh
+
+snap_current=`echo "${SNAP}" | sed -e "s,${SNAP_REVISION},current,"`
+"${SNAP}/git.wrapper" clone "${snap_current}/addons/community" "${SNAP_COMMON}/addons/community"
+
+echo "Community addon is now enabled"

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -e
+
+source $SNAP/actions/common/utils.sh
+
+rm -rf "${SNAP_COMMON}/addons/community"
+
+echo "Community repository is now disabled"

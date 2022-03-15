@@ -19,14 +19,22 @@ MAYASTOR_DATA = pathlib.Path(os.path.expandvars("$SNAP_COMMON/mayastor/data"))
 pools = click.Group()
 
 
-def format_pool(pool_template: dict, node: str, device: str):
+def format_pool(node: str, device: str):
     # drop any paths from the device
     device_name = pathlib.Path(device).name
 
-    pool = deepcopy(pool_template)
-    pool["metadata"]["name"] = "pool-{}-{}".format(node, device_name)
-    pool["spec"]["node"] = node
-    pool["spec"]["disks"] = [device]
+    pool = {
+        "apiVersion": "openebs.io/v1alpha1",
+        "kind": "MayastorPool",
+        "metadata": {
+            "name": "pool-{}-{}".format(node, device_name),
+            "namespace": "mayastor",
+        },
+        "spec": {
+            "node": node,
+            "disks": [device],
+        },
+    }
 
     return yaml.dump(pool).encode()
 
@@ -83,13 +91,8 @@ def run_on_node(node: str, command: list):
 @click.option("--size", multiple=True)
 @click.option("--node", default=socket.gethostname())
 def add(device: list, size: list, node: str):
-    with open(DIR / "mayastor" / "mayastorpool-pool-template.yaml") as fin:
-        pool_template = yaml.safe_load(fin)
-
     for dev in device:
-        subprocess.run(
-            [KUBECTL, "apply", "-f", "-"], input=format_pool(pool_template, node, dev)
-        )
+        subprocess.run([KUBECTL, "apply", "-f", "-"], input=format_pool(node, dev))
 
     if not size:
         sys.exit(0)
@@ -98,8 +101,7 @@ def add(device: list, size: list, node: str):
         container_path = "/data/{}.img".format(os.urandom(3).hex())
         run_on_node(node, ["truncate", "-s", str(image_size), container_path])
         subprocess.run(
-            [KUBECTL, "apply", "-f", "-"],
-            input=format_pool(pool_template, node, container_path),
+            [KUBECTL, "apply", "-f", "-"], input=format_pool(node, container_path)
         )
 
 

@@ -30,5 +30,7 @@ jobs:
       - name: Check YAML formatting
         run: |
           set -eux
-          prettier --check $(find . -name "*.yaml" -o -name "*.yml" | \
-            grep -v "./addons/ingress/ingress.yaml" | grep -v "./addons/metallb/metallb.yaml")
+          prettier --check $(find . -name "*.yaml" -o -name "*.yml" \
+            | grep -v "./addons/ingress/ingress.yaml" \
+            | grep -v "./addons/metallb/metallb.yaml" \
+            | grep -v "templates")

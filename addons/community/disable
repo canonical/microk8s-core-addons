@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -e
+
+source $SNAP/actions/common/utils.sh
+
+${SNAP}/microk8s-addons.wrapper repo remove community
+
+echo "Community repository is now disabled"

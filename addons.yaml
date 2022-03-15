@@ -137,3 +137,12 @@ microk8s-addons:
       check_status: "daemonset.apps/mayastor"
       supported_architectures:
         - amd64
+
+    - name: "community"
+      description: "The community addons repository"
+      version: ""
+      check_status: "${SNAP_COMMON}/addons/community/addons.yaml"
+      supported_architectures:
+        - arm64
+        - amd64
+        - s390x

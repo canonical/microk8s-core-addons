@@ -56,15 +56,8 @@ mayastor-control-plane:
     node:
       image: cdkbot/mayastor-csi-node
   msp:
+    disableDeviceValidation: true
     image: cdkbot/mayastor-msp-operator
-    extraVolumes:
-      - name: data
-        hostPath:
-          path: /var/snap/microk8s/common/mayastor/data
-          type: DirectoryOrCreate
-    extraVolumeMounts:
-      - name: data
-        mountPath: /data
 
 # Mayastor configuration
 mayastor:

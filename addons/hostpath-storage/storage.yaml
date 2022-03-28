@@ -19,16 +19,20 @@ spec:
       serviceAccountName: microk8s-hostpath
       containers:
         - name: hostpath-provisioner
-          image: cdkbot/hostpath-provisioner:1.1.0
+          image: cdkbot/hostpath-provisioner:1.2.0
           env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
             - name: NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
             - name: PV_DIR
               value: $SNAP_COMMON/default-storage
-          #            - name: PV_RECLAIM_POLICY
-          #              value: Retain
+          #   - name: PV_RECLAIM_POLICY
+          #     value: Retain
           volumeMounts:
             - name: pv-volume
               mountPath: $SNAP_COMMON/default-storage
@@ -44,6 +48,7 @@ metadata:
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
 provisioner: microk8s.io/hostpath
+volumeBindingMode: WaitForFirstConsumer
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -97,6 +102,18 @@ rules:
     verbs:
       - list
       - watch
+  - apiGroups: [""]
+    resources:
+      - pods
+    verbs:
+      - get
+      - create
+      - delete
+  - apiGroups: [""]
+    resources:
+      - nodes
+    verbs:
+      - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

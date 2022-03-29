@@ -27,7 +27,7 @@ get_kube_prometheus () {
     run_with_sudo mkdir -p "${SNAP_DATA}/tmp/kube-prometheus"
 
     fetch_as https://github.com/prometheus-operator/kube-prometheus/archive/${KUBE_PROMETHEUS_VERSION}.tar.gz "$SNAP_DATA/tmp/kube-prometheus/kube-prometheus.tar.gz"
-    run_with_sudo tar -xzvf "$SNAP_DATA/tmp/kube-prometheus/kube-prometheus.tar.gz" -C "$SNAP_DATA/tmp/kube-prometheus/"
+    run_with_sudo tar --no-same-owner -xzvf "$SNAP_DATA/tmp/kube-prometheus/kube-prometheus.tar.gz" -C "$SNAP_DATA/tmp/kube-prometheus/"
     run_with_sudo cp -R "$SNAP_DATA/tmp/kube-prometheus/kube-prometheus-${KUBE_PROMETHEUS_ERSION}/manifests/" "${SNAP_DATA}/kube-prometheus"
 
     run_with_sudo rm -rf "$SNAP_DATA/tmp/kube-prometheus"

@@ -14,7 +14,7 @@ then
   echo "Fetching helm version $HELM_VERSION."
   run_with_sudo mkdir -p "${SNAP_DATA}/tmp/helm3"
   (cd "${SNAP_DATA}/tmp/helm3"
-  run_with_sudo "${SNAP}/usr/bin/curl" --cacert $CA_CERT -L $SOURCE_URI/helm-$HELM_VERSION-linux-${SNAP_ARCH}.tar.gz -o "$SNAP_DATA/tmp/helm3/helm.tar.gz"
+  fetch_as $SOURCE_URI/helm-$HELM_VERSION-linux-${SNAP_ARCH}.tar.gz "$SNAP_DATA/tmp/helm3/helm.tar.gz"
   run_with_sudo gzip -f -d "$SNAP_DATA/tmp/helm3/helm.tar.gz"
   run_with_sudo tar --no-same-owner -xf "$SNAP_DATA/tmp/helm3/helm.tar")
 

@@ -16,8 +16,8 @@ MAYASTOR_DATA = pathlib.Path(os.path.expandvars("$SNAP_COMMON/mayastor/data"))
 
 
 @click.command()
-@click.option("--remove-storage", is_flag=True, default=False)
-@click.option("--force", is_flag=True, default=False)
+@click.option("--remove-storage/--preserve-storage", is_flag=True, default=True)
+@click.option("--force/--no-force", is_flag=True, default=True)
 def main(remove_storage: bool, force: bool):
     pools = subprocess.check_output(
         [KUBECTL, "get", "msp", "-n", "mayastor", "-o", "json"],

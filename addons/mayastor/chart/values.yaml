@@ -57,6 +57,7 @@ mayastor-control-plane:
     node:
       image: cdkbot/mayastor-csi-node
   msp:
+    numRetries: 200
     disableDeviceValidation: true
     image: cdkbot/mayastor-msp-operator
 

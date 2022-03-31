@@ -6,6 +6,7 @@ rbac:
 # Configuration for etcd-operator chart
 etcd-operator:
   operator:
+    image: cdkbot/etcd-operator:0.10.0-microk8s-2
     enabled: true
   rbac:
     enabled: true

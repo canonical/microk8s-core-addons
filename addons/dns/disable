@@ -16,7 +16,10 @@ echo "Removing DNS manifest"
 pods_sys="$($KUBECTL get po -n kube-system 2>&1)"
 if echo "$pods_sys" | grep "coredns" &> /dev/null
 then
-  use_addon_manifest dns/coredns delete
+  # Delete the deployment and wait for it. Then take down the rest of the resources.
+  $KUBECTL delete deployment coredns -n kube-system --wait
+  $KUBECTL wait pod --selector='k8s-app=kube-dns' --for=delete -n kube-system --timeout=60s
+  $KUBECTL delete -f $CURRENT_DIR/coredns.yaml --ignore-not-found
 fi
 sleep 15
 dns=$(wait_for_service_shutdown "kube-system" "k8s-app=kube-dns")

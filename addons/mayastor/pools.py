@@ -129,7 +129,6 @@ def remove(pool: str, force: bool, purge: bool):
     except json.JSONDecodeError as e:
         click.echo("Failed to parse JSON: {}".format(e))
         sys.exit(1)
-    print(msp["spec"])
 
     if not force and msp.get("status", {}).get("used") != 0:
         click.echo("Pool {} is in use, use --force to remove".format(pool), err=True)

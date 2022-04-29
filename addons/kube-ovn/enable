@@ -3,7 +3,7 @@
 set -e
 
 source $SNAP/actions/common/utils.sh
-
+VERSION=`cat ../../addons.yaml | grep kube-ovn -A3 | grep version | cut -d ":" -f 2 | tr -d '"' | xargs`
 KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
 
 get_kube-ovn () {
@@ -12,7 +12,8 @@ get_kube-ovn () {
     run_with_sudo rm -rf "${SNAP_DATA}/kube-ovn"
   fi
     run_with_sudo mkdir -p "${SNAP_DATA}/kube-ovn"
-    fetch_as https://raw.githubusercontent.com/kubeovn/kube-ovn/release-1.9/dist/images/install.sh "${SNAP_DATA}/kube-ovn/install.sh"
+    echo "Fetching version ${VERSION}"
+    fetch_as https://raw.githubusercontent.com/kubeovn/kube-ovn/release-$VERSION/dist/images/install.sh "${SNAP_DATA}/kube-ovn/install.sh"
     run_with_sudo chmod +x "${SNAP_DATA}/kube-ovn/install.sh"
 
     run_with_sudo sed -i "s/kubectl/microk8s kubectl/g" "${SNAP_DATA}/kube-ovn/install.sh"

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -e
+
+source $SNAP/actions/common/utils.sh
+CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+source $CURRENT_DIR/../common/utils.sh
+
+KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
+
+use_addon_manifest kube-ovn/kube-ovn delete
+use_addon_manifest kube-ovn/kube-ovn-crd delete
+use_addon_manifest kube-ovn/ovn delete
+
+echo "kube-ovn is disabled"

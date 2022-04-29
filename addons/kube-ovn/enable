@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+set -e
+
+source $SNAP/actions/common/utils.sh
+
+KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
+
+get_kube-ovn () {
+  if [ -d "${SNAP_DATA}/kube-ovn" ]
+  then
+    run_with_sudo rm -rf "${SNAP_DATA}/kube-ovn"
+  fi
+    run_with_sudo mkdir -p "${SNAP_DATA}/kube-ovn"
+    fetch_as https://raw.githubusercontent.com/kubeovn/kube-ovn/release-1.9/dist/images/install.sh "${SNAP_DATA}/kube-ovn/install.sh"
+    run_with_sudo chmod +x "${SNAP_DATA}/kube-ovn/install.sh"
+
+    run_with_sudo sed -i "s/kubectl/microk8s kubectl/g" "${SNAP_DATA}/kube-ovn/install.sh"
+    run_with_sudo sed -i "s/node-role.kubernetes.io\/master/node.kubernetes.io\/microk8s-controlplane/g" "${SNAP_DATA}/kube-ovn/install.sh"
+}
+
+run_kube-ovn () {
+    run_with_sudo "${SNAP_DATA}/kube-ovn/install.sh"
+}
+
+get_kube-ovn
+run_kube-ovn
+echo "kube-ovn addon is enabled"

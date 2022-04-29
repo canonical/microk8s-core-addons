@@ -147,3 +147,11 @@ microk8s-addons:
         - arm64
         - amd64
         - s390x
+    
+    - name: "kube-ovn"
+      description: "An advanced network fabric for Kubernetes"
+      version: "1.9"
+      check_status: "pod/kube-ovn-controller"
+      supported_architectures:
+        - arm64
+        - amd64

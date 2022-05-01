@@ -26,4 +26,4 @@ run_kube-ovn () {
 
 get_kube-ovn
 run_kube-ovn
-echo "kube-ovn addon is enabled"
+echo "kube-ovn is enabled"

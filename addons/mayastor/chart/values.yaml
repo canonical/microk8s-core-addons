@@ -6,7 +6,7 @@ rbac:
 # Configuration for etcd-operator chart
 etcd-operator:
   operator:
-    image: cdkbot/etcd-operator:0.10.0-microk8s-2
+    image: cdkbot/etcd-operator:0.10.0-microk8s-3
     enabled: true
   rbac:
     enabled: true
@@ -15,7 +15,7 @@ etcd-operator:
       spec:
         size: 3
         limitSizeToMaxReadyNodes: true
-        version: "3.5.2"
+        version: "3.5.4"
         pod:
           restartPolicy: Always
           hostPathVolume: "/var/snap/microk8s/common/mayastor/etcd/$NAME"
@@ -32,7 +32,7 @@ etcd-operator:
 # Mayastor Control Plane configuration
 mayastor-control-plane:
   mayastorCP:
-    tag: 1.0.1-microk8s-1
+    tag: 1.0.1-microk8s-2
 
   kubeletDir: /var/snap/microk8s/common/var/lib/kubelet
   etcdEndpoint: etcd-client
@@ -56,6 +56,9 @@ mayastor-control-plane:
       image: cdkbot/mayastor-csi-controller
     node:
       image: cdkbot/mayastor-csi-node
+      nodeSelector: []
+      driverRegistrar:
+        image: cdkbot/csi-node-driver-registrar:v2.1.0-microk8s-2
   msp:
     numRetries: 200
     disableDeviceValidation: true
@@ -63,15 +66,14 @@ mayastor-control-plane:
 
 # Mayastor configuration
 mayastor:
-  mayastorImagesTag: 1.0.1-microk8s-1
+  mayastorImagesTag: 1.0.1-microk8s-2
   mayastorImage: cdkbot/mayastor
 
   etcdEndpoint: etcd-client
   etcd:
     enabled: false
 
-  nodeSelector:
-    - kubernetes.io/arch: amd64
+  nodeSelector: []
   affinity:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:

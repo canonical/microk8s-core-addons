@@ -3,7 +3,8 @@
 set -e
 
 source $SNAP/actions/common/utils.sh
-VERSION=`cat ../../addons.yaml | grep kube-ovn -A3 | grep version | cut -d ":" -f 2 | tr -d '"' | xargs`
+SCRIPT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+VERSION=`cat $SCRIPT_DIR/../../addons.yaml | grep kube-ovn -A3 | grep version | cut -d ":" -f 2 | tr -d '"' | xargs`
 KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
 
 get_kube-ovn () {

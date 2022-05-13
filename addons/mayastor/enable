@@ -126,7 +126,8 @@ def main(
     # Print a warning to the user.
     microk8s_img = MAYASTOR_DATA / "microk8s.img"
     if microk8s_img.exists():
-        click.echo(f"""
+        click.echo(
+            f"""
 ============================================================
 
 WARNING: {microk8s_img} already exists.
@@ -136,7 +137,8 @@ can do a clean install of the mayastor addon with:
     microk8s disable mayastor --remove-storage
     microk8s enable mayastor
 
-""")
+"""
+        )
 
     # Install
     subprocess.check_call([HELM, "install", "mayastor", "-n", "mayastor", DIR / "chart", *args])
@@ -154,7 +156,6 @@ Mayastor will run for all nodes in your MicroK8s cluster by default. Use the
 
 """
     )
-
 
 
 if __name__ == "__main__":

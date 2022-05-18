@@ -36,11 +36,12 @@ get_kube_prometheus () {
 
 
 set_replicas_to_one() {
-  # alert manager must be set to 1 replica
+  # Alertmanager is set to 1 replica to lower resource usage
   run_with_sudo $SNAP/bin/sed -i 's@replicas: .@replicas: 1@g' ${SNAP_DATA}/kube-prometheus/manifests/alertmanager-alertmanager.yaml
-  # prometheus must be set to 1 replica
+  # Prometheus is set to 1 replica to lower resource usage
   run_with_sudo $SNAP/bin/sed -i 's@replicas: .@replicas: 1@g' ${SNAP_DATA}/kube-prometheus/manifests/prometheus-prometheus.yaml
-
+  # Prometheus Adapter is set to 1 replica to lower resource usage
+  run_with_sudo $SNAP/bin/sed -i 's@replicas: .@replicas: 1@g' ${SNAP_DATA}/kube-prometheus/manifests/prometheus-adapter-deployment.yaml
 }
 
 enable_prometheus() {

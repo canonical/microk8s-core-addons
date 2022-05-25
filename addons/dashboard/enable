@@ -12,13 +12,13 @@ echo "Applying manifest"
 use_addon_manifest dashboard/dashboard apply
 
 echo "
-If RBAC is not enabled access the dashboard using the default token retrieved with:
+If RBAC is not enabled access the dashboard by creating a default token with:
 
-token=\$(microk8s kubectl -n kube-system get secret | grep default-token | cut -d \" \" -f1)
-microk8s kubectl -n kube-system describe secret \$token
+microk8s.kubectl create token -n kube-system default --duration=120m
+
+Use this token in the https login UI of the kubernetes-dashboard service.
 
 In an RBAC enabled setup (microk8s enable RBAC) you need to create a user with restricted
 permissions as shown in:
 https://github.com/kubernetes/dashboard/blob/master/docs/user/access-control/creating-sample-user.md
 "
-

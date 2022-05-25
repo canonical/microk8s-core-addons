@@ -14,7 +14,7 @@ use_addon_manifest dashboard/dashboard apply
 echo "
 If RBAC is not enabled access the dashboard by creating a default token with:
 
-microk8s.kubectl create token -n kube-system default --duration=120m
+microk8s kubectl create token -n kube-system default --duration=8544h
 
 Use this token in the https login UI of the kubernetes-dashboard service.
 

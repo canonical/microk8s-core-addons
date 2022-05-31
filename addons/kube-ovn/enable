@@ -25,6 +25,13 @@ run_kube-ovn () {
     run_with_sudo "${SNAP_DATA}/kube-ovn/install.sh"
 }
 
+if lsmod | grep "openvswitch" &> /dev/null ; then
+  echo "openvswitch is loaded!"
+else
+  echo "Please ensure openvswitch kernel module is loaded"
+  exit 1
+fi
+
 get_kube-ovn
 run_kube-ovn
 echo "kube-ovn is enabled"

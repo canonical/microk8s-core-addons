@@ -3,6 +3,8 @@
 set -e
 
 source $SNAP/actions/common/utils.sh
+CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+source $CURRENT_DIR/../common/utils.sh
 
 KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
 
@@ -17,7 +19,7 @@ do_prerequisites() {
 }
 
 
-get_kube_prometheus () {
+get_kube_prometheus() {
   if [  ! -d "${SNAP_DATA}/kube-prometheus" ]
   then
     KUBE_PROMETHEUS_VERSION="v0.8.0"
@@ -34,6 +36,21 @@ get_kube_prometheus () {
   fi
 }
 
+configure_rbac() {
+  refresh_opt_in_config "authentication-kubeconfig" "\${SNAP_DATA}/credentials/scheduler.config" "kube-scheduler"
+  refresh_opt_in_config "authorization-kubeconfig" "\${SNAP_DATA}/credentials/scheduler.config" "kube-scheduler"
+  restart_service scheduler
+  refresh_opt_in_config "authentication-kubeconfig" "\${SNAP_DATA}/credentials/controller.config" "kube-controller-manager"
+  refresh_opt_in_config "authorization-kubeconfig" "\${SNAP_DATA}/credentials/controller.config" "kube-controller-manager"
+  restart_service controller-manager
+}
+
+expose_kubernetes_components() {
+  declare -A map
+  map[\$HOSTNAME]="$(hostname)"
+  map[\$IP]="$(get_default_ip)"
+  use_addon_manifest prometheus/expose_kubernetes_components apply "$(declare -p map)"
+}
 
 set_replicas_to_one() {
   # alert manager must be set to 1 replica
@@ -94,10 +111,11 @@ update_grafana_datasource() {
   run_with_sudo $SNAP/bin/sed -i "s@datasources.yaml:.*@datasources.yaml: $DS@g" ${SNAP_DATA}/kube-prometheus/manifests/grafana-dashboardDatasources.yaml
 }
 
-
 do_prerequisites
 get_kube_prometheus
 set_replicas_to_one
+configure_rbac
+expose_kubernetes_components
 update_grafana_datasource
 enable_prometheus
 

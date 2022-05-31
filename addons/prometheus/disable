@@ -27,4 +27,9 @@ disable_kube_prometheus() {
 
 disable_kube_prometheus
 
+declare -A map
+map[\$HOSTNAME]="$(hostname)"
+map[\$IP]="$(get_default_ip)"
+use_addon_manifest prometheus/expose_kubernetes_components delete "$(declare -p map)"
+
 echo "The Prometheus operator is disabled"

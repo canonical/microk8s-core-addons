@@ -139,6 +139,14 @@ microk8s-addons:
         - amd64
         - arm64
 
+    - name: "kube-prom-stack"
+      description: "Kubernetes prometheus stack"
+      version: "0.57.0"
+      check_status: "pod/prometheus"
+      supported_architectures:
+        - amd64
+        - arm64
+
     - name: "community"
       description: "The community addons repository"
       version: ""

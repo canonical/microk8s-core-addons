@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -e
+
+source $SNAP/actions/common/utils.sh
+CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+
+"$SNAP/microk8s-enable.wrapper" dns
+"$SNAP/microk8s-enable.wrapper" helm3
+"$SNAP/microk8s-enable.wrapper" hostpath-storage
+
+NAMESPACE_PTR="monitoring"
+KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
+
+echo "Enabling kube-prom-stack"
+
+# make sure the "monitoring" namespace exists
+$KUBECTL create namespace "$NAMESPACE_PTR" > /dev/null 2>&1 || true
+# load the CRD and wait for it to be installed
+VALUES="$@"
+
+for i in "$@"
+do
+case $i in
+    -f=*|--values=*)
+    VALUES="${i#*=}"
+    shift # past argument=value
+    ;;
+    *)
+          # unknown option
+    ;;
+esac
+done
+
+
+HELM="$SNAP_DATA/bin/helm3 --kubeconfig=$SNAP_DATA/credentials/client.config"
+
+$HELM repo add prometheus-community https://prometheus-community.github.io/helm-charts
+$HELM repo update
+if [ -z "$VALUES" ]
+then
+  $HELM upgrade --install kube-prom-stack  prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR
+else
+  $HELM upgrade --install kube-prom-stack -f "$2" prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR
+fi
+
+echo "kube-prom-stack has been enabled"

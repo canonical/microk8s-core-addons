@@ -61,9 +61,57 @@ enable_prometheus() {
 done 
 }
 
+add_loki_datasource() {
+   echo '{
+    "apiVersion": 1,
+    "datasources": [
+        {
+            "access": "proxy",
+            "editable": false,
+            "name": "prometheus",
+            "orgId": 1,
+            "type": "prometheus",
+            "url": "http://prometheus-k8s.monitoring.svc:9090",
+            "version": 1
+        },
+        {
+           "access": "proxy",
+           "editable": false,
+           "name": "loki",
+           "orgId": 1,
+           "type": "loki",
+           "url": "http://loki.monitoring.svc:3100",
+           "version": 1
+        }
+    ]
+}'
+
+return $?
+}
+
+update_grafana_datasource() {
+  DS=$(add_loki_datasource)
+  $KUBECTL apply --dry-run=client -o yaml -f ${SNAP_DATA}/kube-prometheus/manifests/grafana-dashboardDatasources.yaml |
+    $KUBECTL patch --dry-run=client -o yaml -f - --patch '{"stringData":{"datasources.yaml":"'"$(echo $DS | sed 's/"/\\"/g')"'"}}' > /tmp/grafana-dashboardDatasources.yaml
+  run_with_sudo mv /tmp/grafana-dashboardDatasources.yaml ${SNAP_DATA}/kube-prometheus/manifests/grafana-dashboardDatasources.yaml
+}
+
+read -ra ARGUMENTS <<< "$1"
+
+loki_ds="false"
+if [[ "$ARGUMENTS" == "with-loki-ds" ]]
+then
+  loki_ds="true"
+fi
+
 do_prerequisites
 get_kube_prometheus
 set_replicas_to_one
+if [[ "$loki_ds" == "true" ]]
+then
+  echo "Adding Loki datasource"
+  update_grafana_datasource
+fi
 enable_prometheus
 
 echo "The Prometheus operator is enabled (user/pass: admin/admin)"

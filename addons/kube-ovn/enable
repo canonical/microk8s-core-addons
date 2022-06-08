@@ -65,10 +65,10 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
         )
 
     # 2. disable calico
-    cni_yaml = SNAP_COMMON / "args" / "cni-network" / "cni.yaml"
+    cni_yaml = SNAP_DATA / "args" / "cni-network" / "cni.yaml"
     if cni_yaml.exists():
         click.echo("Remove Calico CNI")
-        shutil.copy(cni_yaml, SNAP_COMMON / "args" / "cni-network" / "cni.yaml.backup")
+        shutil.copy(cni_yaml, SNAP_DATA / "args" / "cni-network" / "cni.yaml.backup")
         subprocess.check_call([KUBECTL, "delete", "-f", cni_yaml])
 
     # 3. apply ovn CRDs

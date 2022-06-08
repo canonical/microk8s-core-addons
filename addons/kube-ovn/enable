@@ -78,7 +78,7 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
     with open(DIR / "ovn-template.yaml") as fin:
         ovn_template = fin.read()
 
-    ovn_template.replace("__REPLICAS__", len(node_ips))
+    ovn_template.replace("__REPLICAS__", str(len(node_ips)))
     ovn_template.replace("__NODE_IPS__", ",".join(node_ips))
     with open(cni_yaml, "w") as fout:
         fout.write(ovn_template)

@@ -54,7 +54,7 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
 
     # 1. label nodes that will run ovn-db
     for host in hosts:
-        stdout = subprocess.check_output([KUBECTL, "get", "node", "-o", JSONPATH_INTERNAL_IP])
+        stdout = subprocess.check_output([KUBECTL, "get", "node", host, "-o", JSONPATH_INTERNAL_IP])
         node_ip = stdout.decode().strip()
         if node_ip:
             node_ips.append(node_ip)

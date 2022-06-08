@@ -150,8 +150,8 @@ microk8s-addons:
 
     - name: "kube-ovn"
       description: "An advanced network fabric for Kubernetes"
-      version: "1.9"
-      check_status: "pod/kube-ovn-controller"
+      version: "1.10.0-alpha1"
+      check_status: "deployment.apps/kube-ovn-controller"
       supported_architectures:
         - arm64
         - amd64

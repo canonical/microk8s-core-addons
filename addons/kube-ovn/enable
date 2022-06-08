@@ -1,37 +1,90 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python3
 
-set -e
+import os
+import socket
+import subprocess
+import sys
+from pathlib import Path
+import shutil
 
-source $SNAP/actions/common/utils.sh
-SCRIPT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
-VERSION=`cat $SCRIPT_DIR/../../addons.yaml | grep kube-ovn -A3 | grep version | cut -d ":" -f 2 | tr -d '"' | xargs`
-KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
+import click
 
-get_kube-ovn () {
-  if [ -d "${SNAP_DATA}/kube-ovn" ]
-  then
-    run_with_sudo rm -rf "${SNAP_DATA}/kube-ovn"
-  fi
-    run_with_sudo mkdir -p "${SNAP_DATA}/kube-ovn"
-    echo "Fetching version ${VERSION}"
-    fetch_as https://raw.githubusercontent.com/kubeovn/kube-ovn/release-$VERSION/dist/images/install.sh "${SNAP_DATA}/kube-ovn/install.sh"
-    run_with_sudo chmod +x "${SNAP_DATA}/kube-ovn/install.sh"
+DIR = Path(__file__).absolute().parent
+SNAP = Path(os.getenv("SNAP") or "/snap/microk8s/current")
+SNAP_DATA = Path(os.getenv("SNAP_DATA") or "/var/snap/microk8s/current")
+SNAP_COMMON = Path(os.getenv("SNAP_COMMON") or "/var/snap/microk8s/common")
+KUBECTL = SNAP / "microk8s-kubectl.wrapper"
 
-    run_with_sudo sed -i "s/kubectl/microk8s kubectl/g" "${SNAP_DATA}/kube-ovn/install.sh"
-    run_with_sudo sed -i "s/node-role.kubernetes.io\/master/node.kubernetes.io\/microk8s-controlplane/g" "${SNAP_DATA}/kube-ovn/install.sh"
-}
+JSONPATH_INTERNAL_IP = 'jsonpath={.status.addresses[?(@.type=="InternalIP")].address}'
 
-run_kube-ovn () {
-    run_with_sudo "${SNAP_DATA}/kube-ovn/install.sh"
-}
+HOSTNAME = socket.gethostname()
 
-if lsmod | grep "openvswitch" &> /dev/null ; then
-  echo "openvswitch is loaded!"
-else
-  echo "Please ensure openvswitch kernel module is loaded"
-  exit 1
-fi
 
-get_kube-ovn
-run_kube-ovn
-echo "kube-ovn is enabled"
+@click.command(context_settings={"help_option_names": ["-h", "--help"]})
+@click.argument("--hostname", default=HOSTNAME, help="Host(s) to use for ovn-db")
+@click.argument("--force", is_flag=True, default=False)
+def enable(hostname: str, force: bool):
+    if not force:
+        click.echo(
+            """
+Warning: this is a potentially destructive operation. Please enable kube-ovn
+with:
+
+    microk8s enable kube-ovn --force
+""",
+            err=True,
+        )
+        sys.exit(1)
+
+    # 0. kube-ovn addon requires ha-cluster
+    if not (SNAP_DATA / "var" / "lock" / "ha-cluster").exists():
+        click.echo(
+            """
+Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
+
+    microk8s enable ha-cluster
+    microk8s enable kube-ovn
+""",
+            err=True,
+        )
+        sys.exit(1)
+
+    hosts = hostname.split(",")
+    node_ips = []
+
+    # 1. label nodes that will run ovn-db
+    for host in hosts:
+        stdout = subprocess.check_output([KUBECTL, "get", "node", "-o", JSONPATH_INTERNAL_IP])
+        node_ip = stdout.decode().strip()
+        if node_ip:
+            node_ips.append(node_ip)
+
+        click.echo("Label node {} ({})".format(host, node_ip))
+        subprocess.check_call([KUBECTL, "label", "node", host, "kube-ovn/role=master"])
+
+    # 2. disable calico
+    cni_yaml = SNAP_COMMON / "args" / "cni-network" / "cni.yaml"
+    if cni_yaml.exists():
+        click.echo("Remove Calico CNI")
+        shutil.copy(cni_yaml, SNAP_COMMON / "args" / "cni-network" / "cni.yaml.backup")
+        subprocess.check_call([KUBECTL, "delete", "-f", cni_yaml])
+
+    # 3. apply ovn CRDs
+    click.echo("Deploy kube-ovn CRDs")
+    subprocess.check_call([KUBECTL, "apply", "-f", DIR / "crd.yaml"])
+
+    # 4. generate manifest and deploy ovn components
+    click.echo("Deploy ovn components")
+    with open(DIR / "ovn-template.yaml") as fin:
+        ovn_template = fin.read()
+
+    ovn_template.replace("__REPLICAS__", len(node_ips))
+    ovn_template.replace("__NODE_IPS__", ",".join(node_ips))
+    with open(cni_yaml, "w") as fout:
+        fout.write(ovn_template)
+
+    subprocess.check_call([KUBECTL, "apply", "-f", cni_yaml])
+
+    # 5. install kube-ovn plugins
+    click.echo("Deploy kube-ovn CNI")
+    subprocess.check_call([KUBECTL, "apply", "-f", DIR / "kube-ovn.yaml"])

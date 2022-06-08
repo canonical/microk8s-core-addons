@@ -88,3 +88,7 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
     # 5. install kube-ovn plugins
     click.echo("Deploy kube-ovn CNI")
     subprocess.check_call([KUBECTL, "apply", "-f", DIR / "kube-ovn.yaml"])
+
+
+if __name__ == "__main__":
+    enable()

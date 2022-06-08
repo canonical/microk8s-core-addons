@@ -21,8 +21,8 @@ HOSTNAME = socket.gethostname()
 
 
 @click.command(context_settings={"help_option_names": ["-h", "--help"]})
-@click.argument("--hostname", default=HOSTNAME, help="Host(s) to use for ovn-db")
-@click.argument("--force", is_flag=True, default=False)
+@click.option("--hostname", default=HOSTNAME, help="Host(s) to use for ovn-db")
+@click.option("--force", is_flag=True, default=False)
 def enable(hostname: str, force: bool):
     if not force:
         click.echo(

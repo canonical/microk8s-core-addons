@@ -60,7 +60,9 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
             node_ips.append(node_ip)
 
         click.echo("Label node {} ({})".format(host, node_ip))
-        subprocess.check_call([KUBECTL, "label", "node", host, "kube-ovn/role=master"])
+        subprocess.check_call(
+            [KUBECTL, "label", "node", host, "kube-ovn/role=master", "--overwrite"]
+        )
 
     # 2. disable calico
     cni_yaml = SNAP_COMMON / "args" / "cni-network" / "cni.yaml"

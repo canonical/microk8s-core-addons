@@ -17,6 +17,7 @@ from validators import (
     validate_prometheus,
     validate_coredns_config,
     validate_mayastor,
+    validate_cert_manager,
 )
 from utils import (
     microk8s_enable,
@@ -260,3 +261,21 @@ class TestAddons(object):
         validate_mayastor()
         print("Disabling mayastor")
         microk8s_disable("mayastor")
+
+    def test_cert_manager_addon(self):
+        """
+        Test cert-manager.
+        """
+        print("Enabling ingress, cert-manager, dns")
+        microk8s_enable("dns")
+        microk8s_enable("ingress")
+        microk8s_enable("cert-manager")
+        microk8s_enable("host-access:ip=100.100.100.100")
+
+        print("Validating cert-manager")
+        validate_cert_manager()
+
+        print("Disabling cert-manager")
+        microk8s_disable("ingress")
+        microk8s_disable("cert-manager")
+        microk8s_disable("host-access")

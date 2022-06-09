@@ -1,0 +1,142 @@
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: mock-issuer
+spec:
+  acme:
+    email: me@localhost
+    server: https://pebble.default.svc.cluster.local:14000/dir
+    skipTLSVerify: true
+    privateKeySecretRef:
+      name: mock-issuer-tls
+    solvers:
+    - http01:
+        ingress:
+          class: public
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: microbot
+  name: microbot
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: microbot
+  template:
+    metadata:
+      labels:
+        app: microbot
+    spec:
+      containers:
+      - image: cdkbot/microbot-amd64
+        name: microbot-amd64
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: microbot
+  name: microbot
+spec:
+  selector:
+    app: microbot
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mock-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: mock-issuer
+spec:
+  tls:
+  - hosts:
+    - microbot.100.100.100.100.nip.io
+    secretName: mock-ingress-tls
+  rules:
+  - host: microbot.100.100.100.100.nip.io
+    http:
+      paths:
+      - backend:
+          service:
+            name: microbot
+            port:
+              number: 80
+        path: /
+        pathType: Exact
+---
+# Sourced from: https://github.com/manabie-com/manabie-com.github.io/blob/main/content/posts/simulate-https-certificates-acme-k8s/examples/pebble.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pebble
+spec:
+  type: ClusterIP
+  ports:
+    - port: 14000
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: pebble
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pebble
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pebble
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pebble
+    spec:
+      volumes:
+      - name: config-volume
+        configMap:
+          name: pebble
+          items:
+          - key: pebble-config.json
+            path: pebble-config.json
+      containers:
+      - image: letsencrypt/pebble:v2.3.1
+        imagePullPolicy: Always
+        name: pebble
+        ports:
+        - name: http
+          containerPort: 14000
+          protocol: TCP
+        volumeMounts:
+        - name: config-volume
+          mountPath: /test/config/pebble-config.json
+          subPath: pebble-config.json
+          readOnly: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pebble
+data:
+  pebble-config.json: |
+    {
+      "pebble": {
+        "listenAddress": "0.0.0.0:14000",
+        "managementListenAddress": "0.0.0.0:15000",
+        "certificate": "test/certs/localhost/cert.pem",
+        "privateKey": "test/certs/localhost/key.pem",
+        "httpPort": 80,
+        "tlsPort": 443,
+        "ocspResponderURL": "",
+        "externalAccountBindingRequired": false
+      }
+    }

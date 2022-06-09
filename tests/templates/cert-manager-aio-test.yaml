@@ -32,8 +32,8 @@ spec:
         app: microbot
     spec:
       containers:
-      - image: cdkbot/microbot-amd64
-        name: microbot-amd64
+      - image: cdkbot/microbot:1
+        name: microbot
 ---
 apiVersion: v1
 kind: Service

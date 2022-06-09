@@ -1,0 +1,10 @@
+#!/bin/bash
+
+DIR=`realpath $(dirname $0)`
+KUBECTL="$SNAP/microk8s-kubectl.wrapper"
+
+echo "Enabling cert-manager"
+
+$KUBECTL apply -f $DIR/cert-manager.yaml
+
+echo "Enabled cert-manager"

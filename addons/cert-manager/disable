@@ -1,0 +1,10 @@
+#!/bin/bash
+
+DIR=`realpath $(dirname $0)`
+KUBECTL="$SNAP/microk8s-kubectl.wrapper"
+
+echo "Deleting cert-manager"
+
+$KUBECTL delete -f $DIR/cert-manager.yaml
+
+echo "Deleted cert-manager"

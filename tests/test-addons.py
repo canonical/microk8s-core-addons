@@ -262,6 +262,10 @@ class TestAddons(object):
         print("Disabling mayastor")
         microk8s_disable("mayastor")
 
+    @pytest.mark.skipif(
+        platform.machine() != "x86_64",
+        reason="Cert-Manager tests are not available in arm64 architectures yet",
+    )
     def test_cert_manager_addon(self):
         """
         Test cert-manager.

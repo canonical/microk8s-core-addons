@@ -23,6 +23,7 @@ else
   if lsmod | grep "nvidia" &> /dev/null
     then
     echo "Using host driver"
+    nvidia-smi -L
     readonly ENABLE_INTERNAL_DRIVER="false"
   else
     echo "Using operator driver"

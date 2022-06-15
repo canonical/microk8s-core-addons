@@ -246,9 +246,17 @@ def validate_prometheus():
         print("Prometheus tests are only relevant in x86 architectures")
         return
 
-    wait_for_pod_state("prometheus-kube-prom-stack-kube-prome-prometheus-0", "monitoring", "running", timeout_insec=1200)
     wait_for_pod_state(
-        "alertmanager-kube-prom-stack-kube-prome-alertmanager-0", "monitoring", "running", timeout_insec=1200
+        "prometheus-kube-prom-stack-kube-prome-prometheus-0",
+        "monitoring",
+        "running",
+        timeout_insec=1200,
+    )
+    wait_for_pod_state(
+        "alertmanager-kube-prom-stack-kube-prome-alertmanager-0",
+        "monitoring",
+        "running",
+        timeout_insec=1200,
     )
 
 

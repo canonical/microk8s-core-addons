@@ -78,14 +78,6 @@ microk8s-addons:
       supported_architectures:
         - amd64
 
-    - name: "prometheus"
-      description: "Prometheus operator for monitoring and logging"
-      version: "v0.8.0"
-      check_status: "pod/prometheus-k8s-0"
-      supported_architectures:
-        - amd64
-        - arm64
-
     - name: "helm"
       description: "Helm 2 - the package manager for Kubernetes"
       version: "2.16.0"
@@ -140,8 +132,8 @@ microk8s-addons:
         - arm64
 
     - name: "kube-prom-stack"
-      description: "Kubernetes prometheus stack"
-      version: "0.57.0"
+      description: "Kubernetes prometheus stack for observability"
+      version: "36.0.1"
       check_status: "pod/prometheus"
       supported_architectures:
         - amd64

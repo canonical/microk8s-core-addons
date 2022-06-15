@@ -38,9 +38,9 @@ $HELM repo add prometheus-community https://prometheus-community.github.io/helm-
 $HELM repo update
 if [ -z "$VALUES" ]
 then
-  $HELM upgrade --install kube-prom-stack  prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR
+  $HELM upgrade --install kube-prom-stack  prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR --version 36.0.1
 else
-  $HELM upgrade --install kube-prom-stack -f "$2" prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR
+  $HELM upgrade --install kube-prom-stack -f "$2" prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR$ --version 36.0.1
 fi
 
 echo "kube-prom-stack has been enabled"

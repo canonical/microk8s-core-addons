@@ -26,11 +26,12 @@ jobs:
         run: |
           set -eux
           black --check .
-          codespell --ignore-words-list="aks" --quiet-level=2
+          codespell --ignore-words-list="aks,keypair" --quiet-level=2
       - name: Check YAML formatting
         run: |
           set -eux
           prettier --check $(find . -name "*.yaml" -o -name "*.yml" \
             | grep -v "./addons/ingress/ingress.yaml" \
             | grep -v "./addons/metallb/metallb.yaml" \
+            | grep -v "./addons/cert-manager/cert-manager.yaml" \
             | grep -v "templates")

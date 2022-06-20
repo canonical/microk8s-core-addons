@@ -4,9 +4,9 @@ set -e
 source $SNAP/actions/common/utils.sh
 CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 
-"$SNAP/microk8s-enable.wrapper" dns
-"$SNAP/microk8s-enable.wrapper" helm3
-"$SNAP/microk8s-enable.wrapper" hostpath-storage
+"$SNAP/microk8s-enable.wrapper" core/dns
+"$SNAP/microk8s-enable.wrapper" core/helm3
+"$SNAP/microk8s-enable.wrapper" core/hostpath-storage
 
 NAMESPACE_PTR="monitoring"
 KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"

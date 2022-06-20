@@ -43,6 +43,6 @@ else
   $HELM upgrade --install kube-prom-stack -f "$2" prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR
 fi
 
-$HELM upgade --install loki -n $NAMESPACE_PTR --set="grafana.enabled=true"
+$HELM upgrade --install loki -n $NAMESPACE_PTR --set="grafana.enabled=true"
 
 echo "observability has been enabled"

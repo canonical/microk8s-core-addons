@@ -1,9 +1,5 @@
 grafana:
- datasources:
-  datasources.yaml:
-   apiVersion: 1
-    datasources:
-    - name: Loki
-      type: Loki
-      url: http://loki.monitoring.svc.cluster.local
-
+ additionalDataSources:
+  - name: Loki
+    type: Loki
+    url: http://loki.monitoring.svc.cluster.local:3000

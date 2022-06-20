@@ -1,5 +1,5 @@
 grafana:
  additionalDataSources:
-  - name: Loki
-    type: Loki
-    url: http://loki.monitoring.svc.cluster.local:3000
+  - name: loki
+    type: loki
+    url: http://loki.monitoring.svc.cluster.local:3100

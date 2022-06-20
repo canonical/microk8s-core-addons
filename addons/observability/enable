@@ -38,11 +38,11 @@ $HELM repo add grafana https://grafana.github.io/helm-charts
 $HELM repo update
 if [ -z "$VALUES" ]
 then
-  $HELM upgrade --install kube-prom-stack prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR
+  $HELM upgrade --install kube-prom-stack -f ${SNAP_COMMON}/addons/core/addons/observability/grafana.yaml prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR
 else
-  $HELM upgrade --install kube-prom-stack -f "$2" prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR
+  $HELM upgrade --install kube-prom-stack -f ${SNAP_COMMON}/addons/core/addons/observability/grafana.yaml -f "$2" prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR
 fi
 
-$HELM upgrade --install loki grafana/loki-stack -n $NAMESPACE_PTR --set="grafana.enabled=true"
+$HELM upgrade --install loki grafana/loki-stack -n $NAMESPACE_PTR
 
 echo "observability has been enabled"

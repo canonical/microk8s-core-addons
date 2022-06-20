@@ -5,6 +5,7 @@ import requests
 import platform
 import yaml
 import subprocess
+from pathlib import Path
 
 from utils import (
     get_arch,
@@ -16,6 +17,8 @@ from utils import (
     update_yaml_with_arch,
     run_until_success,
 )
+
+TEMPLATES = Path(__file__).absolute().parent / "templates"
 
 
 def validate_dns_dashboard():
@@ -61,8 +64,7 @@ def validate_storage():
     wait_for_pod_state(
         "", "kube-system", "running", label="k8s-app=hostpath-provisioner"
     )
-    here = os.path.dirname(os.path.abspath(__file__))
-    manifest = os.path.join(here, "templates", "pvc.yaml")
+    manifest = TEMPLATES / "pvc.yaml"
     kubectl("apply -f {}".format(manifest))
     wait_for_pod_state("hostpath-test-pod", "default", "running")
 
@@ -132,8 +134,7 @@ def validate_ingress():
             "", "ingress", "running", label="name=nginx-ingress-microk8s"
         )
 
-    here = os.path.dirname(os.path.abspath(__file__))
-    manifest = os.path.join(here, "templates", "ingress.yaml")
+    manifest = TEMPLATES / "ingress.yaml"
     update_yaml_with_arch(manifest)
     kubectl("apply -f {}".format(manifest))
     wait_for_pod_state("", "default", "running", label="app=microbot")
@@ -157,8 +158,7 @@ def validate_gpu():
         "running",
         label="app=nvidia-device-plugin-daemonset",
     )
-    here = os.path.dirname(os.path.abspath(__file__))
-    manifest = os.path.join(here, "templates", "cuda-add.yaml")
+    manifest = TEMPLATES / "cuda-add.yaml"
 
     get_pod = kubectl_get("po")
     if "cuda-vector-add" in str(get_pod):
@@ -186,8 +186,7 @@ def validate_registry():
     docker("tag busybox localhost:32000/my-busybox")
     docker("push localhost:32000/my-busybox")
 
-    here = os.path.dirname(os.path.abspath(__file__))
-    manifest = os.path.join(here, "templates", "bbox-local.yaml")
+    manifest = TEMPLATES / "bbox-local.yaml"
     kubectl("apply -f {}".format(manifest))
     wait_for_pod_state("busybox", "default", "running")
     output = kubectl("describe po busybox")
@@ -199,8 +198,7 @@ def validate_forward():
     """
     Validate ports are forwarded
     """
-    here = os.path.dirname(os.path.abspath(__file__))
-    manifest = os.path.join(here, "templates", "nginx-pod.yaml")
+    manifest = TEMPLATES / "nginx-pod.yaml"
     kubectl("apply -f {}".format(manifest))
     wait_for_pod_state("", "default", "running", label="app=nginx")
     os.system("killall kubectl")
@@ -294,8 +292,7 @@ def validate_mayastor():
     """
     wait_for_pod_state("", "mayastor", "running", label="app=mayastor")
 
-    here = os.path.dirname(os.path.abspath(__file__))
-    manifest = os.path.join(here, "templates", "mayastor-pvc.yaml")
+    manifest = TEMPLATES / "mayastor-pvc.yaml"
     kubectl("apply -f {}".format(manifest))
     wait_for_pod_state("mayastor-test-pod", "default", "running")
 
@@ -307,4 +304,20 @@ def validate_mayastor():
         time.sleep(2)
         attempt -= 1
 
+    kubectl("delete -f {}".format(manifest))
+
+
+def validate_cert_manager():
+    """
+    Validate cert-manager. Wait for cert-manager deployment to come up,
+    then deploys a custom ingress and waits for the certificate to become ready.
+    """
+
+    wait_for_pod_state(
+        "", "cert-manager", "running", label="app.kubernetes.io/name=cert-manager"
+    )
+
+    manifest = TEMPLATES / "cert-manager-aio-test.yaml"
+    kubectl("apply -f {}".format(manifest))
+    kubectl("wait cert/mock-ingress-tls --for=condition=ready=true")
     kubectl("delete -f {}".format(manifest))

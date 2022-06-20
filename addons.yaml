@@ -131,9 +131,9 @@ microk8s-addons:
         - amd64
         - arm64
 
-    - name: "kube-prom-stack"
-      description: "Kubernetes prometheus stack for observability"
-      version: "36.0.1"
+    - name: "observability"
+      description: "A lightweight observability stack"
+      version: "0.57.0"
       check_status: "pod/prometheus"
       supported_architectures:
         - amd64

@@ -44,5 +44,5 @@ else
 fi
 
 $HELM upgrade --install loki grafana/loki-stack -n $NAMESPACE_PTR
-
+$HELM upgrade --install tempo grafana/tempo -n $NAMESPACE_PTR
 echo "observability has been enabled"

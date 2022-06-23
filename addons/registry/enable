@@ -18,6 +18,8 @@ def enable_registry(size, storageclass):
     # print(current_path, '======')
     manifest = "{}/registry.yaml".format(current_path)
 
+    #Enable hostpath-storage first. If already enabled, nothing changes.
+    subprocess.call(["{}/microk8s-enable.wrapper".format(snap_path), "hostpath-storage"])
 
     with open(manifest, "r", encoding="utf8") as f:
         docs = list(yaml.safe_load_all(f))

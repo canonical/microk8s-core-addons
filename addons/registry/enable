@@ -4,6 +4,7 @@ import click
 import os
 import subprocess
 import yaml
+import shlex
 
 regex_args='([a-zA-Z]+=[a-zA-Z0-9]+(,|))'
 
@@ -20,6 +21,16 @@ def enable_registry(size, storageclass):
 
     #Enable hostpath-storage first. If already enabled, nothing changes.
     subprocess.call(["{}/microk8s-enable.wrapper".format(snap_path), "hostpath-storage"])
+
+    command = shlex.split('{}/microk8s-kubectl.wrapper get sc --no-headers -o custom-columns=":metadata.name"'.format(snap_path))
+    sclasses = subprocess.check_output(command)
+    sclasses = sclasses.decode("utf-8") 
+    sclasses = sclasses.split('\n')
+    sclasses = [sc.strip() for sc in sclasses if sc.strip()]
+
+    if (storageclass is not None) & (storageclass not in sclasses):
+        print('Error: Storage class {} doesn\'t exit.'.format(storageclass))
+        return
 
     with open(manifest, "r", encoding="utf8") as f:
         docs = list(yaml.safe_load_all(f))

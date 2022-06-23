@@ -33,6 +33,6 @@ def enable_registry(size, storageclass):
 
     subprocess.call(["{}/microk8s-kubectl.wrapper".format(snap_path), "apply", "-f", manifest_to_apply])
 
-
+    os.remove(manifest_to_apply)
 
 enable_registry()

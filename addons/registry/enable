@@ -1,48 +1,79 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python3
+import os
+import subprocess
+import shlex
+import re
+import yaml
 
-set -e
+import click
 
-source $SNAP/actions/common/utils.sh
-CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
-source $CURRENT_DIR/../common/utils.sh
+REGEX_DISK_SIZE = "(^[2-9][0-9]{1,}|^[1-9][0-9]{2,})(Gi$)"
 
-regex_args='([a-zA-Z]+=[a-zA-Z0-9]+(,|))'
 
-read -ra ARGUMENTS <<<"$1"
-if [ -z "${ARGUMENTS[@]}" ]; then
-  echo "The registry will be created with the default size of 20Gi."
-  echo "You can use the \"size\" argument while enabling the registry, eg microk8s.enable registry:size=30Gi"
-  declare -A map
-  map[\$DISKSIZE]="20Gi"
-  "$SNAP/microk8s-enable.wrapper" hostpath-storage
-  echo "Applying registry manifest"
-  use_addon_manifest registry/registry apply "$(declare -p map)"
-  echo "The registry is enabled"
-elif [[ ${ARGUMENTS[@]} =~ $regex_args ]]; then
-	IFS=',' read -ra args <<< ${ARGUMENTS[@]}
-  REGEX_DISK_SIZE='(^[2-9][0-9]{1,}|^[1-9][0-9]{2,})(Gi$)'
-	for arg in "${args[@]}"; do
-		read -r key value <<<$(echo $arg | gawk -F "=" '{print $1 ,$2}')
-    if [ "$key" != "size" ]; then
-      echo "The only authorized argument is \"size\", eg  microk8s.enable registry:size=30Gi"
-      echo "The \"size\" value should match the regex: ([a-zA-Z]+=[a-zA-Z0-9]+(,|))"
-      exit 1
-    elif [ "$key" = "size"  ] && [[ ! $value =~ $REGEX_DISK_SIZE ]]; then
-      echo "The size of the registry should be higher or equal to 20Gi and match the regex: (^[2-9][0-9]{1,}|^[1-9][0-9]{2,})(Gi$)"
-      exit 1
-		elif [ "$key" = "size" ] && [[ $value =~ $REGEX_DISK_SIZE ]]; then
-      "$SNAP/microk8s-enable.wrapper" hostpath-storage
-      declare -A map
-      map[\$DISKSIZE]=$value
-    fi
-  done
-  echo "Enabling the private registry"
-  echo "Applying registry manifest"
-  use_addon_manifest registry/registry apply "$(declare -p map)"
-  echo "The registry is enabled"
-  echo "The size of the persistent volume is $value"
-else
-  echo "The only authorized argument is \"size\", eg  microk8s.enable registry:size=30Gi"
-  echo "The \"size\" value should match the regex: ([a-zA-Z]+=[a-zA-Z0-9]+(,|))"
-  exit 1
-fi
+@click.command()
+@click.option("--size", default="20Gi", help="Size of the registry")
+@click.option("--storageclass", default=None, help="Storage class to be used")
+def enable_registry(size, storageclass):
+    snap_path = os.environ.get("SNAP")
+    snap_data = os.environ.get("SNAP_DATA")
+    snap_user_data = os.environ.get("SNAP_USER_DATA")
+    current_path = os.path.dirname(os.path.realpath(__file__))
+    manifest = "{}/registry.yaml".format(current_path)
+
+    # Enable hostpath-storage first. If already enabled, nothing changes.
+    subprocess.call(
+        ["{}/microk8s-enable.wrapper".format(snap_path), "hostpath-storage"]
+    )
+
+    command = shlex.split(
+        '{}/microk8s-kubectl.wrapper --kubeconfig={}/credentials/client.config get sc --no-headers -o custom-columns=":metadata.name"'.format(
+            snap_path, snap_data
+        )
+    )
+    sclasses = subprocess.check_output(command)
+    sclasses = sclasses.decode("utf-8")
+    sclasses = sclasses.split("\n")
+    sclasses = [sc.strip() for sc in sclasses if sc.strip()]
+
+    if (storageclass is not None) & (storageclass not in sclasses):
+        print("Error: Storage class {} doesn't exit.".format(storageclass))
+        return
+
+    if not bool(re.match(REGEX_DISK_SIZE, size)):
+        print(
+            "The size of the registry should be higher or equal to 20Gi and match the regex: {}".format(
+                REGEX_DISK_SIZE
+            )
+        )
+        return
+
+    with open(manifest, "r", encoding="utf8") as f:
+        docs = list(yaml.safe_load_all(f))
+        docs[1].get("spec").get("resources").get("requests")["storage"] = size
+        print("The registry will be created with the size of {}.".format(size))
+        if storageclass is not None:
+            docs[1].get("spec")["storageClassName"] = storageclass
+            print("Storage class {} will be used.".format(storageclass))
+        else:
+            print("Default storage class will be used.")
+
+    manifest_to_apply = "{}/tmp/temp.yaml".format(snap_user_data)
+
+    subprocess.call(shlex.split("mkdir -p {}/tmp".format(snap_user_data)))
+
+    with open(manifest_to_apply, "w", encoding="utf8") as f:
+        yaml.safe_dump_all(docs, f)
+
+    apply_command = shlex.split(
+        "{}/microk8s-kubectl.wrapper --kubeconfig={}/credentials/client.config apply -f {}".format(
+            snap_path, snap_data, manifest_to_apply
+        )
+    )
+    subprocess.call(apply_command)
+
+    os.remove(manifest_to_apply)
+
+
+if __name__ == "__main__":
+    enable_registry()
+

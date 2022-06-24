@@ -44,7 +44,6 @@ def main(
     driver_type: str,
     driver: str,
     toolkit_version: str,
-    toolkit_containerd_restart_mode: str,
     set_as_default_runtime: bool,
     helm_set: list,
     helm_values: list,

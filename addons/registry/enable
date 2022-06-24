@@ -14,6 +14,8 @@ REGEX_DISK_SIZE = "(^[2-9][0-9]{1,}|^[1-9][0-9]{2,})(Gi$)"
 @click.option("--storageclass", default=None, help="Storage class to be used")
 def enable_registry(size, storageclass):
     snap_path = os.environ.get("SNAP")
+    snap_data = os.environ.get("SNAP_DATA")
+    snap_user_data = os.environ.get("SNAP_USER_DATA")
     current_path = os.path.dirname(os.path.realpath(__file__))
     manifest = "{}/registry.yaml".format(current_path)
 
@@ -23,8 +25,8 @@ def enable_registry(size, storageclass):
     )
 
     command = shlex.split(
-        '{}/microk8s-kubectl.wrapper get sc --no-headers -o custom-columns=":metadata.name"'.format(
-            snap_path
+        '{}/microk8s-kubectl.wrapper --kubeconfig={}/credentials/client.config get sc --no-headers -o custom-columns=":metadata.name"'.format(
+            snap_path, snap_data
         )
     )
     sclasses = subprocess.check_output(command)
@@ -54,7 +56,6 @@ def enable_registry(size, storageclass):
         else:
             print("Default storage class will be used.")
 
-    snap_user_data = os.environ.get("SNAP_USER_DATA")
     manifest_to_apply = "{}/tmp/temp.yaml".format(snap_user_data)
 
     subprocess.call(shlex.split("mkdir -p {}/tmp".format(snap_user_data)))
@@ -62,7 +63,6 @@ def enable_registry(size, storageclass):
     with open(manifest_to_apply, "w") as f:
         yaml.safe_dump_all(docs, f)
 
-    snap_data = os.environ.get("SNAP_DATA")
     apply_command = shlex.split(
         "{}/microk8s-kubectl.wrapper --kubeconfig={}/credentials/client.config apply -f {}".format(
             snap_path, snap_data, manifest_to_apply
@@ -72,5 +72,6 @@ def enable_registry(size, storageclass):
 
     os.remove(manifest_to_apply)
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     enable_registry()

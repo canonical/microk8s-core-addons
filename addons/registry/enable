@@ -47,7 +47,7 @@ def enable_registry(size, storageclass):
     with open(manifest, "r", encoding="utf8") as f:
         docs = list(yaml.safe_load_all(f))
         docs[1].get("spec").get("resources").get("requests")["storage"] = size
-        print("The registry will be created with the default size of {}.".format(size))
+        print("The registry will be created with the size of {}.".format(size))
         if storageclass is not None:
             docs[1].get("spec")["storageClassName"] = storageclass
             print("Storage class {} will be used.".format(storageclass))

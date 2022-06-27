@@ -175,12 +175,12 @@ class TestAddons(object):
         Test prometheus.
         """
 
-        print("Enabling prometheus")
-        microk8s_enable("kube-prom-stack")
-        print("Validating kube-prom-stack")
+        print("Enabling observability")
+        microk8s_enable("observability")
+        print("Validating observability")
         validate_prometheus()
-        print("Disabling kube-prom-stack")
-        microk8s_disable("kube-prom-stack")
+        print("Disabling observability")
+        microk8s_disable("observability")
         microk8s_reset()
 
     def test_rbac_addon(self):

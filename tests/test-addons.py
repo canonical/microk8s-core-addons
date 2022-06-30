@@ -139,6 +139,10 @@ class TestAddons(object):
         """
 
     @pytest.mark.skipif(
+        os.environ.get("STRICT") == "yes",
+        reason="Skipping GPU tests in strict confinement as they are expected to fail",
+    )
+    @pytest.mark.skipif(
         os.environ.get("UNDER_TIME_PRESSURE") == "True",
         reason="Skipping GPU tests as we are under time pressure",
     )

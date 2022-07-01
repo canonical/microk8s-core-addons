@@ -73,7 +73,7 @@ microk8s-addons:
 
     - name: "gpu"
       description: "Automatic enablement of Nvidia CUDA"
-      version: "1.7.0"
+      version: "1.11.0"
       check_status: "daemonset.apps/nvidia-device-plugin-daemonset"
       supported_architectures:
         - amd64

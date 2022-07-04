@@ -4,7 +4,7 @@ set -e
 
 source $SNAP/actions/common/utils.sh
 
-echo "DEPRECIATION WARNING: 'observability' is deprecated and will soon be removed. Please use 'observability' instead."
+echo "DEPRECIATION WARNING: 'prometheus' is deprecated and will soon be removed. Please use 'observability' instead."
 echo ""
 
 "$SNAP/microk8s-disable.wrapper" observability $1

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 import os
 import subprocess
 import re
@@ -25,20 +26,19 @@ def enable_registry(size, storageclass, size_opt):
 
     command = [
         KUBECTL,
-        f"--kubeconfig={SNAP_DATA}/credentials/client.config",
         "get",
         "sc",
         "--no-headers",
         "-o",
-        "custom-columns=:metadata.name",
+        "json",
     ]
-    sclasses = subprocess.check_output(command)
-    sclasses = sclasses.decode("utf-8")
-    sclasses = sclasses.split("\n")
-    sclasses = [sc.strip() for sc in sclasses if sc.strip()]
 
-    if (storageclass is not None) & (storageclass not in sclasses):
-        print(f"ERROR: Storage class {storageclass} doesn't exit.")
+    sclasses = subprocess.check_output(command).decode("utf8")
+    sclasses = json.loads(sclasses)
+    sclasses = [item['metadata']['name'] for item in sclasses['items']]
+
+    if storageclass is not None and storageclass not in sclasses:
+        print(f"ERROR: Storage class {storageclass} doesn't exist.")
         return
 
     if size_opt:
@@ -55,7 +55,7 @@ def enable_registry(size, storageclass, size_opt):
             return
         size = size_opt[-1]
 
-    if not bool(re.match(REGEX_DISK_SIZE, size)):
+    if not re.match(REGEX_DISK_SIZE, size):
         print(
             f"ERROR: The size of the registry should be higher or equal to 20Gi and match the regex: {REGEX_DISK_SIZE}"
         )
@@ -75,7 +75,6 @@ def enable_registry(size, storageclass, size_opt):
 
     apply_cmd = [
         KUBECTL,
-        f"--kubeconfig={SNAP_DATA}/credentials/client.config",
         "apply",
         "-f",
         "-",

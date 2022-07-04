@@ -3,6 +3,7 @@ import os
 import platform
 import sh
 import yaml
+from pathlib import Path
 
 from validators import (
     validate_dns_dashboard,
@@ -10,6 +11,7 @@ from validators import (
     validate_ingress,
     validate_gpu,
     validate_registry,
+    validate_registry_custom,
     validate_forward,
     validate_metrics_server,
     validate_rbac,
@@ -24,9 +26,11 @@ from utils import (
     wait_for_pod_state,
     microk8s_disable,
     microk8s_reset,
+    kubectl
 )
 from subprocess import CalledProcessError, check_call
 
+TEMPLATES = Path(__file__).absolute().parent / "templates"
 
 class TestAddons(object):
     @pytest.fixture(scope="session", autouse=True)
@@ -119,14 +123,25 @@ class TestAddons(object):
         microk8s_enable("registry")
         print("Validating registry")
         validate_registry()
+        print("Disabling registry")
+        microk8s_disable("registry")
+        print("Creating test storage class for registry")
+        size, storageclass = "25Gi", "registry-test-sc"
+        manifest_sc = TEMPLATES / "registry-sc.yaml"
+        kubectl(f"apply -f {manifest_sc}")
+        microk8s_enable(f"registry --size={size} --storageclass={storageclass}")
+        print("Validating registry with flag arguments")
+        validate_registry_custom(size, storageclass)
+        print("Disabling custom registry")
+        microk8s_disable("registry")
+        print("Removing test storage class")
+        kubectl(f"delete -f {manifest_sc}")
         print("Validating Port Forward")
         validate_forward()
         print("Validating the Metrics Server")
         validate_metrics_server()
         print("Disabling metrics-server")
         microk8s_disable("metrics-server")
-        print("Disabling registry")
-        microk8s_disable("registry")
         print("Disabling dashboard")
         microk8s_disable("dashboard")
         print("Disabling hostpath-storage")

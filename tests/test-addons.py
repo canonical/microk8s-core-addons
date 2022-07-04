@@ -26,11 +26,12 @@ from utils import (
     wait_for_pod_state,
     microk8s_disable,
     microk8s_reset,
-    kubectl
+    kubectl,
 )
 from subprocess import CalledProcessError, check_call
 
 TEMPLATES = Path(__file__).absolute().parent / "templates"
+
 
 class TestAddons(object):
     @pytest.fixture(scope="session", autouse=True)

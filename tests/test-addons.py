@@ -14,7 +14,7 @@ from validators import (
     validate_metrics_server,
     validate_rbac,
     validate_metallb_config,
-    validate_prometheus,
+    validate_observability,
     validate_coredns_config,
     validate_mayastor,
     validate_cert_manager,
@@ -164,21 +164,21 @@ class TestAddons(object):
 
     @pytest.mark.skipif(
         platform.machine() != "x86_64",
-        reason="Prometheus is only relevant in x86 architectures",
+        reason="Observability is only relevant in x86 architectures",
     )
     @pytest.mark.skipif(
-        os.environ.get("SKIP_PROMETHEUS") == "True",
-        reason="Skipping prometheus if it crash loops on lxd",
+        os.environ.get("SKIP_OBSERVABILITY") == "True" or os.environ.get("SKIP_PROMETHEUS") == "True",
+        reason="Skipping observability if it crash loops on lxd",
     )
-    def test_prometheus(self):
+    def test_observability(self):
         """
-        Test prometheus.
+        Test observability.
         """
 
         print("Enabling observability")
         microk8s_enable("observability")
         print("Validating observability")
-        validate_prometheus()
+        validate_observability()
         print("Disabling observability")
         microk8s_disable("observability")
         microk8s_reset()

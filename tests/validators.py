@@ -237,12 +237,12 @@ def validate_metrics_server():
     assert attempt > 0
 
 
-def validate_prometheus():
+def validate_observability():
     """
-    Validate the prometheus operator
+    Validate the observability operator
     """
     if platform.machine() != "x86_64":
-        print("Prometheus tests are only relevant in x86 architectures")
+        print("Observability tests are only relevant in x86 architectures")
         return
 
     wait_for_pod_state(

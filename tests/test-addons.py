@@ -167,7 +167,8 @@ class TestAddons(object):
         reason="Observability is only relevant in x86 architectures",
     )
     @pytest.mark.skipif(
-        os.environ.get("SKIP_OBSERVABILITY") == "True" or os.environ.get("SKIP_PROMETHEUS") == "True",
+        os.environ.get("SKIP_OBSERVABILITY") == "True"
+        or os.environ.get("SKIP_PROMETHEUS") == "True",
         reason="Skipping observability if it crash loops on lxd",
     )
     def test_observability(self):

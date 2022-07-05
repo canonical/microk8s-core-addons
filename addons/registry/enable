@@ -3,6 +3,7 @@ import json
 import os
 import subprocess
 import re
+import sys
 import yaml
 
 import click
@@ -35,15 +36,15 @@ def enable_registry(size, storageclass, size_opt):
 
     sclasses = subprocess.check_output(command).decode("utf8")
     sclasses = json.loads(sclasses)
-    sclasses = [item['metadata']['name'] for item in sclasses['items']]
+    sclasses = [item["metadata"]["name"] for item in sclasses["items"]]
 
     if storageclass is not None and storageclass not in sclasses:
         print(f"ERROR: Storage class {storageclass} doesn't exist.")
-        return
+        sys.exit(1)
 
     if size_opt:
         size_opt = size_opt.split("=")
-        if (len(size_opt) == 2) & (size_opt[0] == "size"):
+        if len(size_opt) == 2 and size_opt[0] == "size":
             size = size_opt[-1]
             print(
                 "WARNING: This style of specifying size is deprecated. Use newer --size argument instead."
@@ -52,14 +53,14 @@ def enable_registry(size, storageclass, size_opt):
             print(
                 "ERROR: Failed to parse arguments. Use --size and --storageclass to specify custom size and storage class."
             )
-            return
+            sys.exit(1)
         size = size_opt[-1]
 
     if not re.match(REGEX_DISK_SIZE, size):
         print(
             f"ERROR: The size of the registry should be higher or equal to 20Gi and match the regex: {REGEX_DISK_SIZE}"
         )
-        return
+        sys.exit(1)
 
     with open(manifest, "r", encoding="utf8") as f:
         docs = list(yaml.safe_load_all(f))

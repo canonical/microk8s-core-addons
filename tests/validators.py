@@ -206,7 +206,6 @@ def validate_registry_custom(size, storageclass):
     storageClassName = pvc_yaml["spec"]["storageClassName"]
     assert storage == size
     assert storageClassName == storageclass
-    assert re.match("(^[2-9][0-9]{1,}|^[1-9][0-9]{2,})(Gi$)", storage)
     docker("pull busybox")
     docker("tag busybox localhost:32000/my-busybox")
     docker("push localhost:32000/my-busybox")

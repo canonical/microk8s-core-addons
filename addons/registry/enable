@@ -22,8 +22,8 @@ def enable_registry(size, storageclass, size_opt):
     current_path = os.path.dirname(os.path.realpath(__file__))
     manifest = f"{current_path}/registry.yaml"
 
-    # Enable hostpath-storage first. If already enabled, nothing changes.
-    subprocess.run([MICROK8S_ENABLE, "hostpath-storage"])
+    if storageclass is None:
+        subprocess.run([MICROK8S_ENABLE, "hostpath-storage"])
 
     command = [
         KUBECTL,

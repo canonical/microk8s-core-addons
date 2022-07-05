@@ -194,6 +194,30 @@ def validate_registry():
     kubectl("delete -f {}".format(manifest))
 
 
+def validate_registry_custom(size, storageclass):
+    """
+    Validate the private registry with custom size and storageclass
+    """
+
+    wait_for_pod_state("", "container-registry", "running", label="app=registry")
+    pvc_stdout = kubectl("get pvc registry-claim -n container-registry -o yaml")
+    pvc_yaml = yaml.safe_load(pvc_stdout)
+    storage = pvc_yaml["spec"]["resources"]["requests"]["storage"]
+    storageClassName = pvc_yaml["spec"]["storageClassName"]
+    assert storage == size
+    assert storageClassName == storageclass
+    docker("pull busybox")
+    docker("tag busybox localhost:32000/my-busybox")
+    docker("push localhost:32000/my-busybox")
+
+    manifest = TEMPLATES / "bbox-local.yaml"
+    kubectl("apply -f {}".format(manifest))
+    wait_for_pod_state("busybox", "default", "running")
+    output = kubectl("describe po busybox")
+    assert "localhost:32000/my-busybox" in output
+    kubectl("delete -f {}".format(manifest))
+
+
 def validate_forward():
     """
     Validate ports are forwarded

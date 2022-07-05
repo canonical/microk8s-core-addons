@@ -45,4 +45,4 @@ fi
 
 $HELM upgrade --install loki grafana/loki-stack -n $NAMESPACE_PTR --set="grafana.sidecar.datasources.enabled=false"
 $HELM upgrade --install tempo grafana/tempo -n $NAMESPACE_PTR
-echo "observability has been enabled"
+echo "Observability has been enabled (user/pass: admin/prom-operator)"

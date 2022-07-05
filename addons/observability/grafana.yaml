@@ -1,0 +1,8 @@
+grafana:
+  additionalDataSources:
+    - name: loki
+      type: loki
+      url: http://loki.monitoring.svc.cluster.local:3100
+    - name: tempo
+      type: tempo
+      url: http://tempo.monitoring.svc.cluster.local:3100

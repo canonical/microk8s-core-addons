@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -e
+
+source $SNAP/actions/common/utils.sh
+CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+
+NAMESPACE_PTR="monitoring"
+KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
+HELM="$SNAP_DATA/bin/helm3 --kubeconfig=$SNAP_DATA/credentials/client.config"
+echo "Disabling observability"
+
+# unload the the manifests
+$HELM delete kube-prom-stack -n $NAMESPACE_PTR > /dev/null 2>&1
+# This line below is to address an upstream bug
+$KUBECTL delete service kube-prom-stack-kube-prome-kubelet -n kube-system
+$HELM delete loki -n $NAMESPACE_PTR > /dev/null 2>&1
+$HELM delete tempo -n $NAMESPACE_PTR > /dev/null 2>&1
+$KUBECTL delete namespace $NAMESPACE_PTR

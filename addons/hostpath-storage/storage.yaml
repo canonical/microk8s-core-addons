@@ -32,7 +32,7 @@ spec:
             - name: PV_DIR
               value: $SNAP_COMMON/default-storage
             - name: BUSYBOX_IMAGE
-              value: busybox:1.34.1-glibc
+              value: busybox:1.28.4
           #   - name: PV_RECLAIM_POLICY
           #     value: Retain
           volumeMounts:

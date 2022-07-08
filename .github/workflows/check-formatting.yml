@@ -34,4 +34,6 @@ jobs:
             | grep -v "./addons/ingress/ingress.yaml" \
             | grep -v "./addons/metallb/metallb.yaml" \
             | grep -v "./addons/cert-manager/cert-manager.yaml" \
+            | grep -v "./addons/kube-ovn/ovn-template.yaml" \
+            | grep -v "./addons/kube-ovn/crd.yaml" \
             | grep -v "templates")

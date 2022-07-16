@@ -60,8 +60,6 @@ cat $CURRENT_DIR/metallb.yaml | $SNAP/bin/sed "s@{{allow_escalation}}@$ALLOWESCA
 
 echo "Waiting for Metallb controller to be ready."
 $KUBECTL -n metallb-system  wait deployment controller --for condition=Available=True --timeout=90s
-cat $CURRENT_DIR/addresspool.yaml | $SNAP/bin/sed "s@{{addresses}}@$ip_range_str@g"
-
 cat $CURRENT_DIR/addresspool.yaml | $SNAP/bin/sed "s@{{addresses}}@$ip_range_str@g" | $KUBECTL apply -f -
 
 

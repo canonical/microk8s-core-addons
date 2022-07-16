@@ -2,17 +2,26 @@ apiVersion: v1
 kind: Namespace
 metadata:
   labels:
-    app: metallb
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/warn: privileged
   name: metallb-system
 ---
 apiVersion: v1
-kind: Secret
+kind: ServiceAccount
 metadata:
-  name: memberlist
+  labels:
+    app: metallb
+  name: controller
   namespace: metallb-system
-type: Opaque
-data:
-  secretkey: {{member_list}}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: metallb
+  name: speaker
+  namespace: metallb-system
 ---
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
@@ -20,13 +29,12 @@ metadata:
   labels:
     app: metallb
   name: controller
-  namespace: metallb-system
 spec:
-  allowPrivilegeEscalation: {{allow_escalation}}
+  allowPrivilegeEscalation: false
   allowedCapabilities: []
   allowedHostPaths: []
   defaultAddCapabilities: []
-  defaultAllowPrivilegeEscalation: {{allow_escalation}}
+  defaultAllowPrivilegeEscalation: false
   fsGroup:
     ranges:
       - max: 65535
@@ -62,16 +70,13 @@ metadata:
   labels:
     app: metallb
   name: speaker
-  namespace: metallb-system
 spec:
-  allowPrivilegeEscalation: {{allow_escalation}}
+  allowPrivilegeEscalation: false
   allowedCapabilities:
-    - NET_ADMIN
     - NET_RAW
-    - SYS_ADMIN
   allowedHostPaths: []
   defaultAddCapabilities: []
-  defaultAllowPrivilegeEscalation: {{allow_escalation}}
+  defaultAllowPrivilegeEscalation: false
   fsGroup:
     rule: RunAsAny
   hostIPC: false
@@ -80,6 +85,8 @@ spec:
   hostPorts:
     - max: 7472
       min: 7472
+    - max: 7946
+      min: 7946
   privileged: true
   readOnlyRootFilesystem: true
   requiredDropCapabilities:
@@ -94,22 +101,6 @@ spec:
     - configMap
     - secret
     - emptyDir
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  labels:
-    app: metallb
-  name: controller
-  namespace: metallb-system
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  labels:
-    app: metallb
-  name: speaker
-  namespace: metallb-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -126,7 +117,6 @@ rules:
       - get
       - list
       - watch
-      - update
   - apiGroups:
       - ""
     resources:
@@ -148,6 +138,31 @@ rules:
       - podsecuritypolicies
     verbs:
       - use
+  - apiGroups:
+      - admissionregistration.k8s.io
+    resources:
+      - validatingwebhookconfigurations
+      - mutatingwebhookconfigurations
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - apiextensions.k8s.io
+    resources:
+      - customresourcedefinitions
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -162,6 +177,14 @@ rules:
       - services
       - endpoints
       - nodes
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - discovery.k8s.io
+    resources:
+      - endpointslices
     verbs:
       - get
       - list
@@ -187,13 +210,88 @@ kind: Role
 metadata:
   labels:
     app: metallb
-  name: config-watcher
+  name: controller
   namespace: metallb-system
 rules:
   - apiGroups:
       - ""
     resources:
-      - configmaps
+      - secrets
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - ""
+    resourceNames:
+      - memberlist
+    resources:
+      - secrets
+    verbs:
+      - list
+  - apiGroups:
+      - apps
+    resourceNames:
+      - controller
+    resources:
+      - deployments
+    verbs:
+      - get
+  - apiGroups:
+      - metallb.io
+    resources:
+      - bgppeers
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - metallb.io
+    resources:
+      - addresspools
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - metallb.io
+    resources:
+      - bfdprofiles
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - metallb.io
+    resources:
+      - ipaddresspools
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - metallb.io
+    resources:
+      - bgpadvertisements
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - metallb.io
+    resources:
+      - l2advertisements
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - metallb.io
+    resources:
+      - communities
     verbs:
       - get
       - list
@@ -213,6 +311,70 @@ rules:
       - pods
     verbs:
       - list
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - metallb.io
+    resources:
+      - addresspools
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - metallb.io
+    resources:
+      - bfdprofiles
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - metallb.io
+    resources:
+      - bgppeers
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - metallb.io
+    resources:
+      - l2advertisements
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - metallb.io
+    resources:
+      - bgpadvertisements
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - metallb.io
+    resources:
+      - ipaddresspools
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - metallb.io
+    resources:
+      - communities
+    verbs:
+      - get
+      - list
+      - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -249,17 +411,34 @@ kind: RoleBinding
 metadata:
   labels:
     app: metallb
-  name: config-watcher
+  name: controller
   namespace: metallb-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: config-watcher
+  name: controller
 subjects:
   - kind: ServiceAccount
     name: controller
-  - kind: ServiceAccount
-    name: speaker
+    namespace: metallb-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: webhook-server-cert
+  namespace: metallb-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webhook-service
+  namespace: metallb-system
+spec:
+  ports:
+    - port: 443
+      targetPort: 9443
+  selector:
+    component: controller
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -275,6 +454,7 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: speaker
+    namespace: metallb-system
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -301,7 +481,7 @@ spec:
       containers:
         - args:
             - --port=7472
-            - --config=config
+            - --log-level=info
           env:
             - name: METALLB_NODE_NAME
               valueFrom:
@@ -316,33 +496,45 @@ spec:
                 fieldRef:
                   fieldPath: status.podIP
             - name: METALLB_ML_LABELS
-              value: "app=metallb,component=speaker"
-            - name: METALLB_ML_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
+              value: app=metallb,component=speaker
             - name: METALLB_ML_SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: memberlist
                   key: secretkey
-          image: metallb/speaker:v0.9.3
-          imagePullPolicy: IfNotPresent
+                  name: memberlist
+          image: quay.io/metallb/speaker:v0.13.3
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /metrics
+              port: monitoring
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           name: speaker
           ports:
             - containerPort: 7472
               name: monitoring
-          resources:
-            limits:
-              cpu: 100m
-              memory: 100Mi
+            - containerPort: 7946
+              name: memberlist-tcp
+            - containerPort: 7946
+              name: memberlist-udp
+              protocol: UDP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /metrics
+              port: monitoring
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           securityContext:
             allowPrivilegeEscalation: {{allow_escalation}}
             capabilities:
               add:
-                - NET_ADMIN
                 - NET_RAW
-                - SYS_ADMIN
               drop:
                 - ALL
             readOnlyRootFilesystem: true
@@ -354,6 +546,10 @@ spec:
       tolerations:
         - effect: NoSchedule
           key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -381,39 +577,204 @@ spec:
       containers:
         - args:
             - --port=7472
-            - --config=config
-          image: metallb/controller:v0.9.3
-          imagePullPolicy: IfNotPresent
+            - --log-level=info
+          env:
+            - name: METALLB_ML_SECRET_NAME
+              value: memberlist
+            - name: METALLB_DEPLOYMENT
+              value: controller
+          image: quay.io/metallb/controller:v0.13.3
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /metrics
+              port: monitoring
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           name: controller
           ports:
             - containerPort: 7472
               name: monitoring
-          resources:
-            limits:
-              cpu: 100m
-              memory: 100Mi
+            - containerPort: 9443
+              name: webhook-server
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /metrics
+              port: monitoring
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           securityContext:
             allowPrivilegeEscalation: {{allow_escalation}}
             capabilities:
               drop:
                 - all
             readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /tmp/k8s-webhook-server/serving-certs
+              name: cert
+              readOnly: true
       nodeSelector:
         kubernetes.io/os: linux
       securityContext:
+        fsGroup: 65534
         runAsNonRoot: true
         runAsUser: 65534
       serviceAccountName: controller
       terminationGracePeriodSeconds: 0
+      volumes:
+        - name: cert
+          secret:
+            defaultMode: 420
+            secretName: webhook-server-cert
 ---
-apiVersion: v1
-kind: ConfigMap
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
 metadata:
-  namespace: metallb-system
-  name: config
-data:
-  config: |
-    address-pools:
-    - name: default
-      protocol: layer2
-      {{addresses}}
+  creationTimestamp: null
+  name: validating-webhook-configuration
+webhooks:
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: webhook-service
+        namespace: metallb-system
+        path: /validate-metallb-io-v1beta2-bgppeer
+    failurePolicy: Fail
+    name: bgppeersvalidationwebhook.metallb.io
+    rules:
+      - apiGroups:
+          - metallb.io
+        apiVersions:
+          - v1beta2
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - bgppeers
+    sideEffects: None
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: webhook-service
+        namespace: metallb-system
+        path: /validate-metallb-io-v1beta1-addresspool
+    failurePolicy: Fail
+    name: addresspoolvalidationwebhook.metallb.io
+    rules:
+      - apiGroups:
+          - metallb.io
+        apiVersions:
+          - v1beta1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - addresspools
+    sideEffects: None
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: webhook-service
+        namespace: metallb-system
+        path: /validate-metallb-io-v1beta1-bfdprofile
+    failurePolicy: Fail
+    name: bfdprofilevalidationwebhook.metallb.io
+    rules:
+      - apiGroups:
+          - metallb.io
+        apiVersions:
+          - v1beta1
+        operations:
+          - DELETE
+        resources:
+          - bfdprofiles
+    sideEffects: None
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: webhook-service
+        namespace: metallb-system
+        path: /validate-metallb-io-v1beta1-bgpadvertisement
+    failurePolicy: Fail
+    name: bgpadvertisementvalidationwebhook.metallb.io
+    rules:
+      - apiGroups:
+          - metallb.io
+        apiVersions:
+          - v1beta1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - bgpadvertisements
+    sideEffects: None
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: webhook-service
+        namespace: metallb-system
+        path: /validate-metallb-io-v1beta1-community
+    failurePolicy: Fail
+    name: communityvalidationwebhook.metallb.io
+    rules:
+      - apiGroups:
+          - metallb.io
+        apiVersions:
+          - v1beta1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - communities
+    sideEffects: None
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: webhook-service
+        namespace: metallb-system
+        path: /validate-metallb-io-v1beta1-ipaddresspool
+    failurePolicy: Fail
+    name: ipaddresspoolvalidationwebhook.metallb.io
+    rules:
+      - apiGroups:
+          - metallb.io
+        apiVersions:
+          - v1beta1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - ipaddresspools
+    sideEffects: None
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: webhook-service
+        namespace: metallb-system
+        path: /validate-metallb-io-v1beta1-l2advertisement
+    failurePolicy: Fail
+    name: l2advertisementvalidationwebhook.metallb.io
+    rules:
+      - apiGroups:
+          - metallb.io
+        apiVersions:
+          - v1beta1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - l2advertisements
+    sideEffects: None

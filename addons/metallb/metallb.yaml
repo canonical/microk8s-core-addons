@@ -30,7 +30,7 @@ metadata:
     app: metallb
   name: controller
 spec:
-  allowPrivilegeEscalation: false
+  allowPrivilegeEscalation: {{allow_escalation}}
   allowedCapabilities: []
   allowedHostPaths: []
   defaultAddCapabilities: []
@@ -71,7 +71,7 @@ metadata:
     app: metallb
   name: speaker
 spec:
-  allowPrivilegeEscalation: false
+  allowPrivilegeEscalation: {{allow_escalation}}
   allowedCapabilities:
     - NET_RAW
   allowedHostPaths: []

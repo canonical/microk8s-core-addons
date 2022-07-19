@@ -9,7 +9,7 @@ CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 "$SNAP/microk8s-enable.wrapper" core/hostpath-storage
 
 NAMESPACE_PTR="monitoring"
-KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
+KUBECTL="$SNAP/microk8s-kubectl.wrapper"
 
 echo "Enabling observability"
 
@@ -32,7 +32,7 @@ esac
 done
 
 SCRIPT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
-HELM="$SNAP_DATA/bin/helm3 --kubeconfig=$SNAP_DATA/credentials/client.config"
+HELM="${SNAP}/microk8s-helm3.wrapper"
 $HELM repo add prometheus-community https://prometheus-community.github.io/helm-charts
 $HELM repo add grafana https://grafana.github.io/helm-charts
 $HELM repo update

@@ -3,6 +3,7 @@ import os
 import platform
 import sh
 import yaml
+from pathlib import Path
 
 from validators import (
     validate_dns_dashboard,
@@ -10,21 +11,26 @@ from validators import (
     validate_ingress,
     validate_gpu,
     validate_registry,
+    validate_registry_custom,
     validate_forward,
     validate_metrics_server,
     validate_rbac,
     validate_metallb_config,
-    validate_prometheus,
+    validate_observability,
     validate_coredns_config,
     validate_mayastor,
+    validate_cert_manager,
 )
 from utils import (
     microk8s_enable,
     wait_for_pod_state,
     microk8s_disable,
     microk8s_reset,
+    kubectl,
 )
 from subprocess import CalledProcessError, check_call
+
+TEMPLATES = Path(__file__).absolute().parent / "templates"
 
 
 class TestAddons(object):
@@ -118,14 +124,25 @@ class TestAddons(object):
         microk8s_enable("registry")
         print("Validating registry")
         validate_registry()
+        print("Disabling registry")
+        microk8s_disable("registry")
+        print("Creating test storage class for registry")
+        size, storageclass = "25Gi", "registry-test-sc"
+        manifest_sc = TEMPLATES / "registry-sc.yaml"
+        kubectl(f"apply -f {manifest_sc}")
+        microk8s_enable(f"registry --size={size} --storageclass={storageclass}")
+        print("Validating registry with flag arguments")
+        validate_registry_custom(size, storageclass)
+        print("Disabling custom registry")
+        microk8s_disable("registry")
+        print("Removing test storage class")
+        kubectl(f"delete -f {manifest_sc}")
         print("Validating Port Forward")
         validate_forward()
         print("Validating the Metrics Server")
         validate_metrics_server()
         print("Disabling metrics-server")
         microk8s_disable("metrics-server")
-        print("Disabling registry")
-        microk8s_disable("registry")
         print("Disabling dashboard")
         microk8s_disable("dashboard")
         print("Disabling hostpath-storage")
@@ -137,6 +154,10 @@ class TestAddons(object):
         microk8s_disable("dns")
         """
 
+    @pytest.mark.skipif(
+        os.environ.get("STRICT") == "yes",
+        reason="Skipping GPU tests in strict confinement as they are expected to fail",
+    )
     @pytest.mark.skipif(
         os.environ.get("UNDER_TIME_PRESSURE") == "True",
         reason="Skipping GPU tests as we are under time pressure",
@@ -163,23 +184,24 @@ class TestAddons(object):
 
     @pytest.mark.skipif(
         platform.machine() != "x86_64",
-        reason="Prometheus is only relevant in x86 architectures",
+        reason="Observability is only relevant in x86 architectures",
     )
     @pytest.mark.skipif(
-        os.environ.get("SKIP_PROMETHEUS") == "True",
-        reason="Skipping prometheus if it crash loops on lxd",
+        os.environ.get("SKIP_OBSERVABILITY") == "True"
+        or os.environ.get("SKIP_PROMETHEUS") == "True",
+        reason="Skipping observability if it crash loops on lxd",
     )
-    def test_prometheus(self):
+    def test_observability(self):
         """
-        Test prometheus.
+        Test observability.
         """
 
-        print("Enabling prometheus")
-        microk8s_enable("prometheus")
-        print("Validating Prometheus")
-        validate_prometheus()
-        print("Disabling prometheus")
-        microk8s_disable("prometheus")
+        print("Enabling observability")
+        microk8s_enable("observability")
+        print("Validating observability")
+        validate_observability()
+        print("Disabling observability")
+        microk8s_disable("observability")
         microk8s_reset()
 
     def test_rbac_addon(self):
@@ -260,3 +282,25 @@ class TestAddons(object):
         validate_mayastor()
         print("Disabling mayastor")
         microk8s_disable("mayastor")
+
+    @pytest.mark.skipif(
+        platform.machine() != "x86_64",
+        reason="Cert-Manager tests are not available in arm64 architectures yet",
+    )
+    def test_cert_manager_addon(self):
+        """
+        Test cert-manager.
+        """
+        print("Enabling ingress, cert-manager, dns")
+        microk8s_enable("dns")
+        microk8s_enable("ingress")
+        microk8s_enable("cert-manager")
+        microk8s_enable("host-access:ip=100.100.100.100")
+
+        print("Validating cert-manager")
+        validate_cert_manager()
+
+        print("Disabling cert-manager")
+        microk8s_disable("ingress")
+        microk8s_disable("cert-manager")
+        microk8s_disable("host-access")

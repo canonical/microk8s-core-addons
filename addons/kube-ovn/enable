@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+
+import os
+import socket
+import subprocess
+import sys
+from pathlib import Path
+import shutil
+
+import click
+
+DIR = Path(__file__).absolute().parent
+SNAP = Path(os.getenv("SNAP") or "/snap/microk8s/current")
+SNAP_DATA = Path(os.getenv("SNAP_DATA") or "/var/snap/microk8s/current")
+SNAP_COMMON = Path(os.getenv("SNAP_COMMON") or "/var/snap/microk8s/common")
+HOOKS = SNAP_COMMON / "hooks"
+KUBECTL = SNAP / "microk8s-kubectl.wrapper"
+
+JSONPATH_INTERNAL_IP = 'jsonpath={.status.addresses[?(@.type=="InternalIP")].address}'
+
+HOSTNAME = socket.gethostname()
+
+
+@click.command(context_settings={"help_option_names": ["-h", "--help"]})
+@click.option("--hostname", default=HOSTNAME, help="Host(s) to use for ovn-db")
+@click.option("--force", is_flag=True, default=False)
+def enable(hostname: str, force: bool):
+    if not force:
+        click.echo(
+            """
+Warning: this is a potentially destructive operation. Please enable kube-ovn
+with:
+
+    microk8s enable kube-ovn --force
+""",
+            err=True,
+        )
+        sys.exit(1)
+
+    # 0. kube-ovn addon requires ha-cluster
+    if not (SNAP_DATA / "var" / "lock" / "ha-cluster").exists():
+        click.echo(
+            """
+Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
+
+    microk8s enable ha-cluster
+    microk8s enable kube-ovn
+""",
+            err=True,
+        )
+        sys.exit(1)
+
+    hosts = hostname.split(",")
+    node_ips = []
+
+    # 1. label nodes that will run ovn-db
+    for host in hosts:
+        stdout = subprocess.check_output([KUBECTL, "get", "node", host, "-o", JSONPATH_INTERNAL_IP])
+        node_ip = stdout.decode().strip()
+        if node_ip:
+            node_ips.append(node_ip)
+
+        click.echo("Label node {} ({})".format(host, node_ip))
+        subprocess.check_call(
+            [KUBECTL, "label", "node", host, "kube-ovn/role=master", "--overwrite"]
+        )
+
+    # 2. disable calico
+    cni_yaml = SNAP_DATA / "args" / "cni-network" / "cni.yaml"
+    if cni_yaml.exists():
+        click.echo("Remove Calico CNI")
+        subprocess.run([KUBECTL, "delete", "-f", cni_yaml])
+        shutil.move(cni_yaml, SNAP_DATA / "args" / "cni-network" / "cni.yaml.backup")
+
+    # 3. apply ovn CRDs
+    click.echo("Deploy kube-ovn CRDs")
+    subprocess.check_call([KUBECTL, "apply", "-f", DIR / "crd.yaml"])
+
+    # 4. generate manifest and deploy ovn components
+    click.echo("Deploy ovn components")
+    with open(DIR / "ovn-template.yaml") as fin:
+        ovn_template = fin.read()
+
+    ovn_yaml = SNAP_DATA / "args" / "cni-network" / "ovn.yaml"
+    ovn_template = ovn_template.replace("__REPLICAS__", str(len(node_ips)))
+    ovn_template = ovn_template.replace("__NODE_IPS__", ",".join(node_ips))
+    with open(ovn_yaml, "w") as fout:
+        fout.write(ovn_template)
+
+    subprocess.check_call([KUBECTL, "apply", "-f", ovn_yaml])
+
+    # 5. install kube-ovn plugins
+    click.echo("Deploy kube-ovn CNI")
+    subprocess.check_call([KUBECTL, "apply", "-f", DIR / "kube-ovn.yaml"])
+
+    # 6. install microk8s hooks
+    for hook in ["reconcile"]:
+        try:
+            click.echo("Install {} hook".format(hook))
+            shutil.copy(DIR / "hooks" / hook, HOOKS / "{}.d".format(hook) / "10-ovn")
+        except OSError as e:
+            click.echo("Failed to install {} hook: {}".format(hook, e), err=True)
+
+
+if __name__ == "__main__":
+    enable()

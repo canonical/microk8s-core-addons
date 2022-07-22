@@ -3,7 +3,7 @@ microk8s-addons:
   addons:
     - name: "dns"
       description: "CoreDNS"
-      version: "1.9.0"
+      version: "1.9.3"
       check_status: "pod/coredns"
       supported_architectures:
         - amd64
@@ -21,7 +21,7 @@ microk8s-addons:
 
     - name: "dashboard"
       description: "The Kubernetes dashboard"
-      version: "2.3.0"
+      version: "2.5.1"
       check_status: "pod/kubernetes-dashboard"
       supported_architectures:
         - arm64
@@ -73,32 +73,25 @@ microk8s-addons:
 
     - name: "gpu"
       description: "Automatic enablement of Nvidia CUDA"
-      version: "1.7.0"
+      version: "1.11.0"
       check_status: "daemonset.apps/nvidia-device-plugin-daemonset"
+      confinement: "classic"
       supported_architectures:
         - amd64
-
-    - name: "prometheus"
-      description: "Prometheus operator for monitoring and logging"
-      version: "v0.8.0"
-      check_status: "pod/prometheus-k8s-0"
-      supported_architectures:
-        - amd64
-        - arm64
 
     - name: "helm"
-      description: "Helm 2 - the package manager for Kubernetes"
-      version: "2.16.0"
-      check_status: "${SNAP_DATA}/bin/helm"
+      description: "Helm - the package manager for Kubernetes"
+      version: "3.9.1"
+      check_status: "${SNAP}/bin/helm"
       supported_architectures:
         - amd64
         - arm64
         - s390x
 
     - name: "helm3"
-      description: "Helm 3 - Kubernetes package manager"
-      version: "3.8.0"
-      check_status: "${SNAP_DATA}/bin/helm3"
+      description: "Helm 3 - the package manager for Kubernetes"
+      version: "3.9.1"
+      check_status: "${SNAP}/bin/helm"
       supported_architectures:
         - amd64
         - arm64
@@ -139,6 +132,22 @@ microk8s-addons:
         - amd64
         - arm64
 
+    - name: "prometheus"
+      description: "Prometheus operator for monitoring and logging"
+      version: "v0.8.0"
+      check_status: "pod/prometheus-k8s-0"
+      supported_architectures:
+        - amd64
+        - arm64
+
+    - name: "observability"
+      description: "A lightweight observability stack for logs, traces and metrics"
+      version: "0.57.0"
+      check_status: "pod/prometheus"
+      supported_architectures:
+        - amd64
+        - arm64
+
     - name: "community"
       description: "The community addons repository"
       version: ""
@@ -147,3 +156,20 @@ microk8s-addons:
         - arm64
         - amd64
         - s390x
+
+    - name: "cert-manager"
+      description: "Cloud native certificate management"
+      version: "1.8.0"
+      check_status: "deployment.apps/cert-manager"
+      supported_architectures:
+        - arm64
+        - amd64
+
+    - name: "kube-ovn"
+      description: "An advanced network fabric for Kubernetes"
+      version: "1.10.0-alpha1"
+      check_status: "deployment.apps/kube-ovn-controller"
+      confinement: "classic"
+      supported_architectures:
+        - arm64
+        - amd64

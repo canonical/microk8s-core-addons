@@ -1,48 +1,87 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python3
+import json
+import os
+import subprocess
+import re
+import sys
+import yaml
 
-set -e
+import click
 
-source $SNAP/actions/common/utils.sh
-CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
-source $CURRENT_DIR/../common/utils.sh
+REGEX_DISK_SIZE = "(^[2-9][0-9]{1,}|^[1-9][0-9]{2,})(Gi$)"
+SNAP_DATA = os.environ.get("SNAP_DATA")
+KUBECTL = os.path.expandvars("$SNAP/microk8s-kubectl.wrapper")
+MICROK8S_ENABLE = os.path.expandvars("$SNAP/microk8s-enable.wrapper")
 
-regex_args='([a-zA-Z]+=[a-zA-Z0-9]+(,|))'
 
-read -ra ARGUMENTS <<<"$1"
-if [ -z "${ARGUMENTS[@]}" ]; then
-  echo "The registry will be created with the default size of 20Gi."
-  echo "You can use the \"size\" argument while enabling the registry, eg microk8s.enable registry:size=30Gi"
-  declare -A map
-  map[\$DISKSIZE]="20Gi"
-  "$SNAP/microk8s-enable.wrapper" hostpath-storage
-  echo "Applying registry manifest"
-  use_addon_manifest registry/registry apply "$(declare -p map)"
-  echo "The registry is enabled"
-elif [[ ${ARGUMENTS[@]} =~ $regex_args ]]; then
-	IFS=',' read -ra args <<< ${ARGUMENTS[@]}
-  REGEX_DISK_SIZE='(^[2-9][0-9]{1,}|^[1-9][0-9]{2,})(Gi$)'
-	for arg in "${args[@]}"; do
-		read -r key value <<<$(echo $arg | gawk -F "=" '{print $1 ,$2}')
-    if [ "$key" != "size" ]; then
-      echo "The only authorized argument is \"size\", eg  microk8s.enable registry:size=30Gi"
-      echo "The \"size\" value should match the regex: ([a-zA-Z]+=[a-zA-Z0-9]+(,|))"
-      exit 1
-    elif [ "$key" = "size"  ] && [[ ! $value =~ $REGEX_DISK_SIZE ]]; then
-      echo "The size of the registry should be higher or equal to 20Gi and match the regex: (^[2-9][0-9]{1,}|^[1-9][0-9]{2,})(Gi$)"
-      exit 1
-		elif [ "$key" = "size" ] && [[ $value =~ $REGEX_DISK_SIZE ]]; then
-      "$SNAP/microk8s-enable.wrapper" hostpath-storage
-      declare -A map
-      map[\$DISKSIZE]=$value
-    fi
-  done
-  echo "Enabling the private registry"
-  echo "Applying registry manifest"
-  use_addon_manifest registry/registry apply "$(declare -p map)"
-  echo "The registry is enabled"
-  echo "The size of the persistent volume is $value"
-else
-  echo "The only authorized argument is \"size\", eg  microk8s.enable registry:size=30Gi"
-  echo "The \"size\" value should match the regex: ([a-zA-Z]+=[a-zA-Z0-9]+(,|))"
-  exit 1
-fi
+@click.command()
+@click.argument("size-opt", default="")
+@click.option("--size", default="20Gi", help="Size of the registry")
+@click.option("--storageclass", default=None, help="Storage class to be used")
+def enable_registry(size, storageclass, size_opt):
+    current_path = os.path.dirname(os.path.realpath(__file__))
+    manifest = f"{current_path}/registry.yaml"
+
+    if storageclass is None:
+        subprocess.run([MICROK8S_ENABLE, "hostpath-storage"])
+
+    command = [
+        KUBECTL,
+        "get",
+        "sc",
+        "--no-headers",
+        "-o",
+        "json",
+    ]
+
+    sclasses = subprocess.check_output(command).decode("utf8")
+    sclasses = json.loads(sclasses)
+    sclasses = [item["metadata"]["name"] for item in sclasses["items"]]
+
+    if storageclass is not None and storageclass not in sclasses:
+        print(f"ERROR: Storage class {storageclass} doesn't exist.")
+        sys.exit(1)
+
+    if size_opt:
+        size_opt = size_opt.split("=")
+        if len(size_opt) == 2 and size_opt[0] == "size":
+            size = size_opt[-1]
+            print(
+                "WARNING: This style of specifying size is deprecated. Use newer --size argument instead."
+            )
+        else:
+            print(
+                "ERROR: Failed to parse arguments. Use --size and --storageclass to specify custom size and storage class."
+            )
+            sys.exit(1)
+        size = size_opt[-1]
+
+    if not re.match(REGEX_DISK_SIZE, size):
+        print(
+            f"ERROR: The size of the registry should be higher or equal to 20Gi and match the regex: {REGEX_DISK_SIZE}"
+        )
+        sys.exit(1)
+
+    with open(manifest, "r", encoding="utf8") as f:
+        docs = list(yaml.safe_load_all(f))
+        docs[1]["spec"]["resources"]["requests"]["storage"] = size
+        print(f"The registry will be created with the size of {size}.")
+        if storageclass is not None:
+            docs[1]["spec"]["storageClassName"] = storageclass
+            print(f"Storage class {storageclass} will be used.")
+        else:
+            print("Default storage class will be used.")
+
+    manifest_to_apply = yaml.safe_dump_all(docs)
+
+    apply_cmd = [
+        KUBECTL,
+        "apply",
+        "-f",
+        "-",
+    ]
+    subprocess.run(apply_cmd, input=manifest_to_apply.encode())
+
+
+if __name__ == "__main__":
+    enable_registry()

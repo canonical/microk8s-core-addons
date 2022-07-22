@@ -5,6 +5,8 @@ set -e
 source $SNAP/actions/common/utils.sh
 
 KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
+echo "DEPRECATION WARNING: 'prometheus' is deprecated and will soon be removed. Please use 'observability' instead."
+echo ""
 
 disable_old_prometheus() {
   echo "Disabling old Prometheus"
@@ -28,3 +30,4 @@ disable_kube_prometheus() {
 disable_kube_prometheus
 
 echo "The Prometheus operator is disabled"
+"$SNAP/microk8s-disable.wrapper" observability $1

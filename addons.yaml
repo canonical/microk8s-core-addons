@@ -80,18 +80,18 @@ microk8s-addons:
         - amd64
 
     - name: "helm"
-      description: "Helm 2 - the package manager for Kubernetes"
-      version: "2.16.0"
-      check_status: "${SNAP_DATA}/bin/helm"
+      description: "Helm - the package manager for Kubernetes"
+      version: "3.9.1"
+      check_status: "${SNAP}/bin/helm"
       supported_architectures:
         - amd64
         - arm64
         - s390x
 
     - name: "helm3"
-      description: "Helm 3 - Kubernetes package manager"
-      version: "3.8.0"
-      check_status: "${SNAP_DATA}/bin/helm3"
+      description: "Helm 3 - the package manager for Kubernetes"
+      version: "3.9.1"
+      check_status: "${SNAP}/bin/helm"
       supported_architectures:
         - amd64
         - arm64

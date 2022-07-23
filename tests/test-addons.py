@@ -50,6 +50,8 @@ class TestAddons(object):
         status = yaml.safe_load(sh.microk8s.status(format="yaml").stdout)
         expected = {a["name"]: "disabled" for a in status["addons"]}
         expected["ha-cluster"] = "enabled"
+        expected["helm"] = "enabled"
+        expected["helm3"] = "enabled"
 
         assert expected == {a["name"]: a["status"] for a in status["addons"]}
 

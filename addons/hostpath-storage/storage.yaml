@@ -50,7 +50,7 @@ metadata:
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
 provisioner: microk8s.io/hostpath
-reclaimPolicy: Retain
+reclaimPolicy: $RECLAIM_POLICY
 volumeBindingMode: WaitForFirstConsumer
 ---
 apiVersion: v1

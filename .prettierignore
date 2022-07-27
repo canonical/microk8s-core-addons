@@ -1,5 +1,6 @@
 **/addons/ingress/ingress.yaml
 **/addons/metallb/metallb.yaml
+**/addons/metallb/addresspool.yaml
 **/addons/cert-manager/cert-manager.yaml
 **/addons/kube-ovn/ovn-template.yaml
 **/addons/kube-ovn/crd.yaml

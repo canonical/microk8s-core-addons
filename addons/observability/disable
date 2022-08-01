@@ -4,7 +4,7 @@ set -e
 source $SNAP/actions/common/utils.sh
 CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 
-NAMESPACE_PTR="monitoring"
+NAMESPACE_PTR="observability"
 KUBECTL="$SNAP/microk8s-kubectl.wrapper"
 HELM="$SNAP/microk8s-helm.wrapper"
 echo "Disabling observability"

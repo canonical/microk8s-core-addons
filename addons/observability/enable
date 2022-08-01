@@ -8,7 +8,7 @@ CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 "$SNAP/microk8s-enable.wrapper" core/helm3
 "$SNAP/microk8s-enable.wrapper" core/hostpath-storage
 
-NAMESPACE_PTR="monitoring"
+NAMESPACE_PTR="observability"
 KUBECTL="$SNAP/microk8s-kubectl.wrapper"
 
 echo "Enabling observability"

@@ -271,13 +271,13 @@ def validate_observability():
 
     wait_for_pod_state(
         "prometheus-kube-prom-stack-kube-prome-prometheus-0",
-        "monitoring",
+        "observability",
         "running",
         timeout_insec=1200,
     )
     wait_for_pod_state(
         "alertmanager-kube-prom-stack-kube-prome-alertmanager-0",
-        "monitoring",
+        "observability",
         "running",
         timeout_insec=1200,
     )

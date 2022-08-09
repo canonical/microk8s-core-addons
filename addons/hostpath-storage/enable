@@ -7,7 +7,7 @@ CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 source $CURRENT_DIR/../common/utils.sh
 
 RECLAIM_POLICY="Delete"
-PARSED=$(getopt --options=r:h --longoptions=reclaim-policy:,help --name "$@" -- "$@")
+PARSED=$(getopt --options=r:h --longoptions=reclaim-policy:,help -- "$@")
 eval set -- "$PARSED"
 while true; do
     case "$1" in
@@ -18,7 +18,7 @@ while true; do
         -h|--help)
             echo "Options:"
             echo " -h, --help            Show this help"
-            echo " -r, --reclaim-policy  Set the reclaim policy. Available options are Delete (default) and Retain.
+            echo " -r, --reclaim-policy  Set the reclaim policy. Available options are Delete (default) and Retain."
             exit 0
             ;;
         --)
@@ -37,7 +37,7 @@ do
     allowed_reclaim_policies[$policy]=1
 done
 
-if [[ ! ${allowed_reclaim_policies[$RECLAIM_POLICY]} ]])
+if [[ ! ${allowed_reclaim_policies[$RECLAIM_POLICY]} ]]
 then
   echo ""
   echo "Please check submitted arguments."

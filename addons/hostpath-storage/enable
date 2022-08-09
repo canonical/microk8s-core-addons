@@ -6,12 +6,30 @@ source $SNAP/actions/common/utils.sh
 CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 source $CURRENT_DIR/../common/utils.sh
 
-read -ra ARGUMENTS <<<"$1"
-
-read -r key value <<<$(echo "${ARGUMENTS[@]}" | gawk -F "=" '{print $1 ,$2}')
-read -ra RECLAIM_POLICY <<< "$value"
-
-KEY_NAME="reclaim-policy"
+RECLAIM_POLICY="Delete"
+PARSED=$(getopt --options=r:h --longoptions=reclaim-policy:,help --name "$@" -- "$@")
+eval set -- "$PARSED"
+while true; do
+    case "$1" in
+        -r|--reclaim-policy)
+            RECLAIM_POLICY=$2
+            shift 2
+            ;;
+        -h|--help)
+            echo "Options:"
+            echo " -h, --help            Show this help"
+            echo " -r, --reclaim-policy  Set the reclaim policy. Available options are Delete (default) and Retain.
+            exit 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "invalid option -- $1"
+            exit 1
+    esac
+done
 
 declare -A allowed_reclaim_policies
 for policy in Delete Retain
@@ -19,12 +37,12 @@ do
     allowed_reclaim_policies[$policy]=1
 done
 
-if [ ! -z "$key" ] && ([ "$key" != $KEY_NAME ] || [[ ! ${allowed_reclaim_policies[$value]} ]])
+if [[ ! ${allowed_reclaim_policies[$RECLAIM_POLICY]} ]])
 then
   echo ""
   echo "Please check submitted arguments."
-  echo "You can use '$KEY_NAME' to set reclaim policy. Allowed values: "${!allowed_reclaim_policies[@]}". Defaults to 'Delete'."
-  echo "   microk8s enable hostpath-storage:$KEY_NAME=Retain"
+  echo "You can use '--reclaim-policy' to set the reclaim policy. Allowed values: "${!allowed_reclaim_policies[@]}". Defaults to 'Delete'."
+  echo "   microk8s enable hostpath-storage --reclaim-policy=Retain"
   exit 1
 fi
 
@@ -46,7 +64,3 @@ then
   echo "WARNING: The storage class enabled does not persist volumes across nodes."
   echo ""
 fi
-
-echo ""
-echo "You can use '$KEY_NAME' to set reclaim policy. Allowed values: "${!allowed_reclaim_policies[@]}". Defaults to 'Delete'."
-echo "   microk8s enable hostpath-storage:$KEY_NAME=Retain"

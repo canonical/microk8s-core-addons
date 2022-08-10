@@ -61,11 +61,13 @@ microk8s-addons:
 
     - name: "registry"
       description: "Private image registry exposed on localhost:32000"
-      version: "2.6"
-      check_status: "pod/registry"
+      version: "2.8.1"
+      check_status: "deployment.apps/registry"
       supported_architectures:
         - arm64
         - amd64
+        - s390x
+        - ppc64le
 
     - name: "metrics-server"
       description: "K8s Metrics Server for API access to service metrics"

@@ -1,0 +1,135 @@
+#!/bin/bash -e
+
+. "${SNAP}/actions/common/utils.sh"
+
+DIR="$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)"
+ARCH="$(arch)"
+
+CREATE_TENANT="yes"
+STORAGE_CLASS="microk8s-hostpath"
+CAPACITY="20Gi"
+SERVERS=1
+VOLUMES=1
+TENANT="microk8s"
+VERSION="4.5.1"
+TLS="no"
+PROMETHEUS="no"
+REPO="https://github.com/minio/operator"
+
+# Enable dependenciess
+MICROK8S_ENABLE="${SNAP}/microk8s-enable.wrapper"
+"${MICROK8S_ENABLE}" dns
+"${MICROK8S_ENABLE}" hostpath-storage
+
+function usage {
+  echo "Usage: microk8s enable minio [OPTIONS]"
+  echo ""
+  echo "Enable the MinIO addon."
+  echo ""
+  echo "   -h               Print this help message"
+  echo "   -k               Do not create default tenant"
+  echo "   -s STORAGECLASS  Storage class to use for the default tenant (default: ${STORAGE_CLASS})"
+  echo "   -c CAPACITY      Capacity of the default tenant (default: ${CAPACITY})"
+  echo "   -n SERVERS       Servers of the default tenant (default: ${SERVERS})"
+  echo "   -v VOLUMES       Volumes of the default tenant (default: ${VOLUMES})"
+  echo "   -t TENANTNAME    Name of the default tenant (default: ${TENANT})"
+  echo "   -T               Enable TLS for the default tenant (default: disabled)"
+  echo "   -p               Enable Prometheus for the default tenant (default: disabled)"
+  echo "   -r REPOSITORY    Minio Operator GitHub repository (default: ${REPO})"
+  echo "   -V VERSION       Minio Operator version (default: ${VERSION})"
+}
+
+while getopts ":hkTps:c:n:v:t:r:V:" arg; do
+  case "${arg}" in
+    k) CREATE_TENANT="no" ;;
+    s) STORAGE_CLASS="${OPTARG}" ;;
+    c) CAPACITY="${OPTARG}" ;;
+    n) SERVERS="${OPTARG}" ;;
+    v) VOLUMES="${OPTARG}" ;;
+    t) TENANT="${OPTARG}" ;;
+    T) TLS="yes" ;;
+    p) PROMETHEUS="yes" ;;
+    V) VERSION="${OPTARG}" ;;
+    r) REPO="${OPTARG}" ;;
+    h)
+      usage
+      exit 0
+      ;;
+    :)
+      echo "Missing argument for option -${OPTARG}"
+      usage
+      exit 1
+      ;;
+    ?)
+      echo "Invalid option -${OPTARG}"
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+echo "Download kubectl-minio"
+
+if [ ! -f "${SNAP_COMMON}/plugins/kubectl-minio" ]; then
+  fetch_as "${REPO}/releases/download/v${VERSION}/kubectl-minio_${VERSION}_linux_${ARCH}" "${SNAP_COMMON}/plugins/.kubectl-minio"
+  run_with_sudo chmod +x "${SNAP_COMMON}/plugins/.kubectl-minio"
+  cp "${DIR}/kubectl-minio" "${SNAP_COMMON}/plugins/kubectl-minio"
+fi
+
+# Ensure kubectl exists in PATH
+mkdir -p "${SNAP_COMMON}/plugins/.kubectl"
+ln -f -s "${SNAP}/microk8s-kubectl.wrapper" "${SNAP_COMMON}/plugins/.kubectl/kubectl"
+
+if ! "${SNAP_COMMON}/plugins/kubectl-minio" version > /dev/null; then
+  echo "Could not execute kubectl-minio"
+  exit 1
+fi
+
+echo "Initialize minio operator"
+"${SNAP_COMMON}/plugins/kubectl-minio" init
+
+if [ "x${CREATE_TENANT}" = "xyes" ]; then
+  echo "Create default tenant with:"
+  echo ""
+  echo "  Name: ${TENANT}"
+  echo "  Capacity: ${CAPACITY}"
+  echo "  Servers: ${SERVERS}"
+  echo "  Volumes: ${VOLUMES}"
+  echo "  Storage class: ${STORAGE_CLASS}"
+  echo "  TLS: ${TLS}"
+  echo "  Prometheus: ${PROMETHEUS}"
+  echo ""
+
+  declare -a ARGS=(
+    "${TENANT}"
+    --storage-class "${STORAGE_CLASS}"
+    --capacity "${CAPACITY}"
+    --servers "${SERVERS}"
+    --volumes "${VOLUMES}"
+    --namespace "minio-operator"
+    --enable-audit-logs="false"
+  )
+
+  if [ "x${TLS}" = "xno" ]; then
+    ARGS+=("--disable-tls")
+  fi
+
+  if [ "x${PROMETHEUS}" = "xno" ]; then
+    ARGS+=("--enable-prometheus=false")
+  fi
+
+  set -x
+  "${SNAP_COMMON}/plugins/kubectl-minio" tenant create ${ARGS[@]}
+  set +x
+fi
+
+
+echo "================================"
+echo "Enabled minio addon."
+echo ""
+echo "You can manage minio tenants using the kubectl-minio plugin."
+echo ""
+echo "For more details, use"
+echo ""
+echo "    microk8s kubectl-minio --help"
+echo ""

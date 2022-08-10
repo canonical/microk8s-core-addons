@@ -7,6 +7,7 @@ from pathlib import Path
 
 from validators import (
     validate_dns_dashboard,
+    validate_minio,
     validate_storage,
     validate_storage_custom_pvdir,
     validate_ingress,
@@ -287,3 +288,14 @@ class TestAddons(object):
         microk8s_disable("ingress")
         microk8s_disable("cert-manager")
         microk8s_disable("host-access")
+
+    def test_minio_addon(self):
+        """
+        Test MinIO.
+        """
+        print("Enabling MinIO")
+        microk8s_enable("minio")
+        print("Validating MinIO")
+        validate_minio()
+        print("Disabling MinIO")
+        microk8s_disable("minio")

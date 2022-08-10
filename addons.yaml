@@ -188,3 +188,13 @@ microk8s-addons:
       supported_architectures:
         - arm64
         - amd64
+
+    - name: minio
+      version: "4.5.1"
+      check_status: "deployment.apps/minio-operator"
+      description: "MinIO object storage"
+      supported_architectures:
+        - arm64
+        - amd64
+        - s390x
+        - ppc64le

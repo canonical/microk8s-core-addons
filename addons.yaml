@@ -9,6 +9,7 @@ microk8s-addons:
         - amd64
         - arm64
         - s390x
+        - ppc64le
 
     - name: "rbac"
       description: "Role-Based Access Control for authorisation"
@@ -18,6 +19,7 @@ microk8s-addons:
         - arm64
         - amd64
         - s390x
+        - ppc64le
 
     - name: "dashboard"
       description: "The Kubernetes dashboard"
@@ -27,6 +29,7 @@ microk8s-addons:
         - arm64
         - amd64
         - s390x
+        - ppc64le
 
     - name: "ingress"
       description: "Ingress controller for external access"
@@ -44,6 +47,7 @@ microk8s-addons:
         - arm64
         - amd64
         - s390x
+        - ppc64le
 
     - name: "storage"
       description: "Alias to hostpath-storage add-on, deprecated"
@@ -53,6 +57,7 @@ microk8s-addons:
         - arm64
         - amd64
         - s390x
+        - ppc64le
 
     - name: "registry"
       description: "Private image registry exposed on localhost:32000"
@@ -70,6 +75,7 @@ microk8s-addons:
         - arm64
         - amd64
         - s390x
+        - ppc64le
 
     - name: "gpu"
       description: "Automatic enablement of Nvidia CUDA"
@@ -87,6 +93,7 @@ microk8s-addons:
         - amd64
         - arm64
         - s390x
+        - ppc64le
 
     - name: "helm3"
       description: "Helm 3 - the package manager for Kubernetes"
@@ -96,6 +103,7 @@ microk8s-addons:
         - amd64
         - arm64
         - s390x
+        - ppc64le
 
     - name: "metallb"
       description: "Loadbalancer for your Kubernetes cluster"
@@ -105,6 +113,7 @@ microk8s-addons:
         - amd64
         - arm64
         - s390x
+        - ppc64le
 
     - name: "host-access"
       description: "Allow Pods connecting to Host services smoothly"
@@ -114,6 +123,7 @@ microk8s-addons:
         - amd64
         - arm64
         - s390x
+        - ppc64le
 
     - name: "ha-cluster"
       description: "Configure high availability on the current node"
@@ -123,6 +133,7 @@ microk8s-addons:
         - arm64
         - amd64
         - s390x
+        - ppc64le
 
     - name: "mayastor"
       description: "OpenEBS MayaStor"
@@ -156,6 +167,7 @@ microk8s-addons:
         - arm64
         - amd64
         - s390x
+        - ppc64le
 
     - name: "cert-manager"
       description: "Cloud native certificate management"
@@ -164,6 +176,7 @@ microk8s-addons:
       supported_architectures:
         - arm64
         - amd64
+        - ppc64le
 
     - name: "kube-ovn"
       description: "An advanced network fabric for Kubernetes"

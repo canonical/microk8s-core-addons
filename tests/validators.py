@@ -88,6 +88,46 @@ def validate_storage():
     kubectl("delete -f {}".format(manifest))
 
 
+def validate_storage_custom_pvdir():
+    """
+    Validate storage with custom directory for the PersistentVolumes.
+
+    Based on validate_storage.
+    """
+    output = kubectl("describe deployment hostpath-provisioner -n kube-system")
+    if "hostpath-provisioner-{}:1.0.0".format(get_arch()) in output:
+        # we are running with a hostpath-provisioner that is old and we need to patch it
+        kubectl(
+            "set image  deployment hostpath-provisioner -n kube-system hostpath-provisioner=cdkbot/hostpath-provisioner:1.1.0"
+        )
+
+    wait_for_pod_state(
+        "", "kube-system", "running", label="k8s-app=hostpath-provisioner"
+    )
+    manifest = TEMPLATES / "pvc-pvdir.yaml"
+    kubectl("apply -f {}".format(manifest))
+    wait_for_pod_state("hostpath-test-pod-pvdir", "default", "running")
+
+    attempt = 50
+    while attempt >= 0:
+        output = kubectl("get pvc")
+        if "Bound" in output:
+            break
+        time.sleep(2)
+        attempt -= 1
+
+    # Make sure the test pod writes data sto the storage
+    found = False
+    for root, dirs, files in os.walk("/var/snap/microk8s/common/custom-storage"):
+        for file in files:
+            if file == "dates":
+                found = True
+    assert found
+    assert "myclaim" in output
+    assert "Bound" in output
+    kubectl("delete -f {}".format(manifest))
+
+
 def common_ingress():
     """
     Perform the Ingress validations that are common for all

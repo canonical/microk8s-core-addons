@@ -1,0 +1,42 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: custom-pvdir-test-sc
+provisioner: microk8s.io/hostpath
+reclaimPolicy: Delete
+parameters:
+  pvDir: /var/snap/microk8s/common/custom-storage
+volumeBindingMode: Immediate
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: myclaim-pvdir
+spec:
+  storageClassName: custom-pvdir-test-sc
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 1Gi
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: hostpath-test-pod-pvdir
+spec:
+  containers:
+    - name: hostpath-test-container
+      image: busybox
+      command:
+        ["/bin/sh", "-c", "while true; do date >> /mnt/dates; sleep 2; done"]
+      volumeMounts:
+        - name: hostpath-volume
+          mountPath: "/mnt"
+  restartPolicy: "Never"
+  volumes:
+    - name: hostpath-volume
+      persistentVolumeClaim:
+        claimName: myclaim-pvdir

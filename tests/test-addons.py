@@ -8,6 +8,7 @@ from pathlib import Path
 from validators import (
     validate_dns_dashboard,
     validate_storage,
+    validate_storage_custom_pvdir,
     validate_ingress,
     validate_gpu,
     validate_registry,
@@ -123,6 +124,7 @@ class TestAddons(object):
         microk8s_enable("hostpath-storage")
         print("Validating hostpath-storage")
         validate_storage()
+        validate_storage_custom_pvdir()
         microk8s_enable("registry")
         print("Validating registry")
         validate_registry()

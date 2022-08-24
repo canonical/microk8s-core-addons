@@ -224,10 +224,6 @@ class TestAddons(object):
         platform.machine() != "x86_64",
         reason="Metallb tests are only relevant in x86 architectures",
     )
-    @pytest.mark.skipif(
-        os.environ.get("UNDER_TIME_PRESSURE") == "True",
-        reason="Skipping metallb test as we are under time pressure",
-    )
     def test_metallb_addon(self):
         addon = "metallb"
         ip_ranges = (

@@ -10,6 +10,8 @@ echo "Disabling DNS"
 echo "Reconfiguring kubelet"
 KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
 
+rm -rf $CURRENT_DIR/coredns-patched.yaml
+
 # Delete the dns yaml
 # We need to wait for the dns pods to terminate before we restart kubelet
 echo "Removing DNS manifest"

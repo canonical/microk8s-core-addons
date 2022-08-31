@@ -8,6 +8,8 @@ source $CURRENT_DIR/../common/utils.sh
 
 echo "Disabling Metrics-Server"
 
+rm -rf $CURRENT_DIR/metrics-server-patched.yaml
+
 KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
 # Clean up old metrics-server
 $KUBECTL delete configmap -n kube-system metrics-server-config || true

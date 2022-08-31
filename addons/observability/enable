@@ -31,6 +31,9 @@ case $i in
 esac
 done
 
+# get addresses of all nodes to configure kubeControllerManager and kubeScheduler endpoints
+NODE_ENDPOINTS=$($KUBECTL get nodes -o jsonpath={.items[*].status.addresses[?\(@.type==\"InternalIP\"\)].address} | sed 's/\s\+/\\,/g')
+
 SCRIPT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 HELM="${SNAP}/microk8s-helm3.wrapper"
 $HELM repo add prometheus-community https://prometheus-community.github.io/helm-charts
@@ -38,11 +41,20 @@ $HELM repo add grafana https://grafana.github.io/helm-charts
 $HELM repo update
 if [ -z "$VALUES" ]
 then
-  $HELM upgrade --install kube-prom-stack -f ${SCRIPT_DIR}/grafana.yaml prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR
+  $HELM upgrade --install kube-prom-stack -f ${SCRIPT_DIR}/grafana.yaml \
+    --set kubeControllerManager.endpoints={$NODE_ENDPOINTS} \
+    --set kubeScheduler.endpoints={$NODE_ENDPOINTS} \
+    prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR
 else
-  $HELM upgrade --install kube-prom-stack -f ${SCRIPT_DIR}/grafana.yaml -f "$2" prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR
+  $HELM upgrade --install kube-prom-stack -f ${SCRIPT_DIR}/grafana.yaml -f "$2" \
+    --set kubeControllerManager.endpoints={$NODE_ENDPOINTS} \
+    --set kubeScheduler.endpoints={$NODE_ENDPOINTS} \
+    prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR
+  # get adminPassword for grafana if default passord is overwritten
+  GRAFANA_PASSWORD=$(python3 -c "import yaml; print(yaml.safe_load(open(\"$2\"))[\"grafana\"][\"adminPassword\"])" 2>/dev/null)
 fi
 
 $HELM upgrade --install loki grafana/loki-stack -n $NAMESPACE_PTR --set="grafana.sidecar.datasources.enabled=false"
 $HELM upgrade --install tempo grafana/tempo -n $NAMESPACE_PTR
-echo "Observability has been enabled (user/pass: admin/prom-operator)"
+
+echo "Observability has been enabled (user/pass: admin/${GRAFANA_PASSWORD:-prom-operator})"

@@ -16,3 +16,5 @@ $KUBECTL delete service kube-prom-stack-kube-prome-kubelet -n kube-system
 $HELM delete loki -n $NAMESPACE_PTR > /dev/null 2>&1
 $HELM delete tempo -n $NAMESPACE_PTR > /dev/null 2>&1
 $KUBECTL delete namespace $NAMESPACE_PTR
+
+echo "Observability has been disabled"

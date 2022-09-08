@@ -11,14 +11,12 @@ KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
 # We do not need to see dns pods running at this point just give some slack
 echo "Enabling DNS"
 
-rm -rf $CURRENT_DIR/coredns-patched.yaml
-if [ -e $SNAP/COREDNS_IMAGE ]
+# Set the default coredns image
+COREDNS_IMAGE="coredns/coredns:1.9.3"
+if [ -e "$SNAP/images/images-list" ]
 then
-  COREDNS_IMAGE=$(cat $SNAP/COREDNS_IMAGE)
-else
-  COREDNS_IMAGE=$(cat $CURRENT_DIR/image)
+  source "$SNAP/images/images-list"
 fi
-sed 's@${COREDNS_IMAGE}@'"${COREDNS_IMAGE}"'@g' $CURRENT_DIR/coredns.yaml > $CURRENT_DIR/coredns-patched.yaml
 
 read -ra ARGUMENTS <<< "$1"
 if [[ ! -z "${ARGUMENTS[@]}" ]]
@@ -58,7 +56,8 @@ fi
 declare -A map
 map[\$ALLOWESCALATION]="$ALLOWESCALATION"
 map[\$NAMESERVERS]="$nameserver_str"
-use_addon_manifest dns/coredns-patched apply "$(declare -p map)"
+map[\$COREDNS_IMAGE]="$COREDNS_IMAGE"
+use_addon_manifest dns/coredns apply "$(declare -p map)"
 sleep 5
 
 echo "Restarting kubelet"

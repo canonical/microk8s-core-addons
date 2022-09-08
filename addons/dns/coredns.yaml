@@ -83,7 +83,7 @@ spec:
                 path: Corefile
       containers:
         - name: coredns
-          image: ${COREDNS_IMAGE}
+          image: $COREDNS_IMAGE
           imagePullPolicy: IfNotPresent
           resources:
             limits:

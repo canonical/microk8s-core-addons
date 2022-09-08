@@ -8,17 +8,18 @@ source $CURRENT_DIR/../common/utils.sh
 
 echo "Enabling Metrics-Server"
 
-rm -rf $CURRENT_DIR/metrics-server-patched.yaml
-if [ -e $SNAP/METRICS_SERVER_IMAGE ]
+# Set the default image
+METRICS_SERVER_IMAGE="k8s.gcr.io/metrics-server/metrics-server:v0.5.2"
+if [ -e "$SNAP/images/images-list" ]
 then
-  METRICS_SERVER_IMAGE=$(cat $SNAP/METRICS_SERVER_IMAGE)
-else
-  METRICS_SERVER_IMAGE=$(cat $CURRENT_DIR/image)
+  source "$SNAP/images/images-list"
 fi
-sed 's@${METRICS_SERVER_IMAGE}@'"${METRICS_SERVER_IMAGE}"'@g' $CURRENT_DIR/metrics-server.yaml > $CURRENT_DIR/metrics-server-patched.yaml
 
 KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
-use_addon_manifest metrics-server/metrics-server-patched apply
+
+declare -A map
+map[\$METRICS_SERVER_IMAGE]="$METRICS_SERVER_IMAGE"
+use_addon_manifest metrics-server/metrics-server apply "$(declare -p map)"
 
 refresh_opt_in_config "authentication-token-webhook" "true" kubelet
 restart_service kubelet

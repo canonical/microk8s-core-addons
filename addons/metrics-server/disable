@@ -8,13 +8,20 @@ source $CURRENT_DIR/../common/utils.sh
 
 echo "Disabling Metrics-Server"
 
-rm -rf $CURRENT_DIR/metrics-server-patched.yaml
+# Set the default image
+METRICS_SERVER_IMAGE="k8s.gcr.io/metrics-server/metrics-server:v0.5.2"
+if [ -e "$SNAP/images/images-list" ]
+then
+  source "$SNAP/images/images-list"
+fi
 
 KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
 # Clean up old metrics-server
 $KUBECTL delete configmap -n kube-system metrics-server-config || true
 $KUBECTL delete deployment -n kube-system metrics-server-v0.2.1 || true
 
-use_addon_manifest metrics-server/metrics-server delete
+declare -A map
+map[\$METRICS_SERVER_IMAGE]="$METRICS_SERVER_IMAGE"
+use_addon_manifest metrics-server/metrics-server delete "$(declare -p map)"
 
 echo "Metrics-Server is disabled"

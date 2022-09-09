@@ -13,9 +13,9 @@ echo "Enabling DNS"
 
 # Set the default coredns image
 COREDNS_IMAGE="coredns/coredns:1.9.3"
-if [ -e "$SNAP/images/images-list" ]
+if [ -e "$SNAP/etc/configuration.sh" ]
 then
-  source "$SNAP/images/images-list"
+  source "$SNAP/etc/configuration.sh"
 fi
 
 read -ra ARGUMENTS <<< "$1"

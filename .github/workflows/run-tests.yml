@@ -2,9 +2,9 @@ name: Run tests
 
 on:
   pull_request:
-    branches: [1.23-eksd]
+    branches: [1.22-eksd]
   push:
-    branches: [1.23-eksd]
+    branches: [1.22-eksd]
 
 jobs:
   run-tests:
@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        channel: [1.23-eksd/edge]
+        channel: [1.22-eksd/edge]
 
     steps:
       - name: Check out code

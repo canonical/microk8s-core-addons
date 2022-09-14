@@ -32,7 +32,7 @@ esac
 done
 
 # get addresses of all nodes to configure kubeControllerManager and kubeScheduler endpoints
-NODE_ENDPOINTS=$($KUBECTL get nodes -o jsonpath={.items[*].status.addresses[?\(@.type==\"InternalIP\"\)].address} | sed 's/\s\+/\\,/g')
+NODE_ENDPOINTS=$($KUBECTL get nodes -o jsonpath={.items[*].status.addresses[?\(@.type==\"InternalIP\"\)].address} | sed 's/\s\+/,/g')
 
 SCRIPT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 HELM="${SNAP}/microk8s-helm3.wrapper"

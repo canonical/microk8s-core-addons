@@ -1,0 +1,10 @@
+#!/bin/bash -ex
+
+echo "Cleaning up MinIO tenants and operator"
+"${SNAP}/usr/bin/yes" | "${SNAP_COMMON}/plugins/kubectl-minio" delete
+
+echo "Remove kubectl-minio"
+rm "${SNAP_COMMON}/plugins/kubectl-minio"
+rm "${SNAP_COMMON}/plugins/.kubectl-minio"
+
+echo "Disabled minio addon."

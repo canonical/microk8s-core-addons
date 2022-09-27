@@ -396,3 +396,32 @@ def validate_cert_manager():
     kubectl("apply -f {}".format(manifest))
     kubectl("wait cert/mock-ingress-tls --for=condition=ready=true")
     kubectl("delete -f {}".format(manifest))
+
+
+def validate_minio():
+    """
+    Validate minio. Wait for minio service to come up, then ensure S3 endpoint works.
+    """
+
+    wait_for_pod_state(
+        "", "minio-operator", "running", label="v1.min.io/tenant=microk8s"
+    )
+
+    minio_service = kubectl_get("svc minio -n minio-operator")
+    service_ip = minio_service["spec"]["clusterIP"]
+
+    service_ok = False
+    attempt = 50
+    while attempt >= 0:
+        try:
+            resp = requests.get("http://{}/".format(service_ip))
+            if resp.status_code == 403 and "AccessDenied" in resp.content.decode(
+                "utf-8"
+            ):
+                service_ok = True
+                break
+        except requests.RequestException:
+            time.sleep(5)
+            attempt -= 1
+
+    assert service_ok

@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# Ensure kubectl exists in PATH
+export PATH="${SNAP_COMMON}/plugins/.kubectl:${PATH}"
+
+"${SNAP_COMMON}/plugins/.kubectl-minio" --kubeconfig="${SNAP_DATA}/credentials/client.config" $@

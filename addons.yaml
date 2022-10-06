@@ -41,7 +41,7 @@ microk8s-addons:
 
     - name: "hostpath-storage"
       description: "Storage class; allocates storage from host directory"
-      version: "1.4.0"
+      version: "1.4.1"
       check_status: "deployment.apps/hostpath-provisioner"
       supported_architectures:
         - arm64

@@ -6,46 +6,53 @@ source $SNAP/actions/common/utils.sh
 CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 source $CURRENT_DIR/../common/utils.sh
 
-KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
+KUBECTL="$SNAP/microk8s-kubectl.wrapper"
+
 # Apply the dns yaml
 # We do not need to see dns pods running at this point just give some slack
 echo "Enabling DNS"
 
 read -ra ARGUMENTS <<< "$1"
-if [[ ! -z "${ARGUMENTS[@]}" ]]
-then
-  nameservers="${ARGUMENTS[@]}"
-else
-  nameservers="8.8.8.8,8.8.4.4"
-fi
-
-# if none passed use resolv.conf
-if [[ $nameservers == "/etc/resolv.conf" ]]
-then
-   nameserver_str="/etc/resolv.conf"
-else
-  REGEX_IP_ADDR='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
-  # get ip addresses separated by , as a list
-  nameservers_list=(${nameservers//,/ })
-  nameserver_str=""
-  for nameserver in "${nameservers_list[@]}"
-  do
-    if [[ $nameserver =~ $REGEX_IP_ADDR ]]
-    then
-      nameserver_str="${nameserver_str}${nameserver} "
+if [[ -z "${ARGUMENTS[@]}" ]] || [[ "${ARGS[@]}" == "/etc/resolv.conf" ]]; then
+  resolv_conf="$(cat $SNAP_DATA/args/kubelet | grep -- "--resolv-conf" | tr "=" " " | gawk '{print $2}')"
+  if [ ! -z "${resolv_conf}" ]; then
+    # kubelet has a resolv.conf file configured, we will use that one
+    echo "Using host configuration from ${resolv_conf}"
+    nameserver_str="/etc/resolv.conf"
+  else
+    host_resolv_conf="$($SNAP/usr/bin/python3 $SNAP/scripts/find-resolv-conf.py 2> /dev/null || true)"
+    if [ ! -z "${host_resolv_conf}" ]; then
+      # found a host resolv.conf file with non-loopback nameservers, use that one
+      echo "Using host configuration from ${host_resolv_conf}"
+      refresh_opt_in_config "resolv-conf" "${host_resolv_conf}" "kubelet"
+      nameserver_str="/etc/resolv.conf"
     else
-      echo "Your input value ($nameserver) is not a valid IP address"
+      # no resolv.conf file found, fallback to Google DNS servers
+      echo "No valid resolv.conf file could be found"
+      echo "Falling back to 8.8.8.8 8.8.4.4 as upstream nameservers"
+
+      nameserver_str="8.8.8.8 8.8.4.4"
+    fi
+  fi
+else
+  # validate IP addresses
+  nameserver_str=""
+  for ns in ${ARGUMENTS[@]//,/ }; do
+    if ! "${SNAP}/bin/ip" route get "$ns" > /dev/null 2> /dev/null; then
+      echo "Your input value ($ns) is not a valid and reachable IP address"
       exit 1
     fi
+    nameserver_str="${nameserver_str} ${ns}"
   done
+  echo "Will use ${nameserver_str} as upstream nameservers"
 fi
 
 echo "Applying manifest"
 ALLOWESCALATION="false"
-if grep  -e ubuntu /proc/version | grep 16.04 &> /dev/null
-then
+if grep -e ubuntu /proc/version | grep 16.04 &> /dev/null; then
   ALLOWESCALATION="true"
 fi
+
 declare -A map
 map[\$ALLOWESCALATION]="$ALLOWESCALATION"
 map[\$NAMESERVERS]="$nameserver_str"
@@ -53,6 +60,7 @@ use_addon_manifest dns/coredns apply "$(declare -p map)"
 sleep 5
 
 echo "Restarting kubelet"
+
 #TODO(kjackal): do not hardcode the info below. Get it from the yaml
 refresh_opt_in_config "cluster-domain" "cluster.local" kubelet
 refresh_opt_in_config "cluster-dns" "10.152.183.10" kubelet

@@ -1,4 +1,5 @@
 # Sourced from: https://raw.githubusercontent.com/kubeovn/kube-ovn/release-1.10/yamls/ovn.yaml
+# Commit Hash: 29f3d6edd6780dcb1a69f04304921186447c93eb
 # Changelog:
 # - change cni config directory to $SNAP_DATA/args/cni-network
 # - change cni bin directory to $SNAP_DATA/opt/cni/bin
@@ -7,44 +8,8 @@
 # - change ovn config directory $SNAP_DATA/etc/origin/ovn
 # - template variable __NODE_IPS__ for the ovn db address
 # - template variable __REPLICAS__ for the ovn db replicas
----
-apiVersion: policy/v1beta1
-kind: PodSecurityPolicy
-metadata:
-  name: kube-ovn
-  annotations:
-    seccomp.security.alpha.kubernetes.io/allowedProfileNames: '*'
-spec:
-  privileged: true
-  allowPrivilegeEscalation: true
-  allowedCapabilities:
-    - '*'
-  volumes:
-    - '*'
-  hostNetwork: true
-  hostPorts:
-    - min: 0
-      max: 65535
-  hostIPC: true
-  hostPID: true
-  runAsUser:
-    rule: 'RunAsAny'
-  seLinux:
-    rule: 'RunAsAny'
-  supplementalGroups:
-    rule: 'RunAsAny'
-  fsGroup:
-    rule: 'RunAsAny'
-
----
-
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: ovn-config
-  namespace: kube-system
-data:
-  defaultNetworkType: geneve
+# - (2022-10-12) remove PodSecurityPolicy
+# - (2022-10-12) remove ovn-config ConfigMap
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -59,11 +24,6 @@ metadata:
     rbac.authorization.k8s.io/system-only: "true"
   name: system:ovn
 rules:
-  - apiGroups: ['policy']
-    resources: ['podsecuritypolicies']
-    verbs:     ['use']
-    resourceNames:
-      - kube-ovn
   - apiGroups:
       - "kubeovn.io"
     resources:
@@ -146,6 +106,12 @@ rules:
       - create
       - patch
       - update
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - "*"
   - apiGroups:
       - "k8s.cni.cncf.io"
     resources:
@@ -462,7 +428,7 @@ spec:
               command:
                 - bash
                 - /kube-ovn/ovs-healthcheck.sh
-            initialDelaySeconds: 10
+            initialDelaySeconds: 60
             periodSeconds: 5
             failureThreshold: 5
             timeoutSeconds: 45

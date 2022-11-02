@@ -57,9 +57,9 @@ echo "Applying Metallb manifest"
 $KUBECTL apply -f $CURRENT_DIR/crd.yaml
 
 cat $CURRENT_DIR/metallb.yaml | $SNAP/bin/sed "s@{{allow_escalation}}@$ALLOWESCALATION@g" | $KUBECTL apply -f -
+cat $CURRENT_DIR/addresspool.yaml | $SNAP/bin/sed "s@{{addresses}}@$ip_range_str@g" | $KUBECTL apply -f -
 
 echo "Waiting for Metallb controller to be ready."
 $KUBECTL -n metallb-system  wait deployment controller --for condition=Available=True --timeout=90s
-cat $CURRENT_DIR/addresspool.yaml | $SNAP/bin/sed "s@{{addresses}}@$ip_range_str@g" | $KUBECTL apply -f -
 
 echo "MetalLB is enabled"

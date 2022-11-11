@@ -11,6 +11,7 @@ from utils import (
     get_arch,
     kubectl,
     wait_for_pod_state,
+    wait_for_populated_endpoint,
     kubectl_get,
     wait_for_installation,
     docker,
@@ -163,16 +164,13 @@ def validate_ingress():
     """
     Validate ingress by creating a ingress rule.
     """
-    daemonset = kubectl("get ds")
-    if "nginx-ingress-microk8s-controller" in daemonset:
-        wait_for_pod_state("", "default", "running", label="app=default-http-backend")
-        wait_for_pod_state(
-            "", "default", "running", label="name=nginx-ingress-microk8s"
-        )
-    else:
-        wait_for_pod_state(
-            "", "ingress", "running", label="name=nginx-ingress-microk8s"
-        )
+    wait_for_pod_state(
+        "",
+        "ingress",
+        "running",
+        label="app.kubernetes.io/name=ingress-nginx",
+    )
+    wait_for_populated_endpoint("ingress-nginx-controller-admission", "ingress")
 
     manifest = TEMPLATES / "ingress.yaml"
     update_yaml_with_arch(manifest)
@@ -391,6 +389,8 @@ def validate_cert_manager():
     wait_for_pod_state(
         "", "cert-manager", "running", label="app.kubernetes.io/name=cert-manager"
     )
+    wait_for_populated_endpoint("ingress-nginx-controller-admission", "ingress")
+    wait_for_populated_endpoint("cert-manager-webhook", "cert-manager")
 
     manifest = TEMPLATES / "cert-manager-aio-test.yaml"
     kubectl("apply -f {}".format(manifest))

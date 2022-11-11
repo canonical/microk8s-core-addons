@@ -1,0 +1,9 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: microk8s
+  name: nginx
+spec:
+  controller: k8s.io/ingress-nginx

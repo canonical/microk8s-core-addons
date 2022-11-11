@@ -1,43 +1,73 @@
 #!/usr/bin/env bash
-
 set -e
 
 source $SNAP/actions/common/utils.sh
 CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 source $CURRENT_DIR/../common/utils.sh
 
-read -ra ARGUMENTS <<<"$1"
-
-read -r key value <<<$(echo "${ARGUMENTS[@]}" | gawk -F "=" '{print $1 ,$2}')
-read -ra CERT_SECRET <<< "$value"
-
-KEY_NAME="default-ssl-certificate"
-
-if [ ! -z "$key" ] && [ "$key" != $KEY_NAME ]
-then
-  echo "Unknown argument '$key'."
-  echo "You can use '$KEY_NAME' to load the default TLS certificate from a secret, eg"
-  echo "   microk8s enable ingress:$KEY_NAME=namespace/secret_name"
-  exit 1
-fi
+NAMESPACE="ingress"
 
 echo "Enabling Ingress"
 
-ARCH=$(arch)
-TAG="v1.2.0"
-EXTRA_ARGS="- --publish-status-address=127.0.0.1"
-DEFAULT_CERT="- ' '"
+CERT_SECRET=
+DISABLE_VALIDATING_ADMISSION=
+INGRESS_NGINX_VALUES=
+INGRESS_NGINX_VERSION=
+while [ $# -ge 1 ]; do
+  case $1 in
+    --default-ssl-certificate=*)
+      CERT_SECRET="${1#*=}"
+      echo "Setting ${CERT_SECRET} as the default ingress certificate"
+      shift
+      ;;
+    --disable-validating-admission-controller)
+      DISABLE_VALIDATING_ADMISSION=1
+      shift
+      ;;
+    --values=*)
+      INGRESS_NGINX_VALUES="${1#*=}"
+      shift
+      ;;
+    --version=*)
+      INGRESS_NGINX_VERSION="${1#*=}"
+      shift
+      ;;
+    *)
+      echo "Unknown option ${1}" >&2
+      exit 1
+      ;;
+  esac
+done
 
-if [ ! -z "$CERT_SECRET" ]
-then
-  DEFAULT_CERT="- --default-ssl-certificate=${CERT_SECRET}"
-  echo "Setting ${CERT_SECRET} as default ingress certificate"
+HELM_OPTS=
+if [ -n "${INGRESS_NGINX_VALUES}" ]; then
+  HELM_OPTS+="--values ${INGRESS_NGINX_VALUES} "
+fi
+if [ -n "${INGRESS_NGINX_VERSION}" ]; then
+  HELM_OPTS+="--version ${INGRESS_NGINX_VERSION} "
+fi
+if [ -n "${CERT_SECRET}" ]; then
+  HELM_OPTS+="--set controller.extraArgs.default-ssl-certificate=${CERT_SECRET} "
+fi
+if [ -n "${DISABLE_VALIDATING_ADMISSION}" ]; then
+  HELM_OPTS+="--set controller.admissionWebhooks.enabled=false "
 fi
 
-declare -A map
-map[\$TAG]="$TAG"
-map[\$DEFAULT_CERT]="$DEFAULT_CERT"
-map[\$EXTRA_ARGS]="$EXTRA_ARGS"
-use_addon_manifest ingress/ingress apply "$(declare -p map)"
+"${SNAP}/microk8s-helm3.wrapper" upgrade --install ingress-nginx ingress-nginx \
+  --repo https://kubernetes.github.io/ingress-nginx \
+  --namespace $NAMESPACE --create-namespace \
+  --set controller.extraArgs.publish-status-address=127.0.0.1 \
+  --set controller.hostPort.enabled=true \
+  --set controller.ingressClass=public \
+  --set controller.ingressClassResource.name=public \
+  --set controller.ingressClassResource.default=true \
+  --set controller.kind=DaemonSet \
+  --set controller.metrics.enabled=true \
+  --set controller.publishService.enabled=false \
+  --set controller.service.type=ClusterIP \
+  ${HELM_OPTS}
+
+# Creating an additional public IngressClass to stay backward-compatible
+use_addon_manifest ingress/ingress-class apply
 
 echo "Ingress is enabled"

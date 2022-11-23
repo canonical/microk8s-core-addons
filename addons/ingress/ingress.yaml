@@ -176,7 +176,7 @@ spec:
       terminationGracePeriodSeconds: 60
       serviceAccountName: nginx-ingress-microk8s-serviceaccount
       containers:
-      - image: k8s.gcr.io/ingress-nginx/controller:$TAG
+      - image: registry.k8s.io/ingress-nginx/controller:$TAG
         name: nginx-ingress-microk8s
         livenessProbe:
           httpGet:

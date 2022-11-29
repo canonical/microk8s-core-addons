@@ -108,6 +108,7 @@ def main(
         helm_args.extend(["--values", arg])
 
     subprocess.run([HELM, "repo", "add", "nvidia", "https://nvidia.github.io/gpu-operator"])
+    subprocess.run([HELM, "repo", "update", "nvidia"])
     subprocess.run([HELM, *helm_args], input=json.dumps(helm_config).encode())
 
     click.echo("NVIDIA is enabled")

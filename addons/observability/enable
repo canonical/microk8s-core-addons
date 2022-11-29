@@ -65,3 +65,5 @@ restart_service proxy
 $HELM upgrade --install loki grafana/loki-stack -n $NAMESPACE_PTR --set="grafana.sidecar.datasources.enabled=false"
 $HELM upgrade --install tempo grafana/tempo -n $NAMESPACE_PTR
 echo "Observability has been enabled (user/pass: admin/prom-operator)"
+echo "In case of a MicroK8s cluster please keep in mind that this addon has only be set up on the current nodes"
+echo "For any node joining the cluster at a later stage this addon will need to be set up again"

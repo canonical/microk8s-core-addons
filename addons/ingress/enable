@@ -28,9 +28,13 @@ while [ $# -ge 1 ]; do
       INGRESS_NGINX_VALUES="${1#*=}"
       shift
       ;;
-    --version=*)
-      INGRESS_NGINX_VERSION="${1#*=}"
-      shift
+    -h|--help)
+      echo "Options:"
+      echo " -h, --help                                 Show this help"
+      echo " --default-ssl-certificate=<secret>         Secret containing a SSL certificate to be used by the default HTTPS server (catch-all). Takes the form \"namespace/name\""
+      echo " --disable-validating-admission-controller  Disable the validating admission webhook"
+      echo " --values                                   Set custom Helm values"
+      exit 0
       ;;
     *)
       echo "Unknown option ${1}" >&2
@@ -43,9 +47,6 @@ HELM_OPTS=
 if [ -n "${INGRESS_NGINX_VALUES}" ]; then
   HELM_OPTS+="--values ${INGRESS_NGINX_VALUES} "
 fi
-if [ -n "${INGRESS_NGINX_VERSION}" ]; then
-  HELM_OPTS+="--version ${INGRESS_NGINX_VERSION} "
-fi
 if [ -n "${CERT_SECRET}" ]; then
   HELM_OPTS+="--set controller.extraArgs.default-ssl-certificate=${CERT_SECRET} "
 fi
@@ -53,8 +54,7 @@ if [ -n "${DISABLE_VALIDATING_ADMISSION}" ]; then
   HELM_OPTS+="--set controller.admissionWebhooks.enabled=false "
 fi
 
-"${SNAP}/microk8s-helm3.wrapper" upgrade --install ingress-nginx ingress-nginx \
-  --repo https://kubernetes.github.io/ingress-nginx \
+"${SNAP}/microk8s-helm3.wrapper" upgrade --install ingress-nginx ${CURRENT_DIR}/chart \
   --namespace $NAMESPACE --create-namespace \
   --set controller.extraArgs.publish-status-address=127.0.0.1 \
   --set controller.hostPort.enabled=true \

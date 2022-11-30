@@ -33,7 +33,7 @@ microk8s-addons:
 
     - name: "ingress"
       description: "Ingress controller for external access"
-      version: "N/A"
+      version: "1.5.1"
       check_status: "daemonset.apps/ingress-nginx-controller"
       supported_architectures:
         - arm64

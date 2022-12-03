@@ -7,6 +7,15 @@ echo "Enabling cert-manager"
 
 $KUBECTL apply -f $DIR/cert-manager.yaml
 
+echo "Waiting for cert-manager to be ready."
+while ! $KUBECTL apply -f $DIR/cert-tester.yaml > /dev/null 2>&1
+do
+    echo -n "."
+    sleep 5
+done
+echo "ready"
+$KUBECTL delete -f ${DIR}/cert-tester.yaml > /dev/null 2>&1 || true
+
 echo "Enabled cert-manager"
 
 echo "

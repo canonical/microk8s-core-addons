@@ -1,7 +1,11 @@
 #!/bin/bash
 
 DIR=`realpath $(dirname $0)`
+ENABLE="$SNAP/microk8s-enable.wrapper"
 KUBECTL="$SNAP/microk8s-kubectl.wrapper"
+
+echo "Enable DNS addon"
+$ENABLE dns
 
 echo "Enabling cert-manager"
 

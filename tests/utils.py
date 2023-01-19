@@ -271,9 +271,7 @@ def is_lxc_container():
 
     """
     try:
-        check_call(
-            "sudo grep -E lxc /proc/1/environ /proc/cpuinfo".split()
-        )
+        check_call("sudo grep -E lxc /proc/1/environ /proc/cpuinfo".split())
         print("Tests are running in an lxc container")
         return True
     except CalledProcessError:

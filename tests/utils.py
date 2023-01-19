@@ -183,8 +183,11 @@ def microk8s_enable(addon, timeout_insec=300):
     """
     # NVidia pre-check so as to not wait for a timeout.
     if addon == "gpu":
-        nv_out = run_until_success("lsmod", timeout_insec=10)
-        if "nvidia" not in nv_out:
+        if is_lxc_container():
+            print("We are in an lxc container. Will not test gpu addon")
+            raise CalledProcessError(1, "Nothing to do for gpu")
+        nv_out = run_until_success("lspci", timeout_insec=10)
+        if "NVIDIA" not in nv_out.upper():
             print("Not a cuda capable system. Will not test gpu addon")
             raise CalledProcessError(1, "Nothing to do for gpu")
 
@@ -255,6 +258,23 @@ def is_container():
             "sudo grep -E (lxc|hypervisor) /proc/1/environ /proc/cpuinfo".split()
         )
         print("Tests are running in an undetectable container")
+        return True
+    except CalledProcessError:
+        print("no indication of a container in /proc")
+
+    return False
+
+
+def is_container():
+    """
+    Returns: True if the deployment is in an lxc container.
+
+    """
+    try:
+        check_call(
+            "sudo grep -E lxc /proc/1/environ /proc/cpuinfo".split()
+        )
+        print("Tests are running in an lxc container")
         return True
     except CalledProcessError:
         print("no indication of a container in /proc")

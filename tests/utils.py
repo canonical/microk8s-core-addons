@@ -265,7 +265,7 @@ def is_container():
     return False
 
 
-def is_container():
+def is_lxc_container():
     """
     Returns: True if the deployment is in an lxc container.
 

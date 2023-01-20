@@ -1,4 +1,4 @@
-**/addons/ingress/ingress.yaml
+**/addons/ingress/chart/values.yaml
 **/addons/metallb/metallb.yaml
 **/addons/metallb/addresspool.yaml
 **/addons/cert-manager/cert-manager.yaml

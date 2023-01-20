@@ -93,7 +93,7 @@ def wait_for_pod_state(
     pod, namespace, desired_state, desired_reason=None, label=None, timeout_insec=600
 ):
     """
-    Wait for a a pod state. If you do not specify a pod name and you set instead a label
+    Wait for a pod state. If you do not specify a pod name and you set instead a label
     only the first pod will be checked.
     """
     deadline = datetime.datetime.now() + datetime.timedelta(seconds=timeout_insec)
@@ -123,6 +123,27 @@ def wait_for_pod_state(
                 if state == desired_state and reason == desired_reason:
                     break
             elif state == desired_state:
+                break
+        time.sleep(3)
+
+
+def wait_for_populated_endpoint(endpoint, namespace, timeout_insec=300):
+    """
+    Wait for the endpoint to be populated.
+    """
+    deadline = datetime.datetime.now() + datetime.timedelta(seconds=timeout_insec)
+    while True:
+        if datetime.datetime.now() > deadline:
+            raise TimeoutError(
+                "Endpoint {} still empty after {} seconds.".format(
+                    endpoint, timeout_insec
+                )
+            )
+        cmd = "ep {} -n {}".format(endpoint, namespace)
+        data = kubectl_get(cmd, timeout_insec)
+        if "subsets" in data:
+            ready_addresses = data["subsets"][0].get("addresses", [])
+            if len(ready_addresses) > 0:
                 break
         time.sleep(3)
 

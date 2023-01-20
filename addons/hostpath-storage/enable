@@ -48,6 +48,7 @@ fi
 
 echo "Enabling default storage class."
 echo "WARNING: Hostpath storage is not suitable for production environments."
+echo "         A hostpath volume can grow beyond the size limit set in the volume claim manifest."
 echo ""
 run_with_sudo mkdir -p ${SNAP_COMMON}/default-storage
 

@@ -179,6 +179,7 @@ class TestAddons(object):
         """
         try:
             print("Enabling gpu")
+            microk8s_enable("dns")
             microk8s_enable("gpu")
         except CalledProcessError:
             # Failed to enable gpu. Skip the test.

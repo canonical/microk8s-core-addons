@@ -11,7 +11,16 @@ echo "Enabling Metrics-Server"
 KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
 use_addon_manifest metrics-server/metrics-server apply
 
+needs_restart=false
+if ! grep -q -- --authentication-token-webhook=true "${SNAP_DATA}/args/kubelet"; then
+  needs_restart=true
+fi
+
 refresh_opt_in_config "authentication-token-webhook" "true" kubelet
-restart_service kubelet
+
+if [ -e ${SNAP_DATA}/var/lock/clustered.lock ] || [ "$needs_restart" = "true" ]; then
+  echo "Restarting kubelet"
+  restart_service kubelet
+fi
 
 echo "Metrics-Server is enabled"

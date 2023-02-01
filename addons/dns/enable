@@ -59,12 +59,20 @@ map[\$NAMESERVERS]="$nameserver_str"
 use_addon_manifest dns/coredns apply "$(declare -p map)"
 sleep 5
 
-echo "Restarting kubelet"
+needs_restart=false
+if ! grep -q -- --cluster-domain=cluster.local "${SNAP_DATA}/args/kubelet"; then
+  needs_restart=true
+elif ! grep -q -- --cluster-dns=10.152.183.10 "${SNAP_DATA}/args/kubelet"; then
+  needs_restart=true
+fi
 
 #TODO(kjackal): do not hardcode the info below. Get it from the yaml
 refresh_opt_in_config "cluster-domain" "cluster.local" kubelet
 refresh_opt_in_config "cluster-dns" "10.152.183.10" kubelet
 
-restart_service kubelet
+if [ -e ${SNAP_DATA}/var/lock/clustered.lock ] || [ "$needs_restart" = "true" ]; then
+  echo "Restarting kubelet"
+  restart_service kubelet
+fi
 
 echo "DNS is enabled"

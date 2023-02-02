@@ -4,15 +4,16 @@ set -e
 source $SNAP/actions/common/utils.sh
 CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 
-NAMESPACE_PTR="observability"
+NAMESPACE="observability"
 KUBECTL="$SNAP/microk8s-kubectl.wrapper"
 HELM="$SNAP/microk8s-helm.wrapper"
 echo "Disabling observability"
 
 # unload the the manifests
-$HELM delete kube-prom-stack -n $NAMESPACE_PTR > /dev/null 2>&1
-# This line below is to address an upstream bug
+$HELM uninstall kube-prom-stack -n $NAMESPACE > /dev/null 2>&1
+# The kubelet service is managed by Prometheus Operator, not by the chart.
+# See: https://github.com/prometheus-community/helm-charts/blob/ddd351fb61030becfe855f6cce664d53b0177e4b/charts/kube-prometheus-stack/templates/prometheus-operator/deployment.yaml#L51
 $KUBECTL delete service kube-prom-stack-kube-prome-kubelet -n kube-system
-$HELM delete loki -n $NAMESPACE_PTR > /dev/null 2>&1
-$HELM delete tempo -n $NAMESPACE_PTR > /dev/null 2>&1
-$KUBECTL delete namespace $NAMESPACE_PTR
+$HELM uninstall loki -n $NAMESPACE > /dev/null 2>&1
+$HELM uninstall tempo -n $NAMESPACE > /dev/null 2>&1
+$KUBECTL delete namespace $NAMESPACE

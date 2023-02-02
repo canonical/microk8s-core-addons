@@ -53,6 +53,10 @@ else
     --set kubeScheduler.endpoints={$NODE_ENDPOINTS} \
     prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR
 fi
+
+$HELM upgrade --install loki grafana/loki-stack -n $NAMESPACE_PTR --set="grafana.sidecar.datasources.enabled=false"
+$HELM upgrade --install tempo grafana/tempo -n $NAMESPACE_PTR
+
 refresh_opt_in_config "authentication-kubeconfig" "\${SNAP_DATA}/credentials/scheduler.config" kube-scheduler
 refresh_opt_in_config "authorization-kubeconfig" "\${SNAP_DATA}/credentials/scheduler.config" kube-scheduler
 restart_service scheduler
@@ -62,8 +66,6 @@ restart_service controller-manager
 refresh_opt_in_config "metrics-bind-address" "0.0.0.0:10249" kube-proxy
 restart_service proxy
 
-$HELM upgrade --install loki grafana/loki-stack -n $NAMESPACE_PTR --set="grafana.sidecar.datasources.enabled=false"
-$HELM upgrade --install tempo grafana/tempo -n $NAMESPACE_PTR
 echo ""
 echo "Note: the observability stack is setup to monitor only the current nodes of the MicroK8s cluster."
 echo "For any nodes joining the cluster at a later stage this addon will need to be set up again."

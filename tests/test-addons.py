@@ -56,6 +56,7 @@ class TestAddons(object):
         expected["ha-cluster"] = "enabled"
         expected["helm"] = "enabled"
         expected["helm3"] = "enabled"
+        expected["dns"] = "enabled"
 
         assert expected == {a["name"]: a["status"] for a in status["addons"]}
 
@@ -80,6 +81,7 @@ class TestAddons(object):
         """
         ip_ranges = "8.8.8.8,1.1.1.1"
         print("Enabling DNS")
+        microk8s_disable("dns")
         microk8s_enable("{}:{}".format("dns", ip_ranges), timeout_insec=500)
         wait_for_pod_state("", "kube-system", "running", label="k8s-app=kube-dns")
         print("Validating DNS config")
@@ -107,6 +109,7 @@ class TestAddons(object):
         """
         ip_ranges = "8.8.8.8,1.1.1.1"
         print("Enabling DNS")
+        microk8s_disable("dns")
         microk8s_enable("{}:{}".format("dns", ip_ranges), timeout_insec=500)
         wait_for_pod_state("", "kube-system", "running", label="k8s-app=kube-dns")
         print("Validating DNS config")

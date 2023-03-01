@@ -50,7 +50,14 @@ $KUBECTL apply -f $CURRENT_DIR/crd.yaml
 cat $CURRENT_DIR/metallb.yaml | $SNAP/bin/sed "s@{{allow_escalation}}@$ALLOWESCALATION@g" | $KUBECTL apply -f -
 
 echo "Waiting for Metallb controller to be ready."
-$KUBECTL -n metallb-system  wait deployment controller --for condition=Available=True --timeout=90s
-cat $CURRENT_DIR/addresspool.yaml | $SNAP/bin/sed "s@{{addresses}}@$ip_range_str@g" | $KUBECTL apply -f -
+while ! $KUBECTL -n metallb-system  wait deployment controller --for condition=Available=True --timeout=30s ; do
+  echo "MetalLB controller is still not ready"
+  sleep 1
+done
+
+while ! cat $CURRENT_DIR/addresspool.yaml | $SNAP/bin/sed "s@{{addresses}}@$ip_range_str@g" | $KUBECTL apply -f - ; do
+  echo "Failed to create default address pool, will retry"
+  sleep 1
+done
 
 echo "MetalLB is enabled"

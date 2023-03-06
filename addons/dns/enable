@@ -11,6 +11,14 @@ KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
 # We do not need to see dns pods running at this point just give some slack
 echo "Enabling DNS"
 
+# Set the default coredns image
+COREDNS_IMAGE="coredns/coredns:1.9.3"
+if [ -e "$SNAP/etc/configuration.sh" ]
+then
+  source "$SNAP/etc/configuration.sh"
+fi
+
+
 read -ra ARGUMENTS <<< "$1"
 if [[ ! -z "${ARGUMENTS[@]}" ]]
 then
@@ -49,6 +57,7 @@ fi
 declare -A map
 map[\$ALLOWESCALATION]="$ALLOWESCALATION"
 map[\$NAMESERVERS]="$nameserver_str"
+map[\$COREDNS_IMAGE]="$COREDNS_IMAGE"
 use_addon_manifest dns/coredns apply "$(declare -p map)"
 sleep 5
 

@@ -17,7 +17,7 @@ use_addon_manifest() {
     else
         declare -A items
     fi
-    local tmp_manifest="${SNAP_USER_DATA}/tmp/temp.yaml"
+    local tmp_manifest="${SNAP_USER_DATA}/tmp/temp-$$.yaml"
     items[\$ARCH]=$(arch)
 
     mkdir -p ${SNAP_USER_DATA}/tmp

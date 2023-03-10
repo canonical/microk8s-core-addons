@@ -44,14 +44,16 @@ then
   $HELM upgrade --install kube-prom-stack -f ${SCRIPT_DIR}/grafana.yaml \
     --set kubeControllerManager.endpoints={$NODE_ENDPOINTS} \
     --set kubeScheduler.endpoints={$NODE_ENDPOINTS} \
+    --version 45.5.0 \
     prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR
 else
   $HELM upgrade --install kube-prom-stack -f ${SCRIPT_DIR}/grafana.yaml -f "$2" \
     --set kubeControllerManager.endpoints={$NODE_ENDPOINTS} \
     --set kubeScheduler.endpoints={$NODE_ENDPOINTS} \
+    --version 45.5.0 \
     prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR
 fi
 
-$HELM upgrade --install loki grafana/loki-stack -n $NAMESPACE_PTR --set="grafana.sidecar.datasources.enabled=false"
-$HELM upgrade --install tempo grafana/tempo -n $NAMESPACE_PTR
+$HELM upgrade --install loki grafana/loki-stack -n $NAMESPACE_PTR --set="grafana.sidecar.datasources.enabled=false" --version 2.9.9
+$HELM upgrade --install tempo grafana/tempo -n $NAMESPACE_PTR --version 1.0.0
 echo "Observability has been enabled (user/pass: admin/prom-operator)"

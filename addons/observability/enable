@@ -45,17 +45,19 @@ then
     --set kubeControllerManager.endpoints={$NODE_ENDPOINTS} \
     --set kubeProxy.endpoints={$NODE_ENDPOINTS} \
     --set kubeScheduler.endpoints={$NODE_ENDPOINTS} \
+    --version 45.5.0 \
     prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR
 else
   $HELM upgrade --install kube-prom-stack -f ${SCRIPT_DIR}/grafana.yaml -f "$2" \
     --set kubeControllerManager.endpoints={$NODE_ENDPOINTS} \
     --set kubeProxy.endpoints={$NODE_ENDPOINTS} \
     --set kubeScheduler.endpoints={$NODE_ENDPOINTS} \
+    --version 45.5.0 \
     prometheus-community/kube-prometheus-stack -n $NAMESPACE_PTR
 fi
 
-$HELM upgrade --install loki grafana/loki-stack -n $NAMESPACE_PTR --set="grafana.sidecar.datasources.enabled=false"
-$HELM upgrade --install tempo grafana/tempo -n $NAMESPACE_PTR
+$HELM upgrade --install loki grafana/loki-stack -n $NAMESPACE_PTR --set="grafana.sidecar.datasources.enabled=false" --version 2.9.9
+$HELM upgrade --install tempo grafana/tempo -n $NAMESPACE_PTR --version 1.0.0
 
 refresh_opt_in_config "authentication-kubeconfig" "\${SNAP_DATA}/credentials/scheduler.config" kube-scheduler
 refresh_opt_in_config "authorization-kubeconfig" "\${SNAP_DATA}/credentials/scheduler.config" kube-scheduler

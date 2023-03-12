@@ -20,6 +20,7 @@ etcd-operator:
           busyboxImage: busybox:1.28.4
           restartPolicy: Always
           hostPathVolume: "/var/snap/microk8s/common/mayastor/etcd/$NAME"
+          ClusterDomain: ".cluster.local."
           affinity:
             podAntiAffinity:
               requiredDuringSchedulingIgnoredDuringExecution:

@@ -15,7 +15,7 @@ HELM = os.path.expandvars("$SNAP/microk8s-helm3.wrapper")
 MAYASTOR_DATA = pathlib.Path(os.path.expandvars("$SNAP_COMMON/mayastor/data"))
 
 
-def get_mayastorpools():
+def get_diskpools():
     """
     Return list of mayastorpools in the MicroK8s cluster.
     """
@@ -26,7 +26,7 @@ def get_mayastorpools():
     for attempt in range(5):
         try:
             pools = subprocess.check_output(
-                [KUBECTL, "get", "msp", "-n", "mayastor", "-o", "json"],
+                [KUBECTL, "get", "diskpool", "-n", "mayastor", "-o", "json"],
             )
 
             return json.loads(pools).get("items") or []
@@ -48,7 +48,7 @@ def get_mayastorpools():
 @click.option("--remove-storage/--preserve-storage", is_flag=True, default=True)
 @click.option("--force/--no-force", is_flag=True, default=True)
 def main(remove_storage: bool, force: bool):
-    pools = get_mayastorpools()
+    pools = get_diskpools()
 
     used = [p for p in pools if p.get("status", {}).get("used", 0) > 0]
     if not force and used:
@@ -60,9 +60,7 @@ def main(remove_storage: bool, force: bool):
     if remove_storage:
         for pool in pools:
             pool_name = pool["metadata"]["name"]
-            subprocess.run(
-                [DIR / "pools.py", "remove", pool_name, "--force", "--purge"]
-            )
+            subprocess.run([DIR / "pools.py", "remove", pool_name, "--force", "--purge"])
 
     subprocess.run([HELM, "uninstall", "mayastor", "-n", "mayastor"])
 

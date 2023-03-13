@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-from copy import deepcopy
-import glob
 import json
 import os
 import pathlib
@@ -12,7 +10,6 @@ import sys
 import click
 import yaml
 
-DIR = pathlib.Path(__file__).parent.absolute()
 KUBECTL = os.path.expandvars("$SNAP/microk8s-kubectl.wrapper")
 MAYASTOR_DATA = pathlib.Path(os.path.expandvars("$SNAP_COMMON/mayastor/data"))
 
@@ -25,7 +22,7 @@ def format_pool(node: str, device: str):
 
     pool = {
         "apiVersion": "openebs.io/v1alpha1",
-        "kind": "MayastorPool",
+        "kind": "DiskPool",
         "metadata": {
             "name": "pool-{}-{}".format(node, device_name),
             "namespace": "mayastor",
@@ -100,14 +97,12 @@ def add(device: list, size: list, node: str):
     for image_size in size:
         container_path = "/data/{}.img".format(os.urandom(3).hex())
         run_on_node(node, ["truncate", "-s", str(image_size), container_path])
-        subprocess.run(
-            [KUBECTL, "apply", "-f", "-"], input=format_pool(node, container_path)
-        )
+        subprocess.run([KUBECTL, "apply", "-f", "-"], input=format_pool(node, container_path))
 
 
 @pools.command("list")
 def list():
-    subprocess.run([KUBECTL, "get", "msp", "-n", "mayastor"])
+    subprocess.run([KUBECTL, "get", "diskpool", "-n", "mayastor"])
 
 
 @pools.command("remove")
@@ -116,7 +111,7 @@ def list():
 @click.option("--purge", is_flag=True, default=False)
 def remove(pool: str, force: bool, purge: bool):
     result = subprocess.run(
-        [KUBECTL, "get", "msp", "-n", "mayastor", pool, "-o", "json"],
+        [KUBECTL, "get", "diskpool", "-n", "mayastor", pool, "-o", "json"],
         stdout=subprocess.PIPE,
     )
 
@@ -125,22 +120,22 @@ def remove(pool: str, force: bool, purge: bool):
         sys.exit(1)
 
     try:
-        msp = json.loads(result.stdout)
+        diskpool = json.loads(result.stdout)
     except json.JSONDecodeError as e:
         click.echo("Failed to parse JSON: {}".format(e))
         sys.exit(1)
 
-    if not force and msp.get("status", {}).get("used") != 0:
+    if not force and diskpool.get("status", {}).get("used") != 0:
         click.echo("Pool {} is in use, use --force to remove".format(pool), err=True)
         sys.exit(1)
 
-    subprocess.check_call([KUBECTL, "delete", "msp", "-n", "mayastor", pool])
+    subprocess.check_call([KUBECTL, "delete", "diskpool", "-n", "mayastor", pool])
 
     if not purge:
         sys.exit(0)
 
-    node = msp.get("spec", {}).get("node", "")
-    for disk in msp.get("spec", []).get("disks", []):
+    node = diskpool.get("spec", {}).get("node", "")
+    for disk in diskpool.get("spec", []).get("disks", []):
         if disk.startswith("/data/") and disk.endswith(".img"):
             run_on_node(node, ["rm", disk])
 

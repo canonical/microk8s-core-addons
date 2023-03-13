@@ -3,6 +3,7 @@
 import os
 import pathlib
 import re
+import shutil
 import socket
 import subprocess
 import sys
@@ -12,6 +13,7 @@ import click
 DIR = pathlib.Path(__file__).parent.absolute()
 
 MAYASTOR_DATA = pathlib.Path(os.path.expandvars("$SNAP_COMMON/mayastor/data"))
+PLUGINS_DIR = pathlib.Path(os.path.expandvars("$SNAP_COMMON/plugins"))
 
 KUBECTL = os.path.expandvars("$SNAP/microk8s-kubectl.wrapper")
 HELM = os.path.expandvars("$SNAP/microk8s-helm3.wrapper")
@@ -156,6 +158,8 @@ Mayastor will run for all nodes in your MicroK8s cluster by default. Use the
 
 """
     )
+
+    shutil.copy(DIR / "pools.py", PLUGINS_DIR / "mayastor-pools")
 
 
 if __name__ == "__main__":

@@ -97,7 +97,9 @@ def add(device: list, size: list, node: str):
     for image_size in size:
         container_path = "/data/{}.img".format(os.urandom(3).hex())
         run_on_node(node, ["truncate", "-s", str(image_size), container_path])
-        subprocess.run([KUBECTL, "apply", "-f", "-"], input=format_pool(node, container_path))
+        subprocess.run(
+            [KUBECTL, "apply", "-f", "-"], input=format_pool(node, container_path)
+        )
 
 
 @pools.command("list")

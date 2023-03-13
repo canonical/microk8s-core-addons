@@ -139,7 +139,7 @@ microk8s-addons:
 
     - name: "mayastor"
       description: "OpenEBS MayaStor"
-      version: "1.0.1-alpha-2"
+      version: "2.0.0-microk8s-1"
       check_status: "daemonset.apps/mayastor"
       supported_architectures:
         - amd64

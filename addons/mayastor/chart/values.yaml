@@ -18,6 +18,7 @@ etcd-operator:
         version: "3.5.4"
         pod:
           busyboxImage: busybox:1.28.4
+          ClusterDomain: .cluster.local.
           restartPolicy: Always
           hostPathVolume: "/var/snap/microk8s/common/mayastor/etcd/$NAME"
           affinity:
@@ -36,7 +37,7 @@ mayastor-control-plane:
     tag: 1.0.1-microk8s-2
 
   kubeletDir: /var/snap/microk8s/common/var/lib/kubelet
-  etcdEndpoint: etcd-client
+  etcdEndpoint: etcd-client.mayastor.svc.cluster.local.
   busyboxImage: busybox:1.28.4
 
   base:
@@ -71,7 +72,7 @@ mayastor:
   mayastorImagesTag: 1.0.1-microk8s-2
   mayastorImage: cdkbot/mayastor
 
-  etcdEndpoint: etcd-client
+  etcdEndpoint: etcd-client.mayastor.svc.cluster.local.
   etcd:
     enabled: false
 

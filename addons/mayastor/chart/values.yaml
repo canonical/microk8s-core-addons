@@ -17,7 +17,7 @@ etcd-operator:
         limitSizeToMaxReadyNodes: true
         version: "3.5.4"
         pod:
-          busyboxImage: busybox:1.28.4
+          busyboxImage: busybox:glibc
           ClusterDomain: .cluster.local.
           restartPolicy: Always
           hostPathVolume: "/var/snap/microk8s/common/mayastor/etcd/$NAME"
@@ -38,7 +38,7 @@ mayastor-control-plane:
 
   kubeletDir: /var/snap/microk8s/common/var/lib/kubelet
   etcdEndpoint: etcd-client.mayastor.svc.cluster.local.
-  busyboxImage: busybox:1.28.4
+  busyboxImage: busybox:glibc
 
   base:
     cache_poll_period: "30s"
@@ -99,7 +99,7 @@ mayastor:
         path: /var/snap/microk8s/common/mayastor/data
 
   imageSize: 20G
-  busyboxImage: busybox:1.28.4
+  busyboxImage: busybox:glibc
 
   mayastorExtraInitContainers:
     - name: initialize-pool

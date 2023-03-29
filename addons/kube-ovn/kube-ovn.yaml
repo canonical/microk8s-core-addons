@@ -156,7 +156,17 @@ spec:
         - name: install-cni
           image: "kubeovn/kube-ovn:v1.10.0"
           imagePullPolicy: IfNotPresent
-          command: ["/kube-ovn/install-cni.sh"]
+          command:
+            - bash
+            - -x
+            - -c
+            - |
+              # remove conflicting cni binaries
+              rm -fv /opt/cni/bin/portmap
+              rm -fv /opt/cni/bin/loopback
+              rm -fv /opt/cni/bin/macvlan
+
+              /kube-ovn/install-cni.sh
           securityContext:
             runAsUser: 0
             privileged: true

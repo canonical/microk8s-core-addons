@@ -3,7 +3,7 @@ apiVersion: v1
 metadata:
   name: mayastor-test-pvc
 spec:
-  storageClassName: mayastor-1
+  storageClassName: mayastor
   accessModes:
     - ReadWriteOnce
   volumeMode: Filesystem

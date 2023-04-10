@@ -133,7 +133,10 @@ mayastor:
             }
           }'
           echo 'Creating mayastor pool'
-          curl --cacert "$CACERT" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -XPOST -d "$BODY" "https://kubernetes.default.svc/apis/openebs.io/v1alpha1/namespaces/$NAMESPACE/mayastorpools?fieldManager=kubectl-create"
+          while ! curl --fail --cacert "$CACERT" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -XPOST -d "$BODY" "https://kubernetes.default.svc/apis/openebs.io/v1alpha1/namespaces/$NAMESPACE/mayastorpools?fieldManager=kubectl-create"; do
+            echo 'Creating mayastor pool failed, will retry'
+            sleep 5
+          done
       securityContext:
         runAsUser: 0
       volumeMounts:

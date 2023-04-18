@@ -53,9 +53,13 @@ if grep -e ubuntu /proc/version | grep 16.04 &> /dev/null; then
   ALLOWESCALATION="true"
 fi
 
+cluster_cidr="$(get_opt_in_config '--cluster-cidr' 'kube-proxy')"
+DNSIP=$(python3 -c "import ipaddress; print(ipaddress.ip_network('$cluster_cidr')[10])")
+
 declare -A map
 map[\$ALLOWESCALATION]="$ALLOWESCALATION"
 map[\$NAMESERVERS]="$nameserver_str"
+map[\$DNSIP]="$DNSIP"
 use_addon_manifest dns/coredns apply "$(declare -p map)"
 sleep 5
 

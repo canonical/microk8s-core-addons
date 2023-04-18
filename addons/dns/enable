@@ -53,8 +53,8 @@ if grep -e ubuntu /proc/version | grep 16.04 &> /dev/null; then
   ALLOWESCALATION="true"
 fi
 
-cluster_cidr="$(get_opt_in_config '--service-cluster-ip-range' 'kube-apiserver')"
-DNSIP=$(python3 -c "import ipaddress; print(ipaddress.ip_network('$cluster_cidr')[10])")
+service_cidr="$(get_opt_in_config '--service-cluster-ip-range' 'kube-apiserver')"
+DNSIP=$(python3 -c "import ipaddress; print(ipaddress.ip_network('$service_cidr')[10])")
 
 declare -A map
 map[\$ALLOWESCALATION]="$ALLOWESCALATION"

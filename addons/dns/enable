@@ -53,7 +53,7 @@ if grep -e ubuntu /proc/version | grep 16.04 &> /dev/null; then
   ALLOWESCALATION="true"
 fi
 
-cluster_cidr="$(get_opt_in_config '--cluster-cidr' 'kube-proxy')"
+cluster_cidr="$(get_opt_in_config '--service-cluster-ip-range' 'kube-apiserver')"
 DNSIP=$(python3 -c "import ipaddress; print(ipaddress.ip_network('$cluster_cidr')[10])")
 
 declare -A map
@@ -66,13 +66,13 @@ sleep 5
 needs_restart=false
 if ! grep -q -- --cluster-domain=cluster.local "${SNAP_DATA}/args/kubelet"; then
   needs_restart=true
-elif ! grep -q -- --cluster-dns=10.152.183.10 "${SNAP_DATA}/args/kubelet"; then
+elif ! grep -q -- --cluster-dns=$DNSIP "${SNAP_DATA}/args/kubelet"; then
   needs_restart=true
 fi
 
 #TODO(kjackal): do not hardcode the info below. Get it from the yaml
 refresh_opt_in_config "cluster-domain" "cluster.local" kubelet
-refresh_opt_in_config "cluster-dns" "10.152.183.10" kubelet
+refresh_opt_in_config "cluster-dns" "$DNSIP" kubelet
 
 if [ -e ${SNAP_DATA}/var/lock/clustered.lock ] || [ "$needs_restart" = "true" ]; then
   echo "Restarting kubelet"

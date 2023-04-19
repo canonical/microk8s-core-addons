@@ -119,7 +119,7 @@ def main(
         args.extend(["--set", "storageClass.create=false"])
     if default_pool_size:
         click.echo("Default image size set to {}".format(default_pool_size))
-        args.extend(["--set", "mayastor.imageSize={}".format(default_pool_size)])
+        args.extend(["--set", "mayastor.io_engine.autoCreateImageSize={}".format(default_pool_size)])
 
     # Fetch dependencies
     subprocess.check_call([HELM, "dependency", "update"], cwd=DIR / "chart")

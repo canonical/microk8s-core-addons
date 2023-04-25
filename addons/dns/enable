@@ -13,7 +13,7 @@ KUBECTL="$SNAP/microk8s-kubectl.wrapper"
 echo "Enabling DNS"
 
 read -ra ARGUMENTS <<< "$1"
-if [[ -z "${ARGUMENTS[@]}" ]] || [[ "${ARGS[@]}" == "/etc/resolv.conf" ]]; then
+if [[ -z "${ARGUMENTS[@]}" ]] || [[ "${ARGUMENTS[@]}" == "/etc/resolv.conf" ]]; then
   resolv_conf="$(cat $SNAP_DATA/args/kubelet | grep -- "--resolv-conf" | tr "=" " " | gawk '{print $2}')"
   if [ ! -z "${resolv_conf}" ]; then
     # kubelet has a resolv.conf file configured, we will use that one

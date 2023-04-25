@@ -13,7 +13,7 @@ KUBECTL="$SNAP/microk8s-kubectl.wrapper"
 echo "Enabling DNS"
 
 read -ra ARGUMENTS <<< "$1"
-if [[ -z "${ARGUMENTS[@]}" ]] || [[ "${ARGS[@]}" == "/etc/resolv.conf" ]]; then
+if [[ -z "${ARGUMENTS[@]}" ]] || [[ "${ARGUMENTS[@]}" == "/etc/resolv.conf" ]]; then
   resolv_conf="$(cat $SNAP_DATA/args/kubelet | grep -- "--resolv-conf" | tr "=" " " | gawk '{print $2}')"
   if [ ! -z "${resolv_conf}" ]; then
     # kubelet has a resolv.conf file configured, we will use that one
@@ -47,6 +47,15 @@ else
   echo "Will use ${nameserver_str} as upstream nameservers"
 fi
 
+DNSIP="10.152.183.10"
+
+DNSIPARG=$2
+if [[ -n "$DNSIPARG" ]]; then
+  DNSIP="$DNSIPARG";
+  echo "Will use ${DNSIPARG} for dns service ip address"
+  echo "Make sure this address is in the service cidr!"
+fi
+
 echo "Applying manifest"
 ALLOWESCALATION="false"
 if grep -e ubuntu /proc/version | grep 16.04 &> /dev/null; then
@@ -56,19 +65,20 @@ fi
 declare -A map
 map[\$ALLOWESCALATION]="$ALLOWESCALATION"
 map[\$NAMESERVERS]="$nameserver_str"
+map[\$DNSIP]="$DNSIP"
 use_addon_manifest dns/coredns apply "$(declare -p map)"
 sleep 5
 
 needs_restart=false
 if ! grep -q -- --cluster-domain=cluster.local "${SNAP_DATA}/args/kubelet"; then
   needs_restart=true
-elif ! grep -q -- --cluster-dns=10.152.183.10 "${SNAP_DATA}/args/kubelet"; then
+elif ! grep -q -- "--cluster-dns=$DNSIP" "${SNAP_DATA}/args/kubelet"; then
   needs_restart=true
 fi
 
 #TODO(kjackal): do not hardcode the info below. Get it from the yaml
 refresh_opt_in_config "cluster-domain" "cluster.local" kubelet
-refresh_opt_in_config "cluster-dns" "10.152.183.10" kubelet
+refresh_opt_in_config "cluster-dns" "$DNSIP" kubelet
 
 if [ -e ${SNAP_DATA}/var/lock/clustered.lock ] || [ "$needs_restart" = "true" ]; then
   echo "Restarting kubelet"

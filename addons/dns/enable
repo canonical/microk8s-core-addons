@@ -47,14 +47,20 @@ else
   echo "Will use ${nameserver_str} as upstream nameservers"
 fi
 
+DNSIP="10.152.183.10"
+
+DNSIPARG=$2
+if [[ -n "$DNSIPARG" ]]; then
+  DNSIP="$DNSIPARG";
+  echo "Will use ${DNSIPARG} for dns service ip address"
+  echo "Make sure this address is in the service cidr!"
+fi
+
 echo "Applying manifest"
 ALLOWESCALATION="false"
 if grep -e ubuntu /proc/version | grep 16.04 &> /dev/null; then
   ALLOWESCALATION="true"
 fi
-
-service_cidr="$(get_opt_in_config '--service-cluster-ip-range' 'kube-apiserver')"
-DNSIP=$(python3 -c "import ipaddress; print(ipaddress.ip_network('$service_cidr')[10])")
 
 declare -A map
 map[\$ALLOWESCALATION]="$ALLOWESCALATION"
@@ -66,7 +72,7 @@ sleep 5
 needs_restart=false
 if ! grep -q -- --cluster-domain=cluster.local "${SNAP_DATA}/args/kubelet"; then
   needs_restart=true
-elif ! grep -q -- --cluster-dns=$DNSIP "${SNAP_DATA}/args/kubelet"; then
+elif ! grep -q -- "--cluster-dns=$DNSIP" "${SNAP_DATA}/args/kubelet"; then
   needs_restart=true
 fi
 

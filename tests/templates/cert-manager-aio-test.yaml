@@ -48,6 +48,7 @@ spec:
   - port: 80
     protocol: TCP
     targetPort: 80
+  type: LoadBalancer
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -58,12 +59,12 @@ metadata:
 spec:
   tls:
   - hosts:
-    - microbot.100.100.100.100.nip.io
+    - 10.64.140.43
     secretName: mock-ingress-tls
   rules:
-  - host: microbot.100.100.100.100.nip.io
+  - host: 10.64.140.43 
     http:
-      paths:
+      path:
       - backend:
           service:
             name: microbot

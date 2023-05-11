@@ -116,6 +116,7 @@ def validate_storage_custom_pvdir():
         time.sleep(2)
         attempt -= 1
 
+
     # Make sure the test pod writes data sto the storage
     found = False
     for root, dirs, files in os.walk("/var/snap/microk8s/common/custom-storage"):

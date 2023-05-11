@@ -136,7 +136,7 @@ def wait_for_installation(cluster_nodes=1, timeout_insec=360):
         data = kubectl_get(cmd, timeout_insec)
         service = data["metadata"]["name"]
         if "kubernetes" in service:
-            break
+           break
         else:
             time.sleep(3)
 
@@ -204,6 +204,7 @@ def microk8s_disable(addon):
 
     """
     cmd = "/snap/bin/microk8s.disable {}".format(addon)
+    print("!!!!!mcirok8s_disable!!!!")
     return run_until_success(cmd, timeout_insec=300)
 
 
@@ -278,3 +279,20 @@ def is_lxc_container():
         print("no indication of a container in /proc")
 
     return False
+
+
+def is_multinode():
+    """
+    Return: True if the deployment is multinode
+
+    """
+    try:
+        KUBECTL = os.path.expandvars("$SNAP/microk8s-kubectl.wrapper")
+        cmd = [KUBECTL, "get", "no", "-o", "name"]
+        nodes = check_output(cmd).decode("utf-8").split()
+        return len(nodes) > 1
+    except CalledProcessError:
+        print("Failed to query the cluster nodes.")
+
+    return False
+ 

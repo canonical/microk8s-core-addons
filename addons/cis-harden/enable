@@ -2,12 +2,8 @@
 
 import os
 import pathlib
-import stat
-import re
 import shutil
-import socket
 import subprocess
-import sys
 import platform
 import requests
 
@@ -17,18 +13,77 @@ DIR = pathlib.Path(__file__).parent.absolute()
 PLUGINS_DIR = pathlib.Path(os.path.expandvars("$SNAP_COMMON/plugins"))
 ARGS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/args"))
 CONFS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/credentials"))
-CERTS_DIR = pathlib.Path(os.path.expandvars("$SNAP_COMMON/certs"))
+CERTS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/certs"))
+
 
 
 def FixFilePermissions():
     print("Setting file permissions")
     try:
         for p in [ ARGS_DIR, CONFS_DIR, CERTS_DIR ]:
-            subprocess.call(f"chmod -R 600 {p}".split)
-            subprocess.call(f"chown -R root:root {p}".split)
+            subprocess.call(f"chmod -R 600 {p}".split())
+            subprocess.call(f"chown -R root:root {p}".split())
     except subprocess.CalledProcessError as e:
         print(f"Failed to set file permissions: {e}")
         exit(3)
+
+
+def addArgument(arg: str, value: str, service: str):
+    exists = False
+    restart = False
+    with open(ARGS_DIR / service, "r") as file:
+        for line_number, line in enumerate(file, start=1):  
+            if arg in line:
+                exists = True
+                break
+    if not exists:
+        with open(ARGS_DIR / service, "a+") as file_object:
+            file_object.write(f"{arg}={value}\n")
+            restart = True
+    return restart
+
+
+def SetServiceArguments():
+    print("Setting API server arguments")
+    args = [("--kubelet-certificate-authority", "${SNAP_DATA}/certs/ca.crt"),
+            ("--enable-admission-plugins", "EventRateLimit,AlwaysPullImages,NodeRestriction"),
+            ("--admission-control-config-file", "${SNAP_DATA}/args/admission-control-config-file.yaml"),
+            ("--audit-log-path", "/var/log/apiserver/audit.log"),
+            ("--audit-log-maxage", "30"),
+            ("--audit-log-maxbackup", "10"),
+            ("--audit-log-maxsize", "100"),
+            ("--request-timeout", "300s"),
+            ("--tls-cipher-suites", "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,TLS_RSA_WITH_3DES_EDE_CBC_SHA,TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_128_GCM_SHA256,TLS_RSA_WITH_AES_256_CBC_SHA,TLS_RSA_WITH_AES_256_GCM_SHA384"),
+        ]
+    
+    restart = False
+    for arg in args:
+        res = addArgument(arg[0], arg[1], "kube-apiserver")
+        restart = restart or res
+
+    print("Setting controller manager server arguments")
+    args = [("--terminated-pod-gc-threshold", "10")]
+    
+    restart = False
+    for arg in args:
+        res = addArgument(arg[0], arg[1], "kube-controller-manager")
+        restart = restart or res
+
+    if restart:
+        try:
+            subprocess.call("systemctl restart snap.microk8s.daemon-kubelite".split())
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to restart kubelite: {e}")
+            exit(4)
+
+
+def EnableRBAC():
+    print("Enabling RBAC")
+    try:
+        subprocess.call("microk8s enable rbac".split())
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to enable RBAC: {e}")
+        exit(5)
 
 
 def NeedsRoot():
@@ -38,7 +93,13 @@ def NeedsRoot():
         exit(1)
 
 
-def DownloadKubebench():
+def CopyExtraConfigFiles():
+    print("Copy extra files")
+    for f in [ "admission-control-config-file.yaml", "eventconfig.yaml"]:
+        shutil.copyfile(DIR / f, ARGS_DIR / f )
+
+
+def DownloadKubebench(kubebench_version: str):
     print("Downloading kube-bench")
     try:
         tmpdir = DIR / "tmp"
@@ -71,9 +132,11 @@ def get_arch():
 @click.option("--kubebench-version", default="0.6.13")
 def main(kubebench_version: str,):
     NeedsRoot()
-    DownloadKubebench()
+    EnableRBAC()
+    CopyExtraConfigFiles()
+    DownloadKubebench(kubebench_version)
     FixFilePermissions()
-
+    SetServiceArguments()
 
 if __name__ == '__main__':
     main()

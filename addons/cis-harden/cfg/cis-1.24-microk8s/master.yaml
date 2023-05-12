@@ -98,7 +98,7 @@ groups:
           Run the below command (based on the file location on your system) on the control plane node.
           For example,
           chmod 600 $etcdconf
-        scored: true
+        scored: false
 
       - id: 1.1.8
         text: "Ensure that the etcd pod specification file ownership is set to root:root (Automated)"
@@ -111,7 +111,7 @@ groups:
           Run the below command (based on the file location on your system) on the control plane node.
           For example,
           chown root:root $etcdconf
-        scored: true
+        scored: false
 
       - id: 1.1.9
         text: "Ensure that the Container Network Interface file permissions are set to 600 or more restrictive (Manual)"

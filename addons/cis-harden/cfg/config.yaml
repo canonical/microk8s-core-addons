@@ -143,7 +143,7 @@ node:
       - "/etc/systemd/system/kubelet.service"
       - "/lib/systemd/system/kubelet.service"
       - "/etc/systemd/system/snap.kubelet.daemon.service"
-      - "/etc/systemd/system/snap.microk8s.daemon-kubelet.service"
+      - "/etc/systemd/system/snap.microk8s.daemon-kubelite.service"
       - "/etc/systemd/system/atomic-openshift-node.service"
       - "/etc/systemd/system/origin-node.service"
     bins:
@@ -210,7 +210,7 @@ node:
       - "/var/snap/microk8s/current/credentials/proxy.config"
     svc:
       - "/lib/systemd/system/kube-proxy.service"
-      - "/etc/systemd/system/snap.microk8s.daemon-proxy.service"
+      - "/etc/systemd/system/snap.microk8s.daemon-kubelite.service"
     defaultconf: /etc/kubernetes/addons/kube-proxy-daemonset.yaml
     defaultkubeconfig: "/etc/kubernetes/proxy.conf"
 
@@ -247,6 +247,15 @@ controlplane:
       - "hyperkube kube-apiserver"
       - "apiserver"
       - "kubelite"
+    confs:
+      - /etc/kubernetes/manifests/kube-apiserver.yaml
+      - /etc/kubernetes/manifests/kube-apiserver.yml
+      - /etc/kubernetes/manifests/kube-apiserver.manifest
+      - /var/snap/kube-apiserver/current/args
+      - /var/snap/microk8s/current/args/kube-apiserver
+      - /etc/origin/master/master-config.yaml
+      - /etc/kubernetes/manifests/talos-kube-apiserver.yaml
+    defaultconf: /etc/kubernetes/manifests/kube-apiserver.yaml
 
 policies:
   components: []

@@ -21,7 +21,7 @@ groups:
     checks:
       - id: 3.2.1
         text: "Ensure that a minimal audit policy is created (Manual)"
-        audit: "/bin/ps -ef | grep $apiserverbin | grep -v grep"
+        audit: "cat $apiserverconf | grep -v grep"
         tests:
           test_items:
             - flag: "--audit-policy-file"

@@ -198,3 +198,11 @@ microk8s-addons:
         - amd64
         - s390x
         - ppc64le
+
+    - name: "cis-harden"
+      version: "1.0.0"
+      description: "Apply CIS K8s hardening"
+      check_status: "${SNAP_COMMON}/plugins/kube-bench"
+      supported_architectures:
+        - amd64
+        - arm64

@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+
+import os
+import pathlib
+import subprocess
+
+import click
+
+PLUGINS_DIR = pathlib.Path(os.path.expandvars("$SNAP_COMMON/plugins"))
+
+
+@click.command()
+def main():
+    print("Removing kube-bench")
+    try:
+        bin = PLUGINS_DIR / "kube-bench"
+        if os.path.exists(bin):
+            os.remove(bin)
+    except subprocess.CalledProcessError as e:
+         print(f"Failed to remove kube-bench: {e}")
+
+
+if __name__ == '__main__':
+    main()

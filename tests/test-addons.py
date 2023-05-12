@@ -31,8 +31,9 @@ from utils import (
     microk8s_reset,
     kubectl,
     is_multinode,
+    run_until_success,
 )
-from subprocess import CalledProcessError, check_call
+from subprocess import CalledProcessError, check_call, check_output
 
 TEMPLATES = Path(__file__).absolute().parent / "templates"
 
@@ -50,22 +51,6 @@ class TestAddons(object):
             yield
             microk8s_reset()
 
-    # @pytest.fixture(scope="session", autouse=True)
-    # def lable_node(self):
-    #     """
-    #     Label the node on which the tests run.
-    #     """
-    #     node_name = kubectl(f'get node -o jsonpath=\'{{.items[0].metadata.name}}\'')
-    #     node_name = node_name.replace("'", "")
-    #     kubectl(f'label node {node_name} pvc-node-name=hostpath-test-node')
-    #     os.environ["NODE_NAME"] = node_name
-    #     print(node_name)
-    #     # TODO: Remove labels after use!!
-    #     yield
-    #     # node_name=kubectl(f'get node -o jsonpath=\'{{.items[0].metadata.name}}\'')
-    #     # node_name = node_name.replace("'", "")
-    #     # kubectl(f'label node {node_name} pvc-node-name-')
-    #     # print("label_node fixture run!!!!!!")
 
 
     def test_invalid_addon(self):
@@ -80,7 +65,18 @@ class TestAddons(object):
         expected["ha-cluster"] = "enabled"
         expected["helm"] = "enabled"
         expected["helm3"] = "enabled"
-        expected["dns"] = "enabled"
+
+        # Check MicroK8s version
+        cmd = "/snap/bin/microk8s.version"
+        version_str = run_until_success(cmd, timeout_insec=300)
+        version = check_output(f"echo {version_str} | sudo grep -oP '\\d+\\.\\d+' ", shell=True, encoding="utf-8").strip()
+        minor_version = int(version[2:])
+
+        # dns is enabled by default in versions 1.27+
+        if minor_version <= 26:
+            expected["dns"] = "disabled"
+        else:
+            expected["dns"] = "enabled"
 
         assert expected == {a["name"]: a["status"] for a in status["addons"]}
 

@@ -136,7 +136,7 @@ def wait_for_installation(cluster_nodes=1, timeout_insec=360):
         data = kubectl_get(cmd, timeout_insec)
         service = data["metadata"]["name"]
         if "kubernetes" in service:
-           break
+            break
         else:
             time.sleep(3)
 
@@ -204,7 +204,6 @@ def microk8s_disable(addon):
 
     """
     cmd = "/snap/bin/microk8s.disable {}".format(addon)
-    print("!!!!!mcirok8s_disable!!!!")
     return run_until_success(cmd, timeout_insec=300)
 
 
@@ -295,4 +294,3 @@ def is_multinode():
         print("Failed to query the cluster nodes.")
 
     return False
- 

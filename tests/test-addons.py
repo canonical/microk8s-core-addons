@@ -133,8 +133,6 @@ class TestAddons(object):
         node_name = kubectl(f'get node -o jsonpath=\'{{.items[0].metadata.name}}\'')
         node_name = node_name.replace("'", "")
         kubectl(f'label node {node_name} pvc-node-name=hostpath-test-node')
-        # os.environ["NODE_NAME"] = node_name
-        print(node_name)
 
         # Run tests
         ip_ranges = "8.8.8.8,1.1.1.1"

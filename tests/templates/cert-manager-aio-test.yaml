@@ -42,13 +42,14 @@ metadata:
     app: microbot
   name: microbot
 spec:
+  externalTrafficPolicy: Cluster
+  type: LoadBalancer
   selector:
     app: microbot
   ports:
   - port: 80
     protocol: TCP
     targetPort: 80
-  type: LoadBalancer
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -56,15 +57,16 @@ metadata:
   name: mock-ingress
   annotations:
     cert-manager.io/cluster-issuer: mock-issuer
+    acme.cert-manager.io/http01-edit-in-place: "true"
 spec:
   tls:
   - hosts:
-    - 10.64.140.43
+    - microbot.100.100.100.100.nip.io
     secretName: mock-ingress-tls
   rules:
-  - host: 10.64.140.43 
+  - host: microbot.100.100.100.100.nip.io
     http:
-      path:
+      paths:
       - backend:
           service:
             name: microbot

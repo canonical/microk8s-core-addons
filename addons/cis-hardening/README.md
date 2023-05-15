@@ -8,9 +8,18 @@ The addon is released as part of the the v1.28 release. To enable it do:
 microk8s enable cis-hardening
 ```
 
+Enabling the addon will install kube-bench as a plugin along with a revised version of CIS benchmark configurations applicable for MicroK8s.
+Call kube-bench with:
+
+```
+sudo microk8s kube-bench
+```
+
+
 On pre-1.28 releases you need to follow the remediation steps described below so as to manually configure MicroK8s according to the CIS recommendations.
 
 The CIS hardening needs to be applied to each individual node before it joins a cluster. 
+
 
 
 # CIS hardening assessment 
@@ -52,6 +61,7 @@ chmod 644 /var/snap/microk8s/current/args/kube-apiserver
 
 Yes. Permissions set to 600
 
+
 **Audit**
 ```
 /bin/sh -c 'if test -e /var/snap/microk8s/current/args/kube-apiserver; then stat -c permissions=%a /var/snap/microk8s/current/args/kube-apiserver; fi'
@@ -62,6 +72,37 @@ Expected output:
 ```
 permissions=600
 ```
+
+#### Check 1.1.2
+
+> Ensure that the API server pod specification file ownership is set to root:root (Automated)
+
+**Remediation**
+
+In MicroK8s the control plane is not self-hosted and therefore it does not run in pods. Instead the API server is a
+systemd service with its configuration found at `/var/snap/microk8s/current/args/kube-apiserver`. The configuration file is owned by the
+user `root` and is editable by users in the `microk8s` (or `snap_microk8s`) group. To comply with the CIS recommendation:
+
+```
+chown root:root /var/snap/microk8s/current/args/kube-apiserver
+```
+
+**Remediation by the cis-hardening addon**
+
+Yes. Ownership set to root:root
+
+**Audit**
+
+```
+/bin/sh -c 'if test -e /var/snap/microk8s/current/args/kube-apiserver; then stat -c %U:%G /var/snap/microk8s/current/args/kube-apiserver; fi'
+```
+
+Expected output:
+
+```
+root:root
+```
+
 
 ### Etcd Node Configuration, for dqlite
 ### Control Plane Configuration

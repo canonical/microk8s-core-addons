@@ -286,8 +286,7 @@ def is_multinode():
 
     """
     try:
-        KUBECTL = os.path.expandvars("$SNAP/microk8s-kubectl.wrapper")
-        cmd = [KUBECTL, "get", "no", "-o", "name"]
+        cmd = ["/snap/bin/microk8s.kubectl", "get", "no", "-o", "name"]
         nodes = check_output(cmd).decode("utf-8").split()
         return len(nodes) > 1
     except CalledProcessError:

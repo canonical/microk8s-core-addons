@@ -51,8 +51,6 @@ class TestAddons(object):
             yield
             microk8s_reset()
 
-
-
     def test_invalid_addon(self):
         p = subprocess.run(["microk8s", "enable", "foo"])
         assert p.returncode == 1

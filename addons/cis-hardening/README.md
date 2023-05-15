@@ -41,9 +41,9 @@ Each check presented below includes the following information:
 - Automated remediation through the CIS-hardening addon
 - Audit and expected outcome for the automated tests when applicable
 
-### Control Plane Security Configuration
+## Control Plane Security Configuration
 
-#### Check 1.1.1
+### Check 1.1.1
 
 > Ensure that the API server pod specification file permissions are set to 644 or more restrictive (Automated)
 
@@ -73,7 +73,7 @@ Expected output:
 permissions=600
 ```
 
-#### Check 1.1.2
+### Check 1.1.2
 
 > Ensure that the API server pod specification file ownership is set to root:root (Automated)
 

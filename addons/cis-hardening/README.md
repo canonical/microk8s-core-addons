@@ -39,6 +39,7 @@ Each check presented below includes the following information:
 > Ensure that the API server pod specification file permissions are set to 644 or more restrictive (Automated)
 
 **Remediation**
+
 In MicroK8s the control plane is not self-hosted and therefore it does not run in pods. Instead the API server is a
 systemd service with its configuration found at `/var/snap/microk8s/current/args/kube-apiserver`. The permissions of this
 file need to be set to 644 or more restrictive:
@@ -48,6 +49,7 @@ chmod 644 /var/snap/microk8s/current/args/kube-apiserver
 ```
 
 **Remediation by the cis-hardening addon**
+
 Yes. Permissions set to 600
 
 **Audit**

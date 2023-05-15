@@ -1,0 +1,3 @@
+#!/bin/bash
+
+${SNAP_COMMON}/addons/core/addons/cis-hardening/tmp/kube-bench --version cis-1.24-microk8s --config ${SNAP_COMMON}/addons/core/addons/cis-hardening/cfg/config.yaml --config-dir ${SNAP_COMMON}/addons/core/addons/cis-hardening/cfg/ $*

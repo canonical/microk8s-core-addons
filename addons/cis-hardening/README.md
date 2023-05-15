@@ -47,10 +47,10 @@ file need to be set to 644 or more restrictive:
 chmod 644 /var/snap/microk8s/current/args/kube-apiserver
 ```
 
-**Remediation automatically applied when enabling the cis-hardening addon: ** yes
+**Remediation by the cis-hardening addon**
+Yes. Permissions set to 600
 
 **Audit**
-
 ```
 /bin/sh -c 'if test -e /var/snap/microk8s/current/args/kube-apiserver; then stat -c permissions=%a /var/snap/microk8s/current/args/kube-apiserver; fi'
 ```

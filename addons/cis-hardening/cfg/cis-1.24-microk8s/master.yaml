@@ -313,7 +313,7 @@ groups:
     checks:
       - id: 1.2.1
         text: "Ensure that the --anonymous-auth argument is set to false (Manual)"
-        audit: "/bin/ps -ef | grep $apiserverbin | grep -v grep"
+        audit: "cat $apiserverconf | grep -v grep"
         tests:
           bin_op: or
           test_items:
@@ -331,7 +331,7 @@ groups:
 
       - id: 1.2.2
         text: "Ensure that the --token-auth-file parameter is not set (Automated)"
-        audit: "/bin/ps -ef | grep $apiserverbin | grep -v grep"
+        audit: "cat $apiserverconf | grep -v grep"
         tests:
           test_items:
             - flag: "--token-auth-file"
@@ -344,7 +344,7 @@ groups:
 
       - id: 1.2.3
         text: "Ensure that the --DenyServiceExternalIPs is not set (Automated)"
-        audit: "/bin/ps -ef | grep $apiserverbin | grep -v grep"
+        audit: "cat $apiserverconf | grep -v grep"
         tests:
           bin_op: or
           test_items:

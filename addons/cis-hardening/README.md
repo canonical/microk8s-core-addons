@@ -1,3 +1,5 @@
+# CIS MicroK8s Hardening
+
 The CIS Benchmarks are secure configuration recommendations for hardening organizations' technologies against cyber attacks. The cis-hardening addon applies the [Kubernetes specific CIS configurations](https://www.cisecurity.org/benchmark/kubernetes) v1.24 release of the CIS Kubernetes Benchmark to the MicroK8s node it is called on.
 
 # Addons usage
@@ -643,11 +645,504 @@ permissions=600
 ```
 
 
+### Check 1.2.1
+
+> Ensure that the `--anonymous-auth` argument is set to false (Manual)
+
+**Remediation**
+
+In MicroK8s the API server arguments file is `/var/snap/microk8s/current/args/kube-apiserver`. Make sure `--anonymous-auth` is not present in this file.
+
+**Remediation by the cis-hardening addon**
+
+Yes.
+
+
+**Audit**
+
+As root:
+```
+cat /var/snap/microk8s/current/args/kube-apiserver | grep anonymous-auth ; echo $?
+```
+
+Expected output:
+
+```
+1
+```
+
+
+### Check 1.2.2
+
+> Ensure that the `--anonymous-auth` argument is set to false (Manual)
+
+**Remediation**
+
+Follow the documentation and configure alternate mechanisms for authentication. Then,
+edit the API server arguments file `/var/snap/microk8s/current/args/kube-apiserver`
+on the control plane node and remove the --token-auth-file=<filename> parameter.
+
+**Remediation by the cis-hardening addon**
+
+No.
+
+
+**Audit**
+
+As root:
+```
+cat /var/snap/microk8s/current/args/kube-apiserver | grep token-auth-file ; echo $?
+```
+
+Expected output:
+
+```
+1
+```
+
+
+### Check 1.2.3
+
+> Ensure that the `--DenyServiceExternalIPs` is not set (Automated)
+
+**Remediation**
+
+Edit the API server arguments file `/var/snap/microk8s/current/args/kube-apiserver`
+on the control plane node and remove the `DenyServiceExternalIPs`
+from enabled admission plugins.
+
+**Remediation by the cis-hardening addon**
+
+No. The default MicroK8s setup does not enable the `DenyServiceExternalIPs`
+admission plugin.
+
+
+**Audit**
+
+As root:
+```
+cat /var/snap/microk8s/current/args/kube-apiserver | grep DenyServiceExternalIPs ; echo $?
+```
+
+Expected output:
+
+```
+1
+```
+
+### Check 1.2.4
+
+> Ensure that the --kubelet-client-certificate and --kubelet-client-key arguments are set as appropriate (Automated)
+
+**Remediation**
+
+Edit the API server arguments file `/var/snap/microk8s/current/args/kube-apiserver`
+on the control plane node and set the two arguments appropriately:
+```
+--kubelet-client-certificate=${SNAP_DATA}/certs/server.crt
+--kubelet-client-key=${SNAP_DATA}/certs/server.key
+```
+
+**Remediation by the cis-hardening addon**
+
+No. The default MicroK8s setup sets these arguments.
+
+
+**Audit**
+
+As root:
+```
+cat /var/snap/microk8s/current/args/kube-apiserver | grep kubelet-client-certificate && cat /var/snap/microk8s/current/args/kube-apiserver | grep  kubelet-client-key
+```
+
+Expected output:
+
+```
+--kubelet-client-certificate=${SNAP_DATA}/certs/server.crt
+--kubelet-client-key=${SNAP_DATA}/certs/server.key
+```
+
+
+### Check 1.2.5
+
+> Ensure that the `--kubelet-certificate-authority` argument is set as appropriate (Automated)
+
+**Remediation**
+
+Edit the API server arguments file `/var/snap/microk8s/current/args/kube-apiserver`
+on the control plane node and set:
+```
+--kubelet-certificate-authority=${SNAP_DATA}/certs/ca.crt
+```
+
+**Remediation by the cis-hardening addon**
+
+Yes, `--kubelet-certificate-authority` is set.
+
+
+**Audit**
+
+As root:
+```
+cat /var/snap/microk8s/current/args/kube-apiserver | grep kubelet-certificate-authority
+```
+
+Expected output:
+
+```
+--kubelet-certificate-authority=${SNAP_DATA}/certs/ca.crt
+```
+
+### Check 1.2.6
+
+> Ensure that the `--authorization-mode` argument is not set to AlwaysAllow (Automated)
+
+**Remediation**
+
+Enable RBAC by calling:
+```
+microk8s enable rbac
+```
+
+**Remediation by the cis-hardening addon**
+
+Yes. The RBAC addon is enabled as part of the CIS hardening.
+
+
+**Audit**
+
+As root:
+```
+cat /var/snap/microk8s/current/args/kube-apiserver | grep -e "authorization-mode.*AlwaysAllow" ; echo $?
+```
+
+Expected output:
+
+```
+1
+```
+
+### Check 1.2.7
+
+> Ensure that the `--authorization-mode` argument includes Node (Automated)
+
+**Remediation**
+
+Enable RBAC by calling:
+```
+microk8s enable rbac
+```
+
+**Remediation by the cis-hardening addon**
+
+Yes. The RBAC addon is enabled as part of the CIS hardening.
+
+
+**Audit**
+
+As root:
+```
+cat /var/snap/microk8s/current/args/kube-apiserver | grep -e "authorization-mode.*Node"
+```
+
+Expected output:
+
+```
+--authorization-mode=RBAC,Node
+```
+
+
+### Check 1.2.8
+
+> Ensure that the --authorization-mode argument includes RBAC (Automated)
+
+**Remediation**
+
+Enable RBAC by calling:
+```
+microk8s enable rbac
+```
+
+**Remediation by the cis-hardening addon**
+
+Yes. The RBAC addon is enabled as part of the CIS hardening.
+
+
+**Audit**
+
+As root:
+```
+cat /var/snap/microk8s/current/args/kube-apiserver | grep -e "authorization-mode.*RBAC"
+```
+
+Expected output:
+
+```
+--authorization-mode=RBAC,Node
+```
+
+
+### Check 1.2.9
+
+> Ensure that the admission control plugin EventRateLimit is set (Manual)
+
+**Remediation**
+
+Follow the Kubernetes documentation and set the desired event rate limits in a configuration file. One such example file would be:
+```
+apiVersion: eventratelimit.admission.k8s.io/v1alpha1
+kind: Configuration
+limits:
+  - type: Namespace
+    qps: 50
+    burst: 100
+    cacheSize: 2000
+  - type: User
+    qps: 10
+    burst: 50
+```
+Place this file in `/var/snap/microk8s/current/args/`, and name it `eventconfig.yaml`.
+
+Create a file to point to the admission configurations:
+```
+apiVersion: apiserver.config.k8s.io/v1
+kind: AdmissionConfiguration
+plugins:
+  - name: EventRateLimit
+    path: eventconfig.yaml
+```
+Place this file in `/var/snap/microk8s/current/args/` and name it `admission-control-config-file.yaml`.
+
+Edit the API server arguments file /var/snap/microk8s/current/args/kube-apiserver
+and set the arguments:
+```
+--enable-admission-plugins=...,EventRateLimit,...,
+--admission-control-config-file=${SNAP_DATA}/args/admission-control-config-file.yaml
+```
+
+**Remediation by the cis-hardening addon**
+
+Yes. The above remediation is applied.
+
+**Audit**
+
+As root:
+```
+cat /var/snap/microk8s/current/args/kube-apiserver | grep EventRateLimit && cat /var/snap/microk8s/current/args/kube-apiserver | grep  admission-control-config-file
+```
+
+Expected output:
+
+```
+--enable-admission-plugins=EventRateLimit,AlwaysPullImages,NodeRestriction
+--admission-control-config-file=${SNAP_DATA}/args/admission-control-config-file.yaml
+```
+
+### Check 1.2.10
+
+> Ensure that the admission control plugin AlwaysAdmit is not set (Automated)
+
+**Remediation**
+
+Follow the Kubernetes documentation and set the `--enable-admission-plugins` in `/var/snap/microk8s/current/args/kube-apiserver` to a value that does not include `AlwaysAdmit`.
+
+**Remediation by the cis-hardening addon**
+
+Yes. `--enable-admission-plugins` is set to `EventRateLimit,AlwaysPullImages,NodeRestriction`.
+
+**Audit**
+
+As root:
+```
+cat /var/snap/microk8s/current/args/kube-apiserver | grep -e "--enable-admission-plugins.*AlwaysAdmit.*" ; echo $?
+```
+
+Expected output:
+
+```
+1
+```
+
+
+### Check 1.2.11
+
+> Ensure that the admission control plugin AlwaysPullImages is set (Manual)
+
+**Remediation**
+
+Edit ``/var/snap/microk8s/current/args/kube-apiserver` to include `AlwaysPullImages` in the
+`--enable-admission-plugins`.
+
+**Remediation by the cis-hardening addon**
+
+Yes. `--enable-admission-plugins` is set to `EventRateLimit,AlwaysPullImages,NodeRestriction`.
+
+**Audit**
+
+As root:
+```
+cat /var/snap/microk8s/current/args/kube-apiserver | grep -e "--enable-admission-plugins.*AlwaysPullImages.*"
+```
+
+Expected output:
+
+```
+--enable-admission-plugins=EventRateLimit,AlwaysPullImages,NodeRestriction
+```
+
+### Check 1.2.12
+
+> Ensure that the admission control plugin SecurityContextDeny is set if PodSecurityPolicy is not used (Manual)
+
+**Remediation**
+
+Not applicable. Both PodSecurityPolicy and SecurityContextDeny have been deprecated. See:
+ - https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#securitycontextdeny
+ - https://kubernetes.io/docs/concepts/security/pod-security-policy/
+
+**Remediation by the cis-hardening addon**
+
+No.
+
+**Audit**
+
+As root:
+```
+grep 'SecurityContextDeny\|PodSecurityPolicy' /var/snap/microk8s/current/args/kube-apiserver ; echo $?
+```
+
+Expected output:
+
+```
+1
+```
+
+
+### Check 1.2.13
+
+> Ensure that the admission control plugin ServiceAccount is set (Automated)
+
+**Remediation**
+
+Edit the API server arguments file `/var/snap/microk8s/current/args/kube-apiserver`
+and ensure that the `--disable-admission-plugins` parameter is set to a
+value that does not include ServiceAccount.
+
+**Remediation by the cis-hardening addon**
+
+No. The default MicroK8s setup does not `--disable-admission-plugins`.
+
+
+**Audit**
+
+As root:
+```
+grep -e 'disable-admission-plugins.*ServiceAccount.*' /var/snap/microk8s/current/args/kube-apiserver ; echo $?
+```
+
+Expected output:
+
+```
+1
+```
+
+
+### Check 1.2.14
+
+> Ensure that the admission control plugin NamespaceLifecycle is set (Automated)
+
+**Remediation**
+
+Edit the API server arguments file `/var/snap/microk8s/current/args/kube-apiserver`
+and ensure that the `--disable-admission-plugins` parameter is set to a
+value that does not include NamespaceLifecycle.
+
+**Remediation by the cis-hardening addon**
+
+No. The default MicroK8s setup does not `--disable-admission-plugins`.
+
+
+**Audit**
+
+As root:
+```
+grep -e 'disable-admission-plugins.*NamespaceLifecycle.*' /var/snap/microk8s/current/args/kube-apiserver ; echo $?
+```
+
+Expected output:
+
+```
+1
+```
+
+
+### Check 1.2.15
+
+> Ensure that the admission control plugin NodeRestriction is set (Automated)
+
+**Remediation**
+
+Follow the Kubernetes documentation and configure NodeRestriction plug-in on kubelets.
+Edit the API server arguments file `/var/snap/microk8s/current/args/kube-apiserver`
+on the control plane node and set the `--enable-admission-plugins` parameter to a
+value that includes NodeRestriction:
+```
+--enable-admission-plugins=...,NodeRestriction,...
+```          
+
+**Remediation by the cis-hardening addon**
+
+Yes. `--enable-admission-plugins` is set to `EventRateLimit,AlwaysPullImages,NodeRestriction`.
+
+**Audit**
+
+As root:
+```
+grep -e 'enable-admission-plugins.*NodeRestriction.*' /var/snap/microk8s/current/args/kube-apiserver
+```
+
+Expected output:
+
+```
+--enable-admission-plugins=EventRateLimit,AlwaysPullImages,NodeRestriction
+```
+
+
+### Check 1.2.16
+
+> Ensure that the `--secure-port` argument is not set to 0 (Automated)
+
+**Remediation**
+
+Follow the Kubernetes documentation and configure NodeRestriction plug-in on kubelets.
+Edit the API server arguments file `/var/snap/microk8s/current/args/kube-apiserver`
+and either remove the `--secure-port` parameter or set it to a different (non-zero) desired port.
+
+**Remediation by the cis-hardening addon**
+
+No. The default setup sets the `--secure-port` parameter to 16443.
+
+**Audit**
+
+As root:
+```
+grep -e 'secure-port' /var/snap/microk8s/current/args/kube-apiserver
+```
+
+Expected output:
+
+```
+--secure-port=16443
+```
+
+
+
+
 ## Etcd Node Configuration, for dqlite
 ## Control Plane Configuration
 ## Worker Node Security Configuration
 ## Kubernetes Policies
 
 
-## Links
+# Links
 https://www.cisecurity.org/benchmark/kubernetes

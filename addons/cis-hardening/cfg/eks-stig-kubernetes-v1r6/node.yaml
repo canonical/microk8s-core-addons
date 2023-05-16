@@ -8,14 +8,14 @@ groups:
   - id: 3.1
     text: "DISA Category Code I"
     checks:
-      - id: V-242387   # CIS 3.2.4
+      - id: V-242387 # CIS 3.2.4
         text: "The Kubernetes Kubelet must have the read-only port flag disabled (Manual)"
         audit: "/bin/ps -fC $kubeletbin"
         audit_config: "/bin/cat $kubeletconf"
         tests:
           test_items:
             - flag: "--read-only-port"
-              path: '{.readOnlyPort}'
+              path: "{.readOnlyPort}"
               set: true
               compare:
                 op: eq
@@ -30,14 +30,14 @@ groups:
           systemctl daemon-reload
           systemctl restart kubelet.service
         scored: false
-      - id: V-242391  # CIS 3.2.1
+      - id: V-242391 # CIS 3.2.1
         text: "The Kubernetes Kubelet must have anonymous authentication disabled (Automated)"
         audit: "/bin/ps -fC $kubeletbin"
         audit_config: "/bin/cat $kubeletconf"
         tests:
           test_items:
             - flag: "--anonymous-auth"
-              path: '{.authentication.anonymous.enabled}'
+              path: "{.authentication.anonymous.enabled}"
               set: true
               compare:
                 op: eq
@@ -53,14 +53,14 @@ groups:
           systemctl daemon-reload
           systemctl restart kubelet.service
         scored: true
-      - id: V-242392  # CIS 3.2.2
+      - id: V-242392 # CIS 3.2.2
         text: "The Kubernetes kubelet must enable explicit authorization (Automated)"
         audit: "/bin/ps -fC $kubeletbin"
         audit_config: "/bin/cat $kubeletconf"
         tests:
           test_items:
             - flag: --authorization-mode
-              path: '{.authorization.mode}'
+              path: "{.authorization.mode}"
               set: true
               compare:
                 op: nothave
@@ -81,7 +81,7 @@ groups:
         audit_config: "/bin/cat $kubeletconf"
         tests:
           test_items:
-            - path: '{.staticPodPath}'
+            - path: "{.staticPodPath}"
               set: false
         remediation: |
           Edit $kubeletconf on each node to to remove the staticPodPath
@@ -93,20 +93,20 @@ groups:
         text: "Secrets in Kubernetes must not be stored as environment variables.(Manual)"
         type: "manual"
         remediation: |
-         Run the following command:
-         kubectl get all -o jsonpath='{range .items[?(@..secretKeyRef)]} {.kind} {.metadata.name} {"\n"}{end}' -A
-         If any of the values returned reference environment variables
-         rewrite application code to read secrets from mounted secret files, rather than
-         from environment variables.
+          Run the following command:
+          kubectl get all -o jsonpath='{range .items[?(@..secretKeyRef)]} {.kind} {.metadata.name} {"\n"}{end}' -A
+          If any of the values returned reference environment variables
+          rewrite application code to read secrets from mounted secret files, rather than
+          from environment variables.
         scored: false
-      - id: V-242434  # CIS 3.2.6
+      - id: V-242434 # CIS 3.2.6
         text: "Kubernetes Kubelet must enable kernel protection (Automated)"
         audit: "/bin/ps -fC $kubeletbin"
         audit_config: "/bin/cat $kubeletconf"
         tests:
           test_items:
             - flag: --protect-kernel-defaults
-              path: '{.protectKernelDefaults}'
+              path: "{.protectKernelDefaults}"
               set: true
               compare:
                 op: eq
@@ -128,7 +128,7 @@ groups:
         tests:
           test_items:
             - flag: --authorization-mode
-              path: '{.authorization.mode}'
+              path: "{.authorization.mode}"
               set: true
               compare:
                 op: nothave
@@ -145,7 +145,7 @@ groups:
         scored: true
       - id: V-242393
         text: "Kubernetes Worker Nodes must not have sshd service running. (Automated)"
-        audit: '/bin/sh -c ''systemctl show -p ActiveState sshd'' '
+        audit: "/bin/sh -c 'systemctl show -p ActiveState sshd' "
         tests:
           test_items:
             - flag: ActiveState
@@ -216,7 +216,7 @@ groups:
           completely. Restart the kubelet service if the kubelet config file
           if the kubelet config file is changed.
         scored: true
-      - id: V-242404  # CIS 3.2.8
+      - id: V-242404 # CIS 3.2.8
         text: "Kubernetes Kubelet must deny hostname override (Automated)"
         # This is one of those properties that can only be set as a command line argument.
         # To check if the property is set as expected, we need to parse the kubelet command
@@ -236,7 +236,7 @@ groups:
         scored: true
       - id: V-242406
         text: "The Kubernetes kubelet configuration file must be owned by root (Automated)"
-        audit: '/bin/sh -c ''if test -e $kubeletkubeconfig; then stat -c %U:%G $kubeletkubeconfig; fi'' '
+        audit: "/bin/sh -c 'if test -e $kubeletkubeconfig; then stat -c %U:%G $kubeletkubeconfig; fi' "
         tests:
           test_items:
             - flag: root:root
@@ -247,7 +247,7 @@ groups:
         scored: true
       - id: V-242407
         text: "The Kubernetes kubelet configuration files must have file permissions set to 644 or more restrictive (Automated)"
-        audit: '/bin/sh -c ''if test -e $kubeletconf; then stat -c permissions=%a $kubeletconf; fi'' '
+        audit: "/bin/sh -c 'if test -e $kubeletconf; then stat -c permissions=%a $kubeletconf; fi' "
         tests:
           test_items:
             - flag: "permissions"
@@ -270,13 +270,13 @@ groups:
         text: "Kubernetes must remove old components after updated versions have been installed. (Manual)"
         type: "manual"
         remediation: |
-           To view all pods and the images used to create the pods, from the Master node, run the following command:
-            kubectl get pods --all-namespaces -o jsonpath="{..image}" | \
-            tr -s '[[:space:]]' '\n' | \
-            sort | \
-            uniq -c
-            Review the images used for pods running within Kubernetes.
-            Remove any old pods that are using older images.
+          To view all pods and the images used to create the pods, from the Master node, run the following command:
+           kubectl get pods --all-namespaces -o jsonpath="{..image}" | \
+           tr -s '[[:space:]]' '\n' | \
+           sort | \
+           uniq -c
+           Review the images used for pods running within Kubernetes.
+           Remove any old pods that are using older images.
         scored: false
       - id: V-242396
         text: "Kubernetes Kubectl cp command must give expected access and results. (Manual)"

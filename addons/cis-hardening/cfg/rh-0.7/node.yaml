@@ -204,7 +204,6 @@ groups:
           Edit the Openshift node config file /etc/origin/node/node-config.yaml and set RotateKubeletServerCertificate to true.
         scored: true
 
-
   - id: 8
     text: "Configuration Files"
     checks:

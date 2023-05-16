@@ -246,7 +246,7 @@ groups:
             - flag: "read-only-port"
               compare:
                 op: has
-                value: "[\"0\"]"
+                value: '["0"]'
             - flag: "read-only-port"
               set: false
         remediation: |

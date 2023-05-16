@@ -10,7 +10,7 @@ groups:
     checks:
       - id: 4.1.1
         text: "Ensure that the kubelet service file permissions are set to 644 or more restrictive (Automated)"
-        audit: '/bin/sh -c ''if test -e $kubeletsvc; then stat -c permissions=%a $kubeletsvc; fi'' '
+        audit: "/bin/sh -c 'if test -e $kubeletsvc; then stat -c permissions=%a $kubeletsvc; fi' "
         tests:
           test_items:
             - flag: "permissions"
@@ -25,7 +25,7 @@ groups:
 
       - id: 4.1.2
         text: "Ensure that the kubelet service file ownership is set to root:root (Automated)"
-        audit: '/bin/sh -c ''if test -e $kubeletsvc; then stat -c %U:%G $kubeletsvc; fi'' '
+        audit: "/bin/sh -c 'if test -e $kubeletsvc; then stat -c %U:%G $kubeletsvc; fi' "
         tests:
           test_items:
             - flag: root:root
@@ -37,7 +37,7 @@ groups:
 
       - id: 4.1.3
         text: "If proxy kubeconfig file exists ensure permissions are set to 644 or more restrictive (Manual)"
-        audit: '/bin/sh -c ''if test -e $proxykubeconfig; then stat -c permissions=%a $proxykubeconfig; fi'' '
+        audit: "/bin/sh -c 'if test -e $proxykubeconfig; then stat -c permissions=%a $proxykubeconfig; fi' "
         tests:
           bin_op: or
           test_items:
@@ -56,7 +56,7 @@ groups:
 
       - id: 4.1.4
         text: "Ensure that the proxy kubeconfig file ownership is set to root:root (Manual)"
-        audit: '/bin/sh -c ''if test -e $proxykubeconfig; then stat -c %U:%G $proxykubeconfig; fi'' '
+        audit: "/bin/sh -c 'if test -e $proxykubeconfig; then stat -c %U:%G $proxykubeconfig; fi' "
         tests:
           bin_op: or
           test_items:
@@ -70,7 +70,7 @@ groups:
 
       - id: 4.1.5
         text: "Ensure that the --kubeconfig kubelet.conf file permissions are set to 644 or more restrictive (Automated)"
-        audit: '/bin/sh -c ''if test -e $kubeletkubeconfig; then stat -c permissions=%a $kubeletkubeconfig; fi'' '
+        audit: "/bin/sh -c 'if test -e $kubeletkubeconfig; then stat -c permissions=%a $kubeletkubeconfig; fi' "
         tests:
           test_items:
             - flag: "permissions"
@@ -85,7 +85,7 @@ groups:
 
       - id: 4.1.6
         text: "Ensure that the --kubeconfig kubelet.conf file ownership is set to root:root (Manual)"
-        audit: '/bin/sh -c ''if test -e $kubeletkubeconfig; then stat -c %U:%G $kubeletkubeconfig; fi'' '
+        audit: "/bin/sh -c 'if test -e $kubeletkubeconfig; then stat -c %U:%G $kubeletkubeconfig; fi' "
         tests:
           test_items:
             - flag: root:root
@@ -131,7 +131,7 @@ groups:
 
       - id: 4.1.9
         text: "Ensure that the kubelet --config configuration file has permissions set to 644 or more restrictive (Automated)"
-        audit: '/bin/sh -c ''if test -e $kubeletconf; then stat -c permissions=%a $kubeletconf; fi'' '
+        audit: "/bin/sh -c 'if test -e $kubeletconf; then stat -c permissions=%a $kubeletconf; fi' "
         tests:
           test_items:
             - flag: "permissions"
@@ -145,7 +145,7 @@ groups:
 
       - id: 4.1.10
         text: "Ensure that the kubelet --config configuration file ownership is set to root:root (Automated)"
-        audit: '/bin/sh -c ''if test -e $kubeletconf; then stat -c %U:%G $kubeletconf; fi'' '
+        audit: "/bin/sh -c 'if test -e $kubeletconf; then stat -c %U:%G $kubeletconf; fi' "
         tests:
           test_items:
             - flag: root:root
@@ -164,7 +164,7 @@ groups:
         tests:
           test_items:
             - flag: "--anonymous-auth"
-              path: '{.authentication.anonymous.enabled}'
+              path: "{.authentication.anonymous.enabled}"
               compare:
                 op: eq
                 value: false
@@ -187,7 +187,7 @@ groups:
         tests:
           test_items:
             - flag: --authorization-mode
-              path: '{.authorization.mode}'
+              path: "{.authorization.mode}"
               compare:
                 op: nothave
                 value: AlwaysAllow
@@ -209,7 +209,7 @@ groups:
         tests:
           test_items:
             - flag: --client-ca-file
-              path: '{.authentication.x509.clientCAFile}'
+              path: "{.authentication.x509.clientCAFile}"
         remediation: |
           If using a Kubelet config file, edit the file to set authentication: x509: clientCAFile to
           the location of the client CA file.
@@ -230,12 +230,12 @@ groups:
           bin_op: or
           test_items:
             - flag: "--read-only-port"
-              path: '{.readOnlyPort}'
+              path: "{.readOnlyPort}"
               compare:
                 op: eq
                 value: 0
             - flag: "--read-only-port"
-              path: '{.readOnlyPort}'
+              path: "{.readOnlyPort}"
               set: false
         remediation: |
           If using a Kubelet config file, edit the file to set readOnlyPort to 0.
@@ -255,12 +255,12 @@ groups:
         tests:
           test_items:
             - flag: --streaming-connection-idle-timeout
-              path: '{.streamingConnectionIdleTimeout}'
+              path: "{.streamingConnectionIdleTimeout}"
               compare:
                 op: noteq
                 value: 0
             - flag: --streaming-connection-idle-timeout
-              path: '{.streamingConnectionIdleTimeout}'
+              path: "{.streamingConnectionIdleTimeout}"
               set: false
           bin_op: or
         remediation: |
@@ -282,7 +282,7 @@ groups:
         tests:
           test_items:
             - flag: --protect-kernel-defaults
-              path: '{.protectKernelDefaults}'
+              path: "{.protectKernelDefaults}"
               compare:
                 op: eq
                 value: true
@@ -304,12 +304,12 @@ groups:
         tests:
           test_items:
             - flag: --make-iptables-util-chains
-              path: '{.makeIPTablesUtilChains}'
+              path: "{.makeIPTablesUtilChains}"
               compare:
                 op: eq
                 value: true
             - flag: --make-iptables-util-chains
-              path: '{.makeIPTablesUtilChains}'
+              path: "{.makeIPTablesUtilChains}"
               set: false
           bin_op: or
         remediation: |
@@ -349,7 +349,7 @@ groups:
         tests:
           test_items:
             - flag: --event-qps
-              path: '{.eventRecordQPS}'
+              path: "{.eventRecordQPS}"
               compare:
                 op: eq
                 value: 0
@@ -370,9 +370,9 @@ groups:
         tests:
           test_items:
             - flag: --tls-cert-file
-              path: '{.tlsCertFile}'
+              path: "{.tlsCertFile}"
             - flag: --tls-private-key-file
-              path: '{.tlsPrivateKeyFile}'
+              path: "{.tlsPrivateKeyFile}"
         remediation: |
           If using a Kubelet config file, edit the file to set tlsCertFile to the location
           of the certificate file to use to identify this Kubelet, and tlsPrivateKeyFile
@@ -394,12 +394,12 @@ groups:
         tests:
           test_items:
             - flag: --rotate-certificates
-              path: '{.rotateCertificates}'
+              path: "{.rotateCertificates}"
               compare:
                 op: eq
                 value: true
             - flag: --rotate-certificates
-              path: '{.rotateCertificates}'
+              path: "{.rotateCertificates}"
               set: false
           bin_op: or
         remediation: |
@@ -422,12 +422,12 @@ groups:
           bin_op: or
           test_items:
             - flag: RotateKubeletServerCertificate
-              path: '{.featureGates.RotateKubeletServerCertificate}'
+              path: "{.featureGates.RotateKubeletServerCertificate}"
               compare:
                 op: nothave
                 value: false
             - flag: RotateKubeletServerCertificate
-              path: '{.featureGates.RotateKubeletServerCertificate}'
+              path: "{.featureGates.RotateKubeletServerCertificate}"
               set: false
         remediation: |
           Edit the kubelet service file $kubeletsvc
@@ -445,7 +445,7 @@ groups:
         tests:
           test_items:
             - flag: --tls-cipher-suites
-              path: '{range .tlsCipherSuites[:]}{}{'',''}{end}'
+              path: "{range .tlsCipherSuites[:]}{}{','}{end}"
               compare:
                 op: valid_elements
                 value: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256

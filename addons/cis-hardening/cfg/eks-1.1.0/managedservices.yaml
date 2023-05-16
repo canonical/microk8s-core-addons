@@ -124,7 +124,6 @@ groups:
         remediation: "No remediation"
         scored: false
 
-
   - id: 5.5
     text: "Authentication and Authorization"
     checks:
@@ -134,7 +133,6 @@ groups:
         remediation: |
           Refer to the 'Managing users or IAM roles for your cluster' in Amazon EKS documentation.
         scored: false
-
 
   - id: 5.6
     text: "Other Cluster Configurations"

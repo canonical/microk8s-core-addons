@@ -20,8 +20,8 @@ groups:
         text: "The Kubernetes API server must have the ValidatingAdmissionWebhook enabled (manual)"
         type: "manual"
         remediation: |
-         Amazon EKS version 1.18 and later automatically enable ValidatingAdmissionWebhook
-         Ref: https://docs.aws.amazon.com/eks/latest/userguide/platform-versions.html
+          Amazon EKS version 1.18 and later automatically enable ValidatingAdmissionWebhook
+          Ref: https://docs.aws.amazon.com/eks/latest/userguide/platform-versions.html
         scored: false
 
       - id: V-245542

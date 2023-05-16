@@ -83,7 +83,6 @@ groups:
         remediation: "No remediation"
         scored: false
 
-
   - id: 5.5
     text: "Authentication and Authorization"
     checks:
@@ -92,7 +91,6 @@ groups:
         type: "manual"
         remediation: "No remediation"
         scored: false
-
 
   - id: 5.6
     text: "Other Cluster Configurations"

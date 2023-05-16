@@ -15,7 +15,7 @@ groups:
         tests:
           test_items:
             - flag: "--anonymous-auth"
-              path: '{.authentication.anonymous.enabled}'
+              path: "{.authentication.anonymous.enabled}"
               set: true
               compare:
                 op: eq
@@ -68,50 +68,50 @@ groups:
         text: "The Kubernetes API Server must have an audit log path set (Manual)"
         type: "manual"
         remediation: |
-            Enable control plane logging for API Server, Audit, Authenticator, Controller Manager, and Scheduler.
-            Ref: https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html
+          Enable control plane logging for API Server, Audit, Authenticator, Controller Manager, and Scheduler.
+          Ref: https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html
         scored: false
       - id: V-242403
         text: "Kubernetes API Server must generate audit records (Manual)"
         type: "manual"
         remediation: |
-            Enable control plane logging for API Server, Audit, Authenticator, Controller Manager, and Scheduler.
-            Ref: https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html
+          Enable control plane logging for API Server, Audit, Authenticator, Controller Manager, and Scheduler.
+          Ref: https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html
         scored: false
       - id: V-242461
         text: "Kubernetes API Server audit logs must be enabled. (Manual)"
         type: "manual"
         remediation: |
-            Enable control plane logging for API Server, Audit, Authenticator, Controller Manager, and Scheduler.
-            Ref: https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html
+          Enable control plane logging for API Server, Audit, Authenticator, Controller Manager, and Scheduler.
+          Ref: https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html
         scored: false
       - id: V-242462
         text: "The Kubernetes API Server must be set to audit log max size. (Manual)"
         type: "manual"
         remediation: |
-            Enable control plane logging for API Server, Audit, Authenticator, Controller Manager, and Scheduler.
-            Ref: https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html
+          Enable control plane logging for API Server, Audit, Authenticator, Controller Manager, and Scheduler.
+          Ref: https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html
         scored: false
       - id: V-242463
         text: "The Kubernetes API Server must be set to audit log maximum backup. (Manual)"
         type: "manual"
         remediation: |
-            Enable control plane logging for API Server, Audit, Authenticator, Controller Manager, and Scheduler.
-            Ref: https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html
+          Enable control plane logging for API Server, Audit, Authenticator, Controller Manager, and Scheduler.
+          Ref: https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html
         scored: false
       - id: V-242464
         text: "The Kubernetes API Server audit log retention must be set. (Manual)"
         type: "manual"
         remediation: |
-            Enable control plane logging for API Server, Audit, Authenticator, Controller Manager, and Scheduler.
-            Ref: https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html
+          Enable control plane logging for API Server, Audit, Authenticator, Controller Manager, and Scheduler.
+          Ref: https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html
         scored: false
       - id: V-242465
         text: "The Kubernetes API Server audit log path must be set. (Manual)"
         type: "manual"
         remediation: |
-            Enable control plane logging for API Server, Audit, Authenticator, Controller Manager, and Scheduler.
-            Ref: https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html
+          Enable control plane logging for API Server, Audit, Authenticator, Controller Manager, and Scheduler.
+          Ref: https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html
         scored: false
   - id: 2.2
     text: "DISA Category Code II"
@@ -120,5 +120,5 @@ groups:
         text: " Kubernetes must contain the latest updates as authorized by IAVMs, CTOs, DTMs, and STIGs. (Manual)"
         type: "manual"
         remediation: |
-         Upgrade Kubernetes to a supported version.
-         Ref: https://docs.aws.amazon.com/eks/latest/userguide/update-cluster.html
+          Upgrade Kubernetes to a supported version.
+          Ref: https://docs.aws.amazon.com/eks/latest/userguide/update-cluster.html

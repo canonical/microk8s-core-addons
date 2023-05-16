@@ -114,7 +114,6 @@ groups:
         remediation: "No remediation"
         scored: false
 
-
   - id: 5.5
     text: "Authentication and Authorization"
     checks:

@@ -681,7 +681,7 @@ Expected output:
 
 ### Check 1.2.2
 
-> Ensure that the `--anonymous-auth` argument is set to false (Manual)
+> Ensure that the --token-auth-file parameter is not set (Automated)
 
 **Remediation**
 
@@ -1918,6 +1918,645 @@ No, this cannot be automated.
 
 
 ## Worker Node Security Configuration
+
+### Check 4.1.1
+
+> Ensure that the kubelet service file permissions are set to 600 or more restrictive (Automated)
+
+**Remediation**
+
+kubelet starts as part of the `snap.microk8s.daemon-kubelite.service` systemd service.
+Run the below command (based on the file location on your system) on the each worker node.
+```
+chmod 600 /etc/systemd/system/snap.microk8s.daemon-kubelite.service
+```
+
+**Remediation by the cis-hardening addon**
+
+Yes, the addon sets the above permissions when enabled.
+
+**Audit**
+
+As root:
+```
+/bin/sh -c 'if test -e /etc/systemd/system/snap.microk8s.daemon-kubelite.service; then stat -c permissions=%a /etc/systemd/system/snap.microk8s.daemon-kubelite.service; fi'
+```
+
+Expected output:
+
+```
+permissions=600
+```
+
+
+### Check 4.1.2
+
+> Ensure that the kubelet service file ownership is set to root:root (Automated)
+
+**Remediation**
+
+kubelet starts as part of the `snap.microk8s.daemon-kubelite.service` systemd service.
+Run the below command (based on the file location on your system) on the each worker node.
+```
+chown root:root /etc/systemd/system/snap.microk8s.daemon-kubelite.service
+```
+
+**Remediation by the cis-hardening addon**
+
+Yes, the addon sets the root:root ownership.
+
+**Audit**
+
+As root:
+```
+/bin/sh -c 'if test -e /etc/systemd/system/snap.microk8s.daemon-kubelite.service; then stat -c %U:%G /etc/systemd/system/snap.microk8s.daemon-kubelite.service; fi'
+```
+
+Expected output:
+
+```
+root:root
+```
+
+
+### Check 4.1.3
+
+> If proxy kubeconfig file exists ensure permissions are set to 600 or more restrictive (Manual)
+
+**Remediation**
+
+Run the below command (based on the file location on your system) on the each worker node.
+```
+chmod 600 /var/snap/microk8s/current/credentials/proxy.config
+```
+
+**Remediation by the cis-hardening addon**
+
+Yes, the addon sets the above permissions when enabled.
+
+**Audit**
+
+As root:
+```
+/bin/sh -c 'if test -e /var/snap/microk8s/current/credentials/proxy.config; then stat -c permissions=%a /var/snap/microk8s/current/credentials/proxy.config; fi'
+```
+
+Expected output:
+
+```
+permissions=600
+```
+
+
+### Check 4.1.4
+
+> If proxy kubeconfig file exists ensure ownership is set to root:root (Manual)
+
+**Remediation**
+
+Run the below command (based on the file location on your system) on the each worker node.
+```
+chown root:root /var/snap/microk8s/current/credentials/proxy.config
+```
+
+**Remediation by the cis-hardening addon**
+
+Yes, the addon sets the root:root ownership.
+
+
+**Audit**
+
+As root:
+```
+/bin/sh -c 'if test -e /var/snap/microk8s/current/credentials/proxy.config; then stat -c %U:%G /var/snap/microk8s/current/credentials/proxy.config; fi'
+```
+
+Expected output:
+
+```
+root:root
+```
+
+### Check 4.1.5
+
+> Ensure that the --kubeconfig kubelet.conf file permissions are set to 600 or more restrictive (Automated)
+
+**Remediation**
+
+Run the below command (based on the file location on your system) on the each worker node.
+```
+chmod 600 /var/snap/microk8s/current/credentials/kubelet.config
+```
+
+**Remediation by the cis-hardening addon**
+
+Yes, the addon sets the above permissions when enabled.
+
+**Audit**
+
+As root:
+```
+/bin/sh -c 'if test -e /var/snap/microk8s/current/credentials/kubelet.config; then stat -c permissions=%a /var/snap/microk8s/current/credentials/kubelet.config; fi'
+```
+
+Expected output:
+
+```
+permissions=600
+```
+
+
+### Check 4.1.6
+
+> Ensure that the --kubeconfig kubelet.conf file ownership is set to root:root (Automated)
+
+**Remediation**
+
+Run the below command (based on the file location on your system) on the each worker node.
+```
+chown root:root /var/snap/microk8s/current/credentials/kubelet.config
+```
+
+**Remediation by the cis-hardening addon**
+
+Yes, the addon sets the root:root ownership.
+
+
+**Audit**
+
+As root:
+```
+/bin/sh -c 'if test -e /var/snap/microk8s/current/credentials/kubelet.config; then stat -c %U:%G /var/snap/microk8s/current/credentials/kubelet.config; fi'
+```
+
+Expected output:
+
+```
+root:root
+```
+
+### Check 4.1.7
+
+> Ensure that the certificate authorities file permissions are set to 600 or more restrictive (Manual)
+
+**Remediation**
+
+Run the following command to modify the file permissions of the `--client-ca-file`
+```
+chmod 600 /var/snap/microk8s/current/certs/ca.crt
+```
+
+**Remediation by the cis-hardening addon**
+
+Yes, the addon sets the right permissions.
+
+
+**Audit**
+
+As root:
+```
+stat -c permissions=%a /var/snap/microk8s/current/certs/ca.crt
+```
+
+Expected output:
+
+```
+permissions=600
+```
+
+
+### Check 4.1.8
+
+> Ensure that the client certificate authorities file ownership is set to root:root (Manual)
+
+**Remediation**
+
+Run the following command to modify the ownership of the `--client-ca-file`.
+```
+chown root:root /var/snap/microk8s/current/certs/ca.crt
+```
+
+**Remediation by the cis-hardening addon**
+
+Yes, the addon sets the right ownership.
+
+
+**Audit**
+
+As root:
+```
+stat -c %U:%G  /var/snap/microk8s/current/certs/ca.crt
+```
+
+Expected output:
+
+```
+root:root
+```
+
+### Check 4.1.9
+
+> If the kubelet config.yaml configuration file is being used validate permissions set to 600 or more restrictive (Manual)
+
+**Remediation**
+
+Not applicable. MicroK8s does not use a config.yaml configuration file.
+
+
+### Check 4.1.10
+
+> If the kubelet config.yaml configuration file is being used validate file ownership is set to root:root (Manual)
+
+**Remediation**
+
+Not applicable. MicroK8s does not use a config.yaml configuration file.
+
+
+
+### Check 4.2.1
+
+> Ensure that the `--anonymous-auth` argument is set to false (Manual)
+
+**Remediation**
+
+In MicroK8s the API server arguments file is `/var/snap/microk8s/current/args/kubelet`.
+Make sure `--anonymous-auth` is not present in the file or set to false.
+
+**Remediation by the cis-hardening addon**
+
+Yes.
+
+
+**Audit**
+
+As root:
+```
+cat /var/snap/microk8s/current/args/kubelet | grep anonymous-auth
+```
+
+Expected output:
+
+```
+--anonymous-auth=false
+```
+
+
+### Check 4.2.2
+
+> Ensure that the --authorization-mode argument is not set to AlwaysAllow (Automated)
+
+**Remediation**
+
+Edit the kubelet service arguments file `/var/snap/microk8s/current/args/kubelet` and
+set the parameter:
+```
+--authorization-mode=Webhook
+```
+
+**Remediation by the cis-hardening addon**
+
+Yes. The authorization mode is set to webhook.
+
+
+**Audit**
+
+As root:
+```
+cat /var/snap/microk8s/current/args/kubelet | grep authorization-mode
+```
+
+Expected output:
+
+```
+--authorization-mode=Webhook
+```
+
+
+### Check 4.2.3
+
+> Ensure that the --client-ca-file argument is set as appropriate (Automated)
+
+**Remediation**
+
+Edit the kubelet service arguments file `/var/snap/microk8s/current/args/kubelet` and
+set the parameter:
+```
+--client-ca-file=${SNAP_DATA}/certs/ca.crt
+```
+
+**Remediation by the cis-hardening addon**
+
+No. The default setup sets this parameter appropriately.
+
+**Audit**
+
+As root:
+```
+grep -e '--client-ca-file' /var/snap/microk8s/current/args/kubelet
+```
+
+Expected output:
+
+```
+--client-ca-file=${SNAP_DATA}/certs/ca.crt
+```
+
+
+### Check 4.2.4
+
+> Verify that the --read-only-port argument is set to 0 (Manual)
+
+**Remediation**
+
+Edit the kubelet service arguments file `/var/snap/microk8s/current/args/kubelet` and
+set the parameter:
+```
+--read-only-port=0
+```
+or remove it.
+
+**Remediation by the cis-hardening addon**
+
+No. The default setup sets this parameter appropriately.
+
+**Audit**
+
+As root:
+```
+grep -e '--read-only-port' /var/snap/microk8s/current/args/kubelet ; echo $?
+```
+
+Expected output:
+
+```
+1
+```
+
+
+### Check 4.2.5
+
+> Ensure that the --streaming-connection-idle-timeout argument is not set to 0 (Manual)
+
+**Remediation**
+
+Edit the kubelet service arguments file `/var/snap/microk8s/current/args/kubelet` and
+remove the parameter `--streaming-connection-idle-timeout`.
+
+**Remediation by the cis-hardening addon**
+
+No. The default setup sets this parameter appropriately.
+
+**Audit**
+
+As root:
+```
+grep -e '--streaming-connection-idle-timeout' /var/snap/microk8s/current/args/kubelet ; echo $?
+```
+
+Expected output:
+
+```
+1
+```
+
+### Check 4.2.6
+
+> Ensure that the --protect-kernel-defaults argument is set to true (Automated)
+
+**Remediation**
+
+Edit the kubelet service arguments file `/var/snap/microk8s/current/args/kubelet` and
+set the parameter:
+```
+--protect-kernel-defaults=true
+```
+
+**Remediation by the cis-hardening addon**
+
+Yes. The --protect-kernel-defaults is set to true.
+
+
+**Audit**
+
+As root:
+```
+cat /var/snap/microk8s/current/args/kubelet | grep --protect-kernel-defaults
+```
+
+Expected output:
+
+```
+--protect-kernel-defaults=true
+```
+
+
+### Check 4.2.7
+
+> Ensure that the --make-iptables-util-chains argument is set to true (Automated)
+
+**Remediation**
+
+Edit the kubelet service arguments file `/var/snap/microk8s/current/args/kubelet` and
+remove the parameter `--make-iptables-util-chains`.
+
+**Remediation by the cis-hardening addon**
+
+No. By default MicroKs does not set this parameter.
+
+
+**Audit**
+
+As root:
+```
+cat /var/snap/microk8s/current/args/kubelet | grep --make-iptables-util-chains ; echo $?
+```
+
+Expected output:
+
+```
+1
+```
+
+
+### Check 4.2.8
+
+> Ensure that the --hostname-override argument is not set (Manual)
+
+**Remediation**
+
+Edit the kubelet service arguments file `/var/snap/microk8s/current/args/kubelet` and
+remove the parameter `--hostname-override`.
+
+**Remediation by the cis-hardening addon**
+
+No. By default MicroKs does not set this parameter.
+
+
+**Audit**
+
+As root:
+```
+cat /var/snap/microk8s/current/args/kubelet | grep hostname-override ; echo $?
+```
+
+Expected output:
+
+```
+1
+```
+
+
+### Check 4.2.9
+
+> Ensure that the eventRecordQPS argument is set to a level which ensures appropriate event capture (Manual)
+
+**Remediation**
+
+Edit the kubelet service arguments file `/var/snap/microk8s/current/args/kubelet` and
+set the parameter:
+```
+--event-qps=0
+```
+
+**Remediation by the cis-hardening addon**
+
+Yes, the --event-qps is set to 0.
+
+
+**Audit**
+
+As root:
+```
+cat /var/snap/microk8s/current/args/kubelet | grep event-qps ; echo $?
+```
+
+Expected output:
+
+```
+--event-qps=0
+```
+
+
+### Check 4.2.10
+
+> Ensure that the --tls-cert-file and --tls-private-key-file arguments are set as appropriate (Manual)
+
+**Remediation**
+
+Edit the kubelet service arguments file `/var/snap/microk8s/current/args/kubelet` and
+set the parameters:
+```
+--tls-cert-file=${SNAP_DATA}/certs/kubelet.crt
+--tls-private-key-file=${SNAP_DATA}/certs/kubelet.key
+```
+
+**Remediation by the cis-hardening addon**
+
+Yes, both arguments are set to point to the self signed CA created by kubelet.
+
+
+**Audit**
+
+As root:
+```
+grep -e '--tls-cert-file\|--tls-private-key-file' /var/snap/microk8s/current/args/kubelet
+```
+
+Expected output:
+
+```
+--tls-cert-file=${SNAP_DATA}/certs/kubelet.crt
+--tls-private-key-file=${SNAP_DATA}/certs/kubelet.key
+```
+
+
+### Check 4.2.11
+
+> Ensure that the --rotate-certificates argument is not set to false (Automated)
+
+**Remediation**
+
+Edit the kubelet service arguments file `/var/snap/microk8s/current/args/kubelet` and
+remove the parameter `--rotate-certificates`.
+
+**Remediation by the cis-hardening addon**
+
+No. By default MicroKs does not set this parameter.
+
+
+**Audit**
+
+As root:
+```
+grep -e '--rotate-certificates' /var/snap/microk8s/current/args/kubelet ; echo $?
+```
+
+Expected output:
+
+```
+1
+```
+
+
+### Check 4.2.12
+
+> Verify that the RotateKubeletServerCertificate argument is set to true (Manual)
+
+**Remediation**
+
+Edit the kubelet service arguments file `/var/snap/microk8s/current/args/kubelet` and
+remove the feature gate `RotateKubeletServerCertificate` as it is set to true by default.
+
+**Remediation by the cis-hardening addon**
+
+No. By default MicroKs does not set this feature gate to false.
+
+
+**Audit**
+
+As root:
+```
+grep -e 'RotateKubeletServerCertificate' /var/snap/microk8s/current/args/kubelet ; echo $?
+```
+
+Expected output:
+
+```
+1
+```
+
+
+
+### Check 4.2.13
+
+> Ensure that the Kubelet only makes use of Strong Cryptographic Ciphers (Manual)
+
+**Remediation**
+
+Edit the kubelet arguments file /var/snap/microk8s/current/args/kubelet
+and set the below parameter.
+```
+--tls-cipher-suites=TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256
+```
+
+**Remediation by the cis-hardening addon**
+
+Yes, Strong Cryptographic Ciphers are configured.
+
+**Audit**
+
+As root:
+```
+grep -e '--tls-cipher-suites' /var/snap/microk8s/current/args/kubelet
+```
+
+Expected output:
+
+```
+--tls-cipher-suites=TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256
+```
+
+
 ## Kubernetes Policies
 
 The following CIS policy recommendations cannot be automated and therefore are ot of the scope of the `cis-hardening` addon.

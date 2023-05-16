@@ -1285,7 +1285,7 @@ groups:
           [Manual test]
           1) Determine all sccs allowing privileged containers:
              oc get scc -ocustom-columns=NAME:.metadata.name,ALLOWS_PRIVILEGED:.allowPrivilegedContainer
-          2) Review users and groups assigned to sccs allowing priviliged containers:
+          2) Review users and groups assigned to sccs allowing privileged containers:
              oc describe sccs <from (1)>
 
           Use OpenShift's Security Context Constraint feature, which has been contributed

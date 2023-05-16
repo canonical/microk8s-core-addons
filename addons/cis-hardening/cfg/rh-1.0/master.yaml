@@ -973,7 +973,7 @@ groups:
           oc get configmap config -n openshift-kube-apiserver -ojson | jq -r '.data["config.yaml"]' | jq -r .storageConfig.certFile
           # etcd Key File
           oc get configmap config -n openshift-kube-apiserver -ojson | jq -r '.data["config.yaml"]' | jq -r .storageConfig.keyFile
-          # NOTICE 4.6 extention
+          # NOTICE 4.6 extension
           oc get configmap config -n openshift-kube-apiserver -ojson | jq -r '.data["config.yaml"]' | jq -r '.apiServerArguments["etcd-certfile"]'
           oc get configmap config -n openshift-kube-apiserver -ojson | jq -r '.data["config.yaml"]' | jq -r '.apiServerArguments["etcd-keyfile"]'
         tests:
@@ -993,7 +993,7 @@ groups:
           oc get configmap config -n openshift-kube-apiserver -ojson | jq -r '.data["config.yaml"]' | jq -r .servingInfo.certFile
           # TLS Key File
           oc get configmap config -n openshift-kube-apiserver -ojson | jq -r '.data["config.yaml"]' | jq -r '.servingInfo.keyFile'
-          # NOTECI 4.6 extention
+          # NOTECI 4.6 extension
           oc get configmap config -n openshift-kube-apiserver -ojson | jq -r '.data["config.yaml"]' | jq -r '.apiServerArguments["tls-cert-file"]'
           oc get configmap config -n openshift-kube-apiserver -ojson | jq -r '.data["config.yaml"]' | jq -r '.apiServerArguments["tls-private-key-file"]'
         tests:

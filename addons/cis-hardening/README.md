@@ -2559,7 +2559,7 @@ Expected output:
 
 ## Kubernetes Policies
 
-The following CIS policy recommendations cannot be automated and therefore are ot of the scope of the `cis-hardening` addon.
+The following CIS policy recommendations cannot be automated and therefore are out of the scope of the `cis-hardening` addon.
 The cluster administration should take proper action to comply with them whenever possible.
 
 ### Check 5.1.1

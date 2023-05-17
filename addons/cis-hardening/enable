@@ -19,14 +19,14 @@ CERTS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/certs"))
 
 def FixFilePermissions():
     """Set file permissions to 600 and restrict ownership to root:root."""
-    print("Setting file permissions")
+    click.echo("Setting file permissions")
     try:
         service = "/etc/systemd/system/snap.microk8s.daemon-kubelite.service"
         for p in [ ARGS_DIR, CREDS_DIR, CERTS_DIR, service ]:
             subprocess.call(f"chmod -R 600 {p}".split())
             subprocess.call(f"chown -R root:root {p}".split())
     except subprocess.CalledProcessError as e:
-        print(f"Failed to set file permissions: {e}")
+        click.echo(f"Failed to set file permissions: {e}", err=True)
         exit(3)
 
 
@@ -58,7 +58,7 @@ def addArgument(arg: str, value: str, service: str):
 
 def SetServiceArguments():
     """Set arguments to all services for CIS hardening."""
-    print("Setting API server arguments")
+    click.echo("Setting API server arguments")
     args = [("--kubelet-certificate-authority", "${SNAP_DATA}/certs/ca.crt"),
             ("--enable-admission-plugins", "EventRateLimit,AlwaysPullImages,NodeRestriction"),
             ("--admission-control-config-file", "${SNAP_DATA}/args/admission-control-config-file.yaml"),
@@ -76,14 +76,14 @@ def SetServiceArguments():
         res = addArgument(arg[0], arg[1], "kube-apiserver")
         restart = restart or res
 
-    print("Setting controller manager arguments")
+    click.echo("Setting controller manager arguments")
     args = [("--terminated-pod-gc-threshold", "10")]
     
     for arg in args:
         res = addArgument(arg[0], arg[1], "kube-controller-manager")
         restart = restart or res
 
-    print("Setting kubelet arguments")
+    click.echo("Setting kubelet arguments")
     args = [("--protect-kernel-defaults", "true"),
             ("--event-qps", "0"),
             ("--tls-cipher-suites", "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256"),
@@ -100,38 +100,38 @@ def SetServiceArguments():
         try:
             subprocess.call("systemctl restart snap.microk8s.daemon-kubelite".split())
         except subprocess.CalledProcessError as e:
-            print(f"Failed to restart kubelite: {e}")
+            click.echo(f"Failed to restart kubelite: {e}", err=True)
             exit(4)
 
 
 def EnableRBAC():
     """Enable RBAC addon."""
-    print("Enabling RBAC")
+    click.echo("Enabling RBAC")
     try:
         subprocess.call("microk8s enable rbac".split())
     except subprocess.CalledProcessError as e:
-        print(f"Failed to enable RBAC: {e}")
+        click.echo(f"Failed to enable RBAC: {e}", err=True)
         exit(5)
 
 
 def NeedsRoot():
     """Require we run the script as root (sudo)."""
     if os.geteuid() != 0:
-        print("Elevated permissions are needed for this addon.")
-        print("Please try again, this time using 'sudo'.")
+        click.echo("Elevated permissions are needed for this addon.", err=True)
+        click.echo("Please try again, this time using 'sudo'.", err=True)
         exit(1)
 
 
 def CopyExtraConfigFiles():
     """Move the extra configuration files under the args directory."""
-    print("Copy extra files")
+    click.echo("Copy extra files")
     for f in [ "admission-control-config-file.yaml", "eventconfig.yaml", "audit-policy.yaml"]:
         shutil.copyfile(DIR / f, ARGS_DIR / f )
 
 
 def DownloadKubebench(kubebench_version: str):
     """Download kube-bench and place the wrapper script under plugins."""
-    print("Downloading kube-bench")
+    click.echo("Downloading kube-bench")
     try:
         tmpdir = DIR / "tmp"
         shutil.rmtree(tmpdir, ignore_errors=True)
@@ -148,7 +148,7 @@ def DownloadKubebench(kubebench_version: str):
         shutil.copyfile(src, dst)
         subprocess.check_call(f"chmod +x {dst}".split())
     except subprocess.CalledProcessError as e:
-        print(f"Failed to download kube-bench: {e}")
+        click.echo(f"Failed to download kube-bench: {e}", err=True)
         exit(2)
 
 
@@ -158,9 +158,25 @@ def get_arch():
     return arch_translate[platform.machine()]
 
 
+def MarkAddonEnabled():
+    """Mark the addon as enabled by creating a lock file."""
+    lockfile = pathlib.Path(os.path.expandvars("$SNAP_DATA/var/lock/cis-hardening"))
+    pathlib.Path(lockfile).touch()
+
+
+def PrintExitMessage():
+    """Print info at the end of enabling the addon."""
+    click.echo()
+    click.echo("CIS hardening configuration has been applied and kube-bench is installed as a plugin.")
+    click.echo("All microk8s commands require sudo from now on. Inspect the CIS benchmark results with:")
+    click.echo()
+    click.echo("  sudo microk8s kube-bench")
+    click.echo()
+
+
 @click.command()
 @click.option("--kubebench-version", default="0.6.13")
-def main(kubebench_version: str,):
+def main(kubebench_version: str):
     """
     The entry point to the enable script.
 
@@ -173,6 +189,8 @@ def main(kubebench_version: str,):
     DownloadKubebench(kubebench_version)
     FixFilePermissions()
     SetServiceArguments()
+    MarkAddonEnabled()
+    PrintExitMessage()
 
 
 if __name__ == '__main__':

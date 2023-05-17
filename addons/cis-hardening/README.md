@@ -24,6 +24,16 @@ The kube-bench arguments can be passed to the `microk8s kube-bench` command. For
 sudo microk8s kube-bench --check 1.2.3
 ```
 
+If you need to run `kube-bench` before enabling the addon but also using the CIS benchmark configuration appropriate for MicroK8s
+you will to install kube-bench manually and point it to the configuration that comes with the addon.
+To do so pass the following parameters to kube-bnech:
+
+```
+--version cis-1.24-microk8s
+--config /var/snap/microk8s/common/addons/core/addons/cis-hardening/cfg/config.yaml
+--config-dir /var/snap/microk8s/common/addons/core/addons/cis-hardening/cfg/
+```
+
 On pre-1.28 releases you need to follow the remediation steps described below so as to manually configure MicroK8s according to the CIS recommendations.
 
 The CIS hardening needs to be applied to each individual node before it joins a cluster.

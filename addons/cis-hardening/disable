@@ -6,18 +6,69 @@ import subprocess
 
 import click
 
+DIR = pathlib.Path(__file__).parent.absolute()
 PLUGINS_DIR = pathlib.Path(os.path.expandvars("$SNAP_COMMON/plugins"))
+ARGS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/args"))
+CREDS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/credentials"))
+CERTS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/certs"))
 
 
-@click.command()
-def main():
-    print("Removing kube-bench")
+
+def removeArgument(arg: str, service: str):
+    """
+    Remove argument from a service.
+
+        Parameters:
+            arg (str): arguments
+            service (str): name of the service to add the argument to
+
+        Returns:
+            restart (bool): should the service be restarted
+    """
+    exists = False
+    restart = False
+    with open(ARGS_DIR / service, "r") as file:
+        for line_number, line in enumerate(file, start=1):  
+            if arg in line:
+                exists = True
+                break
+    if not exists:
+        with open(ARGS_DIR / service, "a+") as file_object:
+            file_object.write(f"{arg}={value}\n")
+            restart = True
+    return restart
+
+
+def NeedsRoot():
+    """Require we run the script as root (sudo)."""
+    if os.geteuid() != 0:
+        click.echo("Elevated permissions are needed for this addon.", err=True)
+        click.echo("Please try again, this time using 'sudo'.", err=True)
+        exit(1)
+
+
+def MarkAddonDisabled():
+    """Mark the addon as enabled by creating a lock file."""
+    lockfile = pathlib.Path(os.path.expandvars("$SNAP_DATA/var/lock/cis-hardening"))
+    os.remove(lockfile)
+
+
+def UninstallKubebench():
+    """Remove kubebench"""
+    click.echo("Removing kube-bench")
     try:
         bin = PLUGINS_DIR / "kube-bench"
         if os.path.exists(bin):
             os.remove(bin)
     except subprocess.CalledProcessError as e:
-         print(f"Failed to remove kube-bench: {e}")
+         click.echo(f"Failed to remove kube-bench: {e}", err=True)
+
+
+@click.command()
+def main():
+    NeedsRoot()
+    UninstallKubebench()
+    MarkAddonDisabled()
 
 
 if __name__ == '__main__':

@@ -202,7 +202,7 @@ microk8s-addons:
     - name: "cis-hardening"
       version: "1.0.0"
       description: "Apply CIS K8s hardening"
-      check_status: "${SNAP_COMMON}/plugins/kube-bench"
+      check_status: "${SNAP_DATA}/var/lock/cis-hardening"
       supported_architectures:
         - amd64
         - arm64

@@ -3,7 +3,6 @@
 import os
 import pathlib
 import subprocess
-
 import click
 
 DIR = pathlib.Path(__file__).parent.absolute()
@@ -12,6 +11,16 @@ ARGS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/args"))
 CREDS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/credentials"))
 CERTS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/certs"))
 
+
+
+def groupName():
+    """Return the right group name based on the confinement level of the installed snap"""
+    snap_yaml = pathlib.Path(os.path.expandvars("$SNAP/meta/snap.yaml"))
+    with open(snap_yaml, "r") as file:
+        for line_number, line in enumerate(file, start=1):  
+            if "confinement" in line and "classic" in line:
+                return "microk8s"
+    return "snap_microk8s"
 
 
 def removeArgument(arg: str, service: str):
@@ -42,19 +51,39 @@ def removeArgument(arg: str, service: str):
     return restart
 
 
+def UndoFilePermissions():
+    """Set file permissions back to 660 and set ownership to root:microk8s."""
+    click.echo("Resetting file permissions")
+    try:
+        group = groupName()
+        for p in [ ARGS_DIR, CREDS_DIR, CERTS_DIR]:
+            subprocess.call(f"chmod -R g+wr {p}".split())
+            subprocess.call(f"chown -R root:{group} {p}".split())
+    except subprocess.CalledProcessError as e:
+        click.echo(f"Failed to set file permissions: {e}", err=True)
+        exit(3)
+
+
+def RemoveExtraConfigFiles():
+    """Remove the extra configuration files placed under the args directory."""
+    click.echo("Remove extra configuration files")
+    for f in [ "admission-control-config-file.yaml", "eventconfig.yaml", "audit-policy.yaml"]:
+        os.remove(ARGS_DIR / f )
+
+
 def RemoveServiceArguments():
     """Remove arguments from all services."""
     click.echo("Setting API server arguments")
     args = ["--kubelet-certificate-authority",
             "--enable-admission-plugins",
-            "--admission-control-config-file", "${SNAP_DATA}/args/admission-control-config-file.yaml",
-            "--audit-log-path", "/var/log/apiserver/audit.log",
-            "--audit-log-maxage", "30",
-            "--audit-log-maxbackup", "10",
-            "--audit-log-maxsize", "100",
-            "--audit-policy-file", "${SNAP_DATA}/args/audit-policy.yaml",
-            "--request-timeout", "300s",
-            "--tls-cipher-suites", "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,TLS_RSA_WITH_3DES_EDE_CBC_SHA,TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_128_GCM_SHA256,TLS_RSA_WITH_AES_256_CBC_SHA,TLS_RSA_WITH_AES_256_GCM_SHA384",
+            "--admission-control-config-file",
+            "--audit-log-path",
+            "--audit-log-maxage",
+            "--audit-log-maxbackup",
+            "--audit-log-maxsize",
+            "--audit-policy-file",
+            "--request-timeout",
+            "--tls-cipher-suites"
         ]
     
     restart = False
@@ -90,7 +119,6 @@ def RemoveServiceArguments():
             exit(4)
 
 
-
 def NeedsRoot():
     """Require we run the script as root (sudo)."""
     if os.geteuid() != 0:
@@ -120,6 +148,8 @@ def UninstallKubebench():
 def main():
     NeedsRoot()
     RemoveServiceArguments()
+    RemoveExtraConfigFiles()
+    UndoFilePermissions()
     UninstallKubebench()
     MarkAddonDisabled()
 

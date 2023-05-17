@@ -2369,6 +2369,12 @@ set the parameter:
 --protect-kernel-defaults=true
 ```
 
+Mind you may need set in `/etc/sysctl.conf`:
+```
+vm.overcommit_memory = 1
+kernel.panic = 10
+```
+
 **Remediation by the cis-hardening addon**
 
 Yes. The --protect-kernel-defaults is set to true.

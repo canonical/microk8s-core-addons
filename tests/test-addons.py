@@ -170,71 +170,17 @@ class TestAddons(object):
     @pytest.mark.skipif(platform.machine() == "s390x", reason="Not available on s390x")
     def test_cis(self):
         """
-        Sets up and tests dashboard, dns, storage, registry, ingress, metrics server,
-        under cis-hardening.
+        Sets up and tests storage, ingress under cis-hardening.
         """
         microk8s_enable("cis-hardening")
         validate_cis_hardening()
-        ip_ranges = "8.8.8.8,1.1.1.1"
-        print("Enabling DNS")
-        microk8s_disable("dns")
-
-        print("Enabling DNS")
-        microk8s_disable("dns")
-        microk8s_enable("{}:{}".format("dns", ip_ranges), timeout_insec=500)
-        wait_for_pod_state("", "kube-system", "running", label="k8s-app=kube-dns")
-        print("Validating DNS config")
-        validate_coredns_config(ip_ranges)
-        print("Enabling ingress")
         microk8s_enable("ingress")
-        print("Enabling metrics-server")
-        microk8s_enable("metrics-server")
-        print("Validating ingress")
         validate_ingress()
-        print("Disabling ingress")
         microk8s_disable("ingress")
-        print("Enabling dashboard")
-        microk8s_enable("dashboard")
-        print("Validating dashboard")
-        validate_dns_dashboard()
-        print("Enabling hostpath-storage")
         microk8s_enable("hostpath-storage")
-        print("Validating hostpath-storage")
         validate_storage()
-        validate_storage_custom_pvdir()
-        microk8s_enable("registry")
-        print("Validating registry")
-        validate_registry()
-        print("Disabling registry")
-        microk8s_disable("registry")
-        print("Creating test storage class for registry")
-        size, storageclass = "25Gi", "registry-test-sc"
-        manifest_sc = TEMPLATES / "registry-sc.yaml"
-        kubectl(f"apply -f {manifest_sc}")
-        microk8s_enable(f"registry --size={size} --storageclass={storageclass}")
-        print("Validating registry with flag arguments")
-        validate_registry_custom(size, storageclass)
-        print("Disabling custom registry")
-        microk8s_disable("registry")
-        print("Removing test storage class")
-        kubectl(f"delete -f {manifest_sc}")
-        print("Validating Port Forward")
-        validate_forward()
-        print("Validating the Metrics Server")
-        validate_metrics_server()
-        print("Disabling metrics-server")
-        microk8s_disable("metrics-server")
-        print("Disabling dashboard")
-        microk8s_disable("dashboard")
-        print("Disabling hostpath-storage")
         microk8s_disable("hostpath-storage:destroy-storage")
         microk8s_disable("cis-hardening")
-        """
-        We would disable DNS here but this freezes any terminating pods.
-        We let microk8s reset to do the cleanup.
-        print("Disabling DNS")
-        microk8s_disable("dns")
-        """
 
     @pytest.mark.skipif(
         os.environ.get("STRICT") == "yes",

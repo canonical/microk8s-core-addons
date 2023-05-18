@@ -431,8 +431,10 @@ def validate_cis_hardening():
     """
     Validate CIS hardening
     """
+    wait_for_installation()
     output = run_until_success("microk8s kube-bench")
 
+    print(output)
     assert "74 checks PASS" in output
     assert "1 checks FAIL" in output
     assert "42 checks WARN" in output

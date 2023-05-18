@@ -173,7 +173,7 @@ class TestAddons(object):
         Sets up and tests dashboard, dns, storage, registry, ingress, metrics server,
         under cis-hardening.
         """
-        microk8s_enable("cis_hardening")
+        microk8s_enable("cis-hardening")
         validate_cis_hardening()
         ip_ranges = "8.8.8.8,1.1.1.1"
         print("Enabling DNS")

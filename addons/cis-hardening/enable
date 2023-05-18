@@ -24,6 +24,7 @@ def FixFilePermissions():
         service = "/etc/systemd/system/snap.microk8s.daemon-kubelite.service"
         for p in [ ARGS_DIR, CREDS_DIR, CERTS_DIR, service ]:
             subprocess.call(f"chmod -R g-wr {p}".split())
+            subprocess.call(f"chmod -R o-wr {p}".split())
             subprocess.call(f"chown -R root:root {p}".split())
     except subprocess.CalledProcessError as e:
         click.echo(f"Failed to set file permissions: {e}", err=True)

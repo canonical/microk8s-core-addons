@@ -46,7 +46,7 @@ def addArgument(arg: str, value: str, service: str):
     exists = False
     restart = False
     with open(ARGS_DIR / service, "r") as file:
-        for line_number, line in enumerate(file, start=1):  
+        for line_number, line in enumerate(file, start=1):
             if arg in line:
                 exists = True
                 break
@@ -71,7 +71,7 @@ def SetServiceArguments():
             ("--request-timeout", "300s"),
             ("--tls-cipher-suites", "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,TLS_RSA_WITH_3DES_EDE_CBC_SHA,TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_128_GCM_SHA256,TLS_RSA_WITH_AES_256_CBC_SHA,TLS_RSA_WITH_AES_256_GCM_SHA384"),
         ]
-    
+
     restart = False
     for arg in args:
         res = addArgument(arg[0], arg[1], "kube-apiserver")
@@ -79,7 +79,7 @@ def SetServiceArguments():
 
     click.echo("Setting controller manager arguments")
     args = [("--terminated-pod-gc-threshold", "10")]
-    
+
     for arg in args:
         res = addArgument(arg[0], arg[1], "kube-controller-manager")
         restart = restart or res
@@ -92,7 +92,7 @@ def SetServiceArguments():
             ("--tls-cert-file", "${SNAP_DATA}/certs/kubelet.crt"),
             ("--tls-private-key-file", "${SNAP_DATA}/certs/kubelet.key"),
         ]
-    
+
     for arg in args:
         res = addArgument(arg[0], arg[1], "kubelet")
         restart = restart or res
@@ -144,7 +144,7 @@ def DownloadKubebench(kubebench_version: str):
         response = requests.get(url)
         tarball = tmpdir / "kube-bench.tar.gz"
         open(tarball, "wb").write(response.content)
-        subprocess.check_call(f"tar -zxf {tarball} -C {tmpdir}".split())
+        subprocess.check_call(f"tar -zxf {tarball} kube-bench --no-same-owner --no-same-permissions -C {tmpdir}".split())
         src = DIR / "kube-bench"
         dst = PLUGINS_DIR / "kube-bench"
         shutil.copyfile(src, dst)

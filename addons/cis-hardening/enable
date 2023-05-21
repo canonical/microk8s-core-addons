@@ -109,7 +109,8 @@ def EnableRBAC():
     """Enable RBAC addon."""
     click.echo("Enabling RBAC")
     try:
-        subprocess.call("microk8s enable rbac".split())
+        microk8s_enable = os.path.expandvars("$SNAP/microk8s-enable.wrapper")
+        subprocess.call(f"{microk8s_enable} rbac".split())
     except subprocess.CalledProcessError as e:
         click.echo(f"Failed to enable RBAC: {e}", err=True)
         exit(5)

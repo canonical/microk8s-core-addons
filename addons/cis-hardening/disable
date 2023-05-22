@@ -113,7 +113,7 @@ def RemoveServiceArguments():
 
     if restart:
         try:
-            subprocess.call("systemctl restart snap.microk8s.daemon-kubelite".split())
+            subprocess.call("snapctl services microk8s.daemon-kubelite".split())
         except subprocess.CalledProcessError as e:
             click.echo(f"Failed to restart kubelite: {e}", err=True)
             exit(4)

@@ -17,12 +17,25 @@ CERTS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/certs"))
 
 
 
+def isStrict():
+    """Return true if we are on a strict snap"""
+    snap_yaml = pathlib.Path(os.path.expandvars("$SNAP/meta/snap.yaml"))
+    with open(snap_yaml, "r") as file:
+        for line_number, line in enumerate(file, start=1):
+            if "confinement" in line and "strict" in line:
+                return True
+    return False
+
+
 def FixFilePermissions():
     """Set file permissions to 600 and restrict ownership to root:root."""
     click.echo("Setting file permissions")
     try:
-        service = "/etc/systemd/system/snap.microk8s.daemon-kubelite.service"
-        for p in [ ARGS_DIR, CREDS_DIR, CERTS_DIR, service ]:
+        dirs = [ ARGS_DIR, CREDS_DIR, CERTS_DIR ]
+        if isStrict():
+            service = "/etc/systemd/system/snap.microk8s.daemon-kubelite.service"
+            dirs.extend([service])
+        for p in dirs:
             subprocess.call(f"chmod -R g-wr {p}".split())
             subprocess.call(f"chmod -R o-wr {p}".split())
             subprocess.call(f"chown -R root:root {p}".split())
@@ -99,7 +112,7 @@ def SetServiceArguments():
 
     if restart:
         try:
-            subprocess.call("systemctl restart snap.microk8s.daemon-kubelite".split())
+            subprocess.call("snapctl services microk8s.daemon-kubelite".split())
         except subprocess.CalledProcessError as e:
             click.echo(f"Failed to restart kubelite: {e}", err=True)
             exit(4)
@@ -135,7 +148,8 @@ def DownloadKubebench(kubebench_version: str):
     """Download kube-bench and place the wrapper script under plugins."""
     click.echo("Downloading kube-bench")
     try:
-        tmpdir = DIR / "tmp"
+        tmpdir = pathlib.Path(os.path.expandvars("$SNAP_DATA")) / "var" / "tmp"
+        tarbin = pathlib.Path(os.path.expandvars("$SNAP")) / "bin" / "tar"
         shutil.rmtree(tmpdir, ignore_errors=True)
         if not os.path.exists(tmpdir):
             os.makedirs(tmpdir)
@@ -143,8 +157,11 @@ def DownloadKubebench(kubebench_version: str):
         url = f"https://github.com/aquasecurity/kube-bench/releases/download/v{kubebench_version}/kube-bench_{kubebench_version}_linux_{arch}.tar.gz"
         response = requests.get(url)
         tarball = tmpdir / "kube-bench.tar.gz"
+        kubebench = DIR / "tmp"
+        #kubebench = pathlib.Path(os.path.expandvars("$SNAP_DATA"))
         open(tarball, "wb").write(response.content)
-        subprocess.check_call(f"tar -zxf {tarball} kube-bench --no-same-owner --no-same-permissions -C {tmpdir}".split())
+        subprocess.check_call(f"{tarbin} -vzxf {tarball}  --no-same-owner -C {kubebench}".split())
+        #subprocess.check_call(f"tar -zxf {tarball} kube-bench --no-same-owner --no-same-permissions -C {tmpdir}".split())
         src = DIR / "kube-bench"
         dst = PLUGINS_DIR / "kube-bench"
         shutil.copyfile(src, dst)

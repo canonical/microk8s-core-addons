@@ -158,10 +158,10 @@ def DownloadKubebench(kubebench_version: str):
         response = requests.get(url)
         tarball = tmpdir / "kube-bench.tar.gz"
         kubebench = DIR / "tmp"
-        #kubebench = pathlib.Path(os.path.expandvars("$SNAP_DATA"))
         open(tarball, "wb").write(response.content)
+        if not os.path.exists(kubebench):
+            os.mkdir(kubebench)
         subprocess.check_call(f"{tarbin} -vzxf {tarball}  --no-same-owner -C {kubebench}".split())
-        #subprocess.check_call(f"tar -zxf {tarball} kube-bench --no-same-owner --no-same-permissions -C {tmpdir}".split())
         src = DIR / "kube-bench"
         dst = PLUGINS_DIR / "kube-bench"
         shutil.copyfile(src, dst)

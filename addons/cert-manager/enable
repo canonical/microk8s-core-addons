@@ -54,7 +54,7 @@ EOF
 Then, you can create an ingress to expose 'my-service:80' on 'https://my-service.example.com' with:
 
 $ microk8s enable ingress
-$ microk8s kubectl create ingress my-ingress \
-    --annotation cert-manager.io/cluster-issuer=letsencrypt \
+$ microk8s kubectl create ingress my-ingress \\
+    --annotation cert-manager.io/cluster-issuer=letsencrypt \\
     --rule 'my-service.example.com/*=my-service:80,tls=my-service-tls'
 "

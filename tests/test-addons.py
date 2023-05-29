@@ -22,6 +22,7 @@ from validators import (
     validate_coredns_config,
     validate_mayastor,
     validate_cert_manager,
+    validate_cis_hardening,
 )
 from utils import (
     microk8s_enable,
@@ -165,6 +166,21 @@ class TestAddons(object):
         print("Disabling DNS")
         microk8s_disable("dns")
         """
+
+    @pytest.mark.skipif(platform.machine() == "s390x", reason="Not available on s390x")
+    def test_cis(self):
+        """
+        Sets up and tests storage, ingress under cis-hardening.
+        """
+        microk8s_enable("cis-hardening")
+        validate_cis_hardening()
+        microk8s_enable("ingress")
+        validate_ingress()
+        microk8s_disable("ingress")
+        microk8s_enable("hostpath-storage")
+        validate_storage()
+        microk8s_disable("hostpath-storage:destroy-storage")
+        microk8s_disable("cis-hardening")
 
     @pytest.mark.skipif(
         os.environ.get("STRICT") == "yes",

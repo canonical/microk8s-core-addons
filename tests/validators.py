@@ -425,3 +425,22 @@ def validate_minio():
             attempt -= 1
 
     assert service_ok
+
+
+def validate_cis_hardening():
+    """
+    Validate CIS hardening
+    """
+    wait_for_installation()
+    output = run_until_success("microk8s kube-bench")
+
+    print(output)
+    assert "42 checks WARN" in output
+    if os.environ.get("STRICT") == "yes":
+        assert "73 checks PASS" in output
+        assert "2 checks FAIL" in output
+    else:
+        # The extra test that is failing on strict is the permissions of the
+        # systemd kubelite service definition
+        assert "74 checks PASS" in output
+        assert "1 checks FAIL" in output

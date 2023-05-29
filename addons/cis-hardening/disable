@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+
+import os
+import pathlib
+import subprocess
+import click
+
+DIR = pathlib.Path(__file__).parent.absolute()
+PLUGINS_DIR = pathlib.Path(os.path.expandvars("$SNAP_COMMON/plugins"))
+ARGS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/args"))
+CREDS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/credentials"))
+CERTS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/certs"))
+
+
+
+def groupName():
+    """Return the right group name based on the confinement level of the installed snap"""
+    snap_yaml = pathlib.Path(os.path.expandvars("$SNAP/meta/snap.yaml"))
+    with open(snap_yaml, "r") as file:
+        for line_number, line in enumerate(file, start=1):  
+            if "confinement" in line and "classic" in line:
+                return "microk8s"
+    return "snap_microk8s"
+
+
+def removeArgument(arg: str, service: str):
+    """
+    Remove argument from a service.
+
+        Parameters:
+            arg (str): arguments
+            service (str): name of the service to add the argument to
+
+        Returns:
+            restart (bool): should the service be restarted
+    """
+    exists = False
+    restart = False
+    lines = []
+    with open(ARGS_DIR / service, "r") as file:
+        for line_number, line in enumerate(file, start=1):  
+            if arg in line:
+                exists = True
+                continue
+            lines.append(line)
+
+    if exists:
+        with open(ARGS_DIR / service, "w+") as file_object:
+            file_object.writelines(lines)
+            restart = True
+    return restart
+
+
+def UndoFilePermissions():
+    """Set file permissions back to 660 and set ownership to root:microk8s."""
+    click.echo("Resetting file permissions")
+    try:
+        group = groupName()
+        for p in [ ARGS_DIR, CREDS_DIR, CERTS_DIR]:
+            subprocess.call(f"chmod -R g+wr {p}".split())
+            subprocess.call(f"chown -R root:{group} {p}".split())
+    except subprocess.CalledProcessError as e:
+        click.echo(f"Failed to set file permissions: {e}", err=True)
+        exit(3)
+
+
+def RemoveExtraConfigFiles():
+    """Remove the extra configuration files placed under the args directory."""
+    click.echo("Remove extra configuration files")
+    for f in [ "admission-control-config-file.yaml", "eventconfig.yaml", "audit-policy.yaml"]:
+        os.remove(ARGS_DIR / f )
+
+
+def RemoveServiceArguments():
+    """Remove arguments from all services."""
+    click.echo("Setting API server arguments")
+    args = ["--kubelet-certificate-authority",
+            "--enable-admission-plugins",
+            "--admission-control-config-file",
+            "--audit-log-path",
+            "--audit-log-maxage",
+            "--audit-log-maxbackup",
+            "--audit-log-maxsize",
+            "--audit-policy-file",
+            "--request-timeout",
+            "--tls-cipher-suites"
+        ]
+    
+    restart = False
+    for arg in args:
+        res = removeArgument(arg, "kube-apiserver")
+        restart = restart or res
+
+    click.echo("Setting controller manager arguments")
+    args = ["--terminated-pod-gc-threshold"]
+    
+    for arg in args:
+        res = removeArgument(arg, "kube-controller-manager")
+        restart = restart or res
+
+    click.echo("Setting kubelet arguments")
+    args = ["--protect-kernel-defaults",
+            "--event-qps",
+            "--tls-cipher-suites",
+            "--authorization-mode",
+            "--tls-cert-file",
+            "--tls-private-key-file",
+        ]
+    
+    for arg in args:
+        res = removeArgument(arg, "kubelet")
+        restart = restart or res
+
+    if restart:
+        try:
+            subprocess.call("snapctl services microk8s.daemon-kubelite".split())
+        except subprocess.CalledProcessError as e:
+            click.echo(f"Failed to restart kubelite: {e}", err=True)
+            exit(4)
+
+
+def NeedsRoot():
+    """Require we run the script as root (sudo)."""
+    if os.geteuid() != 0:
+        click.echo("Elevated permissions are needed for this addon.", err=True)
+        click.echo("Please try again, this time using 'sudo'.", err=True)
+        exit(1)
+
+
+def MarkAddonDisabled():
+    """Mark the addon as enabled by creating a lock file."""
+    lockfile = pathlib.Path(os.path.expandvars("$SNAP_DATA/var/lock/cis-hardening"))
+    os.remove(lockfile)
+
+
+def UninstallKubebench():
+    """Remove kubebench"""
+    click.echo("Removing kube-bench")
+    try:
+        bin = PLUGINS_DIR / "kube-bench"
+        if os.path.exists(bin):
+            os.remove(bin)
+    except subprocess.CalledProcessError as e:
+         click.echo(f"Failed to remove kube-bench: {e}", err=True)
+
+
+@click.command()
+def main():
+    NeedsRoot()
+    RemoveServiceArguments()
+    RemoveExtraConfigFiles()
+    UndoFilePermissions()
+    UninstallKubebench()
+    MarkAddonDisabled()
+
+
+if __name__ == '__main__':
+    main()

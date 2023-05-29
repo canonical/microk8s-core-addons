@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [ "$EUID" -ne 0 ]
+then echo "Elevated permissions are needed for this command. Please use sudo."
+    exit 1
+fi
+
+${SNAP_COMMON}/addons/core/addons/cis-hardening/tmp/kube-bench --version cis-1.24-microk8s --config ${SNAP_COMMON}/addons/core/addons/cis-hardening/cfg/config.yaml --config-dir ${SNAP_COMMON}/addons/core/addons/cis-hardening/cfg/ $*

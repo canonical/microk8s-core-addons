@@ -32,7 +32,7 @@ def FixFilePermissions():
     click.echo("Setting file permissions")
     try:
         dirs = [ ARGS_DIR, CREDS_DIR, CERTS_DIR ]
-        if isStrict():
+        if not isStrict():
             service = "/etc/systemd/system/snap.microk8s.daemon-kubelite.service"
             dirs.extend([service])
         for p in dirs:

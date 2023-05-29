@@ -32,7 +32,7 @@ jobs:
           sudo microk8s addons repo remove core
           sudo microk8s addons repo add core .
           export UNDER_TIME_PRESSURE="True"
-          if "${{ matrix.channel }}" == "latest/edge/strict"
+          if [[ "${{ matrix.channel }}" == "latest/edge/strict" ]]
           then
             export STRICT="yes"
           fi

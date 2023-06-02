@@ -44,16 +44,16 @@ def create_x509_kubeconfig(filename, user, path_to_cert, path_to_cert_key):
     if os.path.exists(config):
         shutil.copyfile(config, "{}.tokens.backup".format(config))
     
-    with open(CERTS_DIR / "ca.crt", "r") as caf:
-        ca = caf.read()
+    with open(CERTS_DIR / "ca.crt", "r") as f:
+        ca = f.read()
         ca_line = base64.b64encode(ca.encode("utf-8")).decode("utf-8")
 
-    with open(path_to_cert, "r") as caf:
-        cert = caf.read()
+    with open(path_to_cert, "r") as f:
+        cert = f.read()
         cert_line = base64.b64encode(cert.encode("utf-8")).decode("utf-8")
 
-    with open(path_to_cert_key, "r") as caf:
-        cert = caf.read()
+    with open(path_to_cert_key, "r") as f:
+        cert = f.read()
         key_line = base64.b64encode(cert.encode("utf-8")).decode("utf-8")
 
     with open(config_template, "r") as tfp:

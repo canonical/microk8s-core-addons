@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 
-import os
-import csv
 import base64
+import csv
+import os
 import pathlib
+import platform
 import shutil
 import subprocess
-import platform
-import requests
 
 import click
+import requests
 
 DIR = pathlib.Path(__file__).parent.absolute()
 PLUGINS_DIR = pathlib.Path(os.path.expandvars("$SNAP_COMMON/plugins"))

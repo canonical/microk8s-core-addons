@@ -3,6 +3,7 @@
 import os
 import pathlib
 import subprocess
+
 import click
 
 DIR = pathlib.Path(__file__).parent.absolute()

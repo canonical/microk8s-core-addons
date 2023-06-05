@@ -207,9 +207,6 @@ class TestAddons(object):
         microk8s_disable("hostpath-storage:destroy-storage")
         microk8s_disable("cis-hardening")
 
-        # Remove labels
-        kubectl(f'label node {node_name} pvc-node-name-')
-
     @pytest.mark.skipif(platform.machine() == "s390x", reason="Not available on s390x")
     def test_cis(self):
         """

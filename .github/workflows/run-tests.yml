@@ -39,3 +39,6 @@ jobs:
           export SKIP_PROMETHEUS="False"
           sudo -E pytest -s -ra ./tests/test-addons.py
           sudo snap remove microk8s --purge
+
+      - name: tmate session if tests fail
+        uses: mxschmitt/action-tmate@v3

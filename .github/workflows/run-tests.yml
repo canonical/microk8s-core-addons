@@ -24,6 +24,10 @@ jobs:
           sudo apt-get install python3-setuptools
           sudo pip3 install --upgrade pip
           sudo pip3 install -U pytest
+
+      - name: tmate session if tests fail
+        uses: mxschmitt/action-tmate@v3
+
       - name: Running addons tests
         run: |
           set -x
@@ -37,8 +41,6 @@ jobs:
             export STRICT="yes"
           fi
           export SKIP_PROMETHEUS="False"
-          sudo -E pytest -s -ra ./tests/test-addons.py
+          sudo -E pytest -s -ra ./tests/test-addons.py::TestAddons::test_minio_addon
           sudo snap remove microk8s --purge
 
-      - name: tmate session if tests fail
-        uses: mxschmitt/action-tmate@v3

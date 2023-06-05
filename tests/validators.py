@@ -408,14 +408,14 @@ def validate_minio():
         return output
     print("!!!!!!!!!before")
     pods = kubectl_get("pods -n minio-operator -o jsonpath={..metadata.name}")
-    print(l(f"pods {pods} -n minio-operator"))
+    print("pods {pods} -n minio-operator".format(pods=pods))
 
     wait_for_pod_state(
         "", "minio-operator", "running", label="v1.min.io/tenant=microk8s"
     )
 
     print("!!!!!!!!!after")
-    print(l(f"pods {pods} -n minio-operator"))
+    print("pods {pods} -n minio-operator".format(pods=pods))
 
     minio_service = kubectl_get("svc minio -n minio-operator")
     service_ip = minio_service["spec"]["clusterIP"]

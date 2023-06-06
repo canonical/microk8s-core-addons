@@ -197,6 +197,11 @@ class TestAddons(object):
         """
         Sets up and tests storage, ingress under cis-hardening.
         """
+        # Set labels
+        node_name = kubectl(f'get node -o jsonpath=\'{{.items[0].metadata.name}}\'')
+        node_name = node_name.replace("'", "")
+        kubectl(f'label node {node_name} pvc-node-name=hostpath-test-node')
+
         microk8s_enable("cis-hardening")
         validate_cis_hardening()
         microk8s_enable("ingress")
@@ -207,20 +212,8 @@ class TestAddons(object):
         microk8s_disable("hostpath-storage:destroy-storage")
         microk8s_disable("cis-hardening")
 
-    @pytest.mark.skipif(platform.machine() == "s390x", reason="Not available on s390x")
-    def test_cis(self):
-        """
-        Sets up and tests storage, ingress under cis-hardening.
-        """
-        microk8s_enable("cis-hardening")
-        validate_cis_hardening()
-        microk8s_enable("ingress")
-        validate_ingress()
-        microk8s_disable("ingress")
-        microk8s_enable("hostpath-storage")
-        validate_storage()
-        microk8s_disable("hostpath-storage:destroy-storage")
-        microk8s_disable("cis-hardening")
+        # Remove labels
+        kubectl(f'label node {node_name} pvc-node-name-')
 
     @pytest.mark.skipif(
         os.environ.get("STRICT") == "yes",
@@ -354,9 +347,17 @@ class TestAddons(object):
         """
         Test MinIO.
         """
+        # Set labels
+        node_name = kubectl(f'get node -o jsonpath=\'{{.items[0].metadata.name}}\'')
+        node_name = node_name.replace("'", "")
+        kubectl(f'label node {node_name} pvc-node-name=hostpath-test-node')
+
         print("Enabling MinIO")
         microk8s_enable("minio")
         print("Validating MinIO")
         validate_minio()
         print("Disabling MinIO")
         microk8s_disable("minio")
+
+        # Remove labels
+        kubectl(f'label node {node_name} pvc-node-name-')

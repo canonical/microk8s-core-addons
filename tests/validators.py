@@ -402,20 +402,10 @@ def validate_minio():
     """
     Validate minio. Wait for minio service to come up, then ensure S3 endpoint works.
     """
-    def l(target):
-        cmd = "describe " + target
-        output = kubectl(cmd)
-        return output
-    print("!!!!!!!!!before")
-    pods = kubectl_get("pods -n minio-operator -o jsonpath={..metadata.name}")
-    print("pods {pods} -n minio-operator".format(pods=pods))
 
     wait_for_pod_state(
         "", "minio-operator", "running", label="v1.min.io/tenant=microk8s"
     )
-
-    print("!!!!!!!!!after")
-    print("pods {pods} -n minio-operator".format(pods=pods))
 
     minio_service = kubectl_get("svc minio -n minio-operator")
     service_ip = minio_service["spec"]["clusterIP"]

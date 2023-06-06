@@ -25,9 +25,6 @@ jobs:
           sudo pip3 install --upgrade pip
           sudo pip3 install -U pytest
 
-      - name: tmate session if tests fail
-        uses: mxschmitt/action-tmate@v3
-
       - name: Running addons tests
         run: |
           set -x

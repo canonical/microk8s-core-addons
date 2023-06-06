@@ -43,4 +43,3 @@ jobs:
           export SKIP_PROMETHEUS="False"
           sudo -E pytest -s -ra ./tests/test-addons.py
           sudo snap remove microk8s --purge
-

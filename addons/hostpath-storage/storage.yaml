@@ -21,11 +21,11 @@ spec:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-            - matchExpressions:
-              - key: pvc-node-name
-                operator: In
-                values:
-                - hostpath-test-node
+              - matchExpressions:
+                  - key: pvc-node-name
+                    operator: In
+                    values:
+                      - hostpath-test-node
       containers:
         - name: hostpath-provisioner
           image: cdkbot/hostpath-provisioner:1.4.2

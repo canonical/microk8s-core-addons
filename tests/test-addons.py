@@ -67,7 +67,11 @@ class TestAddons(object):
         # Check MicroK8s version
         cmd = "/snap/bin/microk8s.version"
         version_str = run_until_success(cmd, timeout_insec=300)
-        version = check_output(f"echo {version_str} | sudo grep -oP '\\d+\\.\\d+' ", shell=True, encoding="utf-8").strip()
+        version = check_output(
+            f"echo {version_str} | sudo grep -oP '\\d+\\.\\d+' ",
+            shell=True,
+            encoding="utf-8",
+        ).strip()
         minor_version = int(version[2:])
 
         # dns is enabled by default in versions 1.27+
@@ -128,9 +132,9 @@ class TestAddons(object):
 
         """
         # Set labels
-        node_name = kubectl(f'get node -o jsonpath=\'{{.items[0].metadata.name}}\'')
+        node_name = kubectl(f"get node -o jsonpath='{{.items[0].metadata.name}}'")
         node_name = node_name.replace("'", "")
-        kubectl(f'label node {node_name} pvc-node-name=hostpath-test-node')
+        kubectl(f"label node {node_name} pvc-node-name=hostpath-test-node")
 
         # Run tests
         ip_ranges = "8.8.8.8,1.1.1.1"
@@ -190,7 +194,7 @@ class TestAddons(object):
         microk8s_disable("dns")
         """
         # Remove labels
-        kubectl(f'label node {node_name} pvc-node-name-')
+        kubectl(f"label node {node_name} pvc-node-name-")
 
     @pytest.mark.skipif(platform.machine() == "s390x", reason="Not available on s390x")
     def test_cis(self):
@@ -198,9 +202,9 @@ class TestAddons(object):
         Sets up and tests storage, ingress under cis-hardening.
         """
         # Set labels
-        node_name = kubectl(f'get node -o jsonpath=\'{{.items[0].metadata.name}}\'')
+        node_name = kubectl(f"get node -o jsonpath='{{.items[0].metadata.name}}'")
         node_name = node_name.replace("'", "")
-        kubectl(f'label node {node_name} pvc-node-name=hostpath-test-node')
+        kubectl(f"label node {node_name} pvc-node-name=hostpath-test-node")
 
         microk8s_enable("cis-hardening")
         validate_cis_hardening()
@@ -213,7 +217,7 @@ class TestAddons(object):
         microk8s_disable("cis-hardening")
 
         # Remove labels
-        kubectl(f'label node {node_name} pvc-node-name-')
+        kubectl(f"label node {node_name} pvc-node-name-")
 
     @pytest.mark.skipif(
         os.environ.get("STRICT") == "yes",
@@ -348,9 +352,9 @@ class TestAddons(object):
         Test MinIO.
         """
         # Set labels
-        node_name = kubectl(f'get node -o jsonpath=\'{{.items[0].metadata.name}}\'')
+        node_name = kubectl(f"get node -o jsonpath='{{.items[0].metadata.name}}'")
         node_name = node_name.replace("'", "")
-        kubectl(f'label node {node_name} pvc-node-name=hostpath-test-node')
+        kubectl(f"label node {node_name} pvc-node-name=hostpath-test-node")
 
         print("Enabling MinIO")
         microk8s_enable("minio")
@@ -360,4 +364,4 @@ class TestAddons(object):
         microk8s_disable("minio")
 
         # Remove labels
-        kubectl(f'label node {node_name} pvc-node-name-')
+        kubectl(f"label node {node_name} pvc-node-name-")

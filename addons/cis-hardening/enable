@@ -183,19 +183,22 @@ def MarkAddonEnabled():
     pathlib.Path(lockfile).touch()
 
 
-def PrintExitMessage():
+def PrintExitMessage(install_kubebench):
     """Print info at the end of enabling the addon."""
     click.echo()
-    click.echo("CIS hardening configuration has been applied and kube-bench is installed as a plugin.")
-    click.echo("All microk8s commands require sudo from now on. Inspect the CIS benchmark results with:")
-    click.echo()
-    click.echo("  sudo microk8s kube-bench")
+    click.echo("CIS hardening configuration has been applied. All microk8s commands require sudo from now on.")
+    click.echo("Remember to enable this addon on nodes joining the custer.")
+    if install_kubebench:
+        click.echo("Inspect the CIS benchmark results with:")
+        click.echo()
+        click.echo("  sudo microk8s kube-bench")
     click.echo()
 
 
 @click.command()
 @click.option("--kubebench-version", default="0.6.13")
-def main(kubebench_version: str):
+@click.option("--install-kubebench", default=True)
+def main(kubebench_version: str, install_kubebench):
     """
     The entry point to the enable script.
 
@@ -205,11 +208,12 @@ def main(kubebench_version: str):
     NeedsRoot()
     EnableRBAC()
     CopyExtraConfigFiles()
-    DownloadKubebench(kubebench_version)
+    if install_kubebench:
+        DownloadKubebench(kubebench_version)
     FixFilePermissions()
     SetServiceArguments()
     MarkAddonEnabled()
-    PrintExitMessage()
+    PrintExitMessage(install_kubebench)
 
 
 if __name__ == '__main__':

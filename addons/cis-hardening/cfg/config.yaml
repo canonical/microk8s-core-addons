@@ -14,6 +14,7 @@ master:
     # kubernetes is a component to cover the config file /etc/kubernetes/config that is referred to in the benchmark
     - kubernetes
     - kubelet
+    - etcd
 
   kubernetes:
     defaultconf: /etc/kubernetes/config
@@ -102,7 +103,7 @@ master:
       - /etc/etcd/etcd.conf
       - /var/snap/etcd/common/etcd.conf.yml
       - /var/snap/etcd/common/etcd.conf.yaml
-      - /var/snap/microk8s/current/args/etcd
+      - /var/snap/microk8s/current/args/k8s-dqlite
       - /usr/lib/systemd/system/etcd.service
     defaultconf: /etc/kubernetes/manifests/etcd.yaml
     defaultdatadir: /var/lib/etcd/default.etcd
@@ -220,19 +221,12 @@ etcd:
 
   etcd:
     bins:
-      - "etcd"
+      - "k8s-dqlite"
     datadirs:
       - /var/lib/etcd/default.etcd
       - /var/lib/etcd/data.etcd
     confs:
-      - /etc/kubernetes/manifests/etcd.yaml
-      - /etc/kubernetes/manifests/etcd.yml
-      - /etc/kubernetes/manifests/etcd.manifest
-      - /etc/etcd/etcd.conf
-      - /var/snap/etcd/common/etcd.conf.yml
-      - /var/snap/etcd/common/etcd.conf.yaml
-      - /var/snap/microk8s/current/args/etcd
-      - /usr/lib/systemd/system/etcd.service
+      - /var/snap/microk8s/current/args/k8s-dqlite
     defaultconf: /etc/kubernetes/manifests/etcd.yaml
     defaultdatadir: /var/lib/etcd/default.etcd
 
@@ -377,6 +371,7 @@ target_mapping:
     - "managedservices"
   "cis-1.24-microk8s":
     - "master"
+    - "etcd"
     - "node"
     - "controlplane"
     - "policies"

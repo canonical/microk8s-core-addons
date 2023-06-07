@@ -161,7 +161,7 @@ def DownloadKubebench(kubebench_version: str):
         open(tarball, "wb").write(response.content)
         if not os.path.exists(kubebench):
             os.mkdir(kubebench)
-        subprocess.check_call(f"{tarbin} -vzxf {tarball}  --no-same-owner -C {kubebench}".split())
+        subprocess.check_call(f"{tarbin} -zxf {tarball}  --no-same-owner -C {kubebench}".split())
         src = DIR / "kube-bench"
         dst = PLUGINS_DIR / "kube-bench"
         shutil.copyfile(src, dst)

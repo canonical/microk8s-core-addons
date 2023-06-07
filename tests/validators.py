@@ -22,6 +22,7 @@ from utils import (
 TEMPLATES = Path(__file__).absolute().parent / "templates"
 PATCH_TEMPLATES = Path(__file__).absolute().parent / "templates" / "patches"
 
+
 def validate_dns_dashboard():
     """
     Validate the dashboard addon by trying to access the kubernetes dashboard.
@@ -69,7 +70,11 @@ def validate_storage():
     if is_multinode():
         patch = PATCH_TEMPLATES / "storage-affinity-patch.yaml"
         # Apply kubectl patch to allow scheduling on node with the label "pvc-node-name=hostpath-test-node"
-        kubectl("patch deployment hostpath-provisioner -n kube-system --patch-file={}".format(patch))
+        kubectl(
+            "patch deployment hostpath-provisioner -n kube-system --patch-file={}".format(
+                patch
+            )
+        )
 
     manifest = TEMPLATES / "pvc.yaml"
     kubectl("apply -f {}".format(manifest))
@@ -115,7 +120,11 @@ def validate_storage_custom_pvdir():
     if is_multinode():
         patch = PATCH_TEMPLATES / "storage-affinity-patch.yaml"
         # Apply kubectl patch to allow scheduling on node with the label "pvc-node-name=hostpath-test-node"
-        kubectl("patch deployment hostpath-provisioner -n kube-system --patch-file={}".format(patch))
+        kubectl(
+            "patch deployment hostpath-provisioner -n kube-system --patch-file={}".format(
+                patch
+            )
+        )
 
     manifest = TEMPLATES / "pvc-pvdir.yaml"
     kubectl("apply -f {}".format(manifest))

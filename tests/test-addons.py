@@ -63,22 +63,7 @@ class TestAddons(object):
         expected["ha-cluster"] = "enabled"
         expected["helm"] = "enabled"
         expected["helm3"] = "enabled"
-
-        # Check MicroK8s version
-        cmd = "/snap/bin/microk8s.version"
-        version_str = run_until_success(cmd, timeout_insec=300)
-        version = check_output(
-            f"echo {version_str} | sudo grep -oP '\\d+\\.\\d+' ",
-            shell=True,
-            encoding="utf-8",
-        ).strip()
-        minor_version = int(version[2:])
-
-        # dns is enabled by default in versions 1.27+
-        if minor_version <= 26:
-            expected["dns"] = "disabled"
-        else:
-            expected["dns"] = "enabled"
+        expected["dns"] = "enabled"
 
         assert expected == {a["name"]: a["status"] for a in status["addons"]}
 

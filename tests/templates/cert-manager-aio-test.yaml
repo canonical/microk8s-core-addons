@@ -43,7 +43,7 @@ metadata:
   name: microbot
 spec:
   externalTrafficPolicy: Cluster
-  type: LoadBalancer
+  type: NodePort
   selector:
     app: microbot
   ports:

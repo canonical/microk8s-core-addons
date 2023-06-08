@@ -117,7 +117,7 @@ class TestAddons(object):
 
         """
         # Set labels
-        node_name = open('/etc/hostname').read().strip()
+        node_name = open("/etc/hostname").read().strip()
         kubectl(f"label node {node_name} pvc-node-name=hostpath-test-node")
 
         # Run tests
@@ -186,7 +186,7 @@ class TestAddons(object):
         Sets up and tests storage, ingress under cis-hardening.
         """
         # Set labels
-        node_name = open('/etc/hostname').read().strip()
+        node_name = open("/etc/hostname").read().strip()
         kubectl(f"label node {node_name} pvc-node-name=hostpath-test-node")
 
         microk8s_enable("cis-hardening")
@@ -335,7 +335,7 @@ class TestAddons(object):
         Test MinIO.
         """
         # Set labels
-        node_name = open('/etc/hostname').read().strip()
+        node_name = open("/etc/hostname").read().strip()
         kubectl(f"label node {node_name} pvc-node-name=hostpath-test-node")
 
         print("Enabling MinIO")

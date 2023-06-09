@@ -27,6 +27,15 @@ apiVersion: v1
 metadata:
   name: hostpath-test-pod-pvdir
 spec:
+  affinity:
+    nodeAffinity: 
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms: 
+        - matchExpressions: 
+          - key: pvc-node-name
+            operator: In  
+            values:
+            - hostpath-test-node
   containers:
     - name: hostpath-test-container
       image: busybox

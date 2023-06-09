@@ -30,8 +30,10 @@ from utils import (
     microk8s_disable,
     microk8s_reset,
     kubectl,
+    is_multinode,
+    run_until_success,
 )
-from subprocess import CalledProcessError, check_call
+from subprocess import CalledProcessError, check_call, check_output
 
 TEMPLATES = Path(__file__).absolute().parent / "templates"
 
@@ -42,8 +44,12 @@ class TestAddons(object):
         """
         Clean up after a test
         """
-        yield
-        microk8s_reset()
+        if is_multinode():
+            yield
+            return
+        else:
+            yield
+            microk8s_reset()
 
     def test_invalid_addon(self):
         p = subprocess.run(["microk8s", "enable", "foo"])
@@ -110,6 +116,11 @@ class TestAddons(object):
         Sets up and tests dashboard, dns, storage, registry, ingress, metrics server.
 
         """
+        # Set labels
+        node_name = open("/etc/hostname").read().strip()
+        kubectl(f"label node {node_name} pvc-node-name=hostpath-test-node")
+
+        # Run tests
         ip_ranges = "8.8.8.8,1.1.1.1"
         print("Enabling DNS")
         microk8s_disable("dns")
@@ -166,12 +177,18 @@ class TestAddons(object):
         print("Disabling DNS")
         microk8s_disable("dns")
         """
+        # Remove labels
+        kubectl(f"label node {node_name} pvc-node-name-")
 
     @pytest.mark.skipif(platform.machine() == "s390x", reason="Not available on s390x")
     def test_cis(self):
         """
         Sets up and tests storage, ingress under cis-hardening.
         """
+        # Set labels
+        node_name = open("/etc/hostname").read().strip()
+        kubectl(f"label node {node_name} pvc-node-name=hostpath-test-node")
+
         microk8s_enable("cis-hardening")
         validate_cis_hardening()
         microk8s_enable("ingress")
@@ -181,6 +198,9 @@ class TestAddons(object):
         validate_storage()
         microk8s_disable("hostpath-storage:destroy-storage")
         microk8s_disable("cis-hardening")
+
+        # Remove labels
+        kubectl(f"label node {node_name} pvc-node-name-")
 
     @pytest.mark.skipif(
         os.environ.get("STRICT") == "yes",
@@ -231,7 +251,6 @@ class TestAddons(object):
         validate_observability()
         print("Disabling observability")
         microk8s_disable("observability")
-        microk8s_reset()
 
     def test_rbac_addon(self):
         """
@@ -315,9 +334,16 @@ class TestAddons(object):
         """
         Test MinIO.
         """
+        # Set labels
+        node_name = open("/etc/hostname").read().strip()
+        kubectl(f"label node {node_name} pvc-node-name=hostpath-test-node")
+
         print("Enabling MinIO")
         microk8s_enable("minio")
         print("Validating MinIO")
         validate_minio()
         print("Disabling MinIO")
         microk8s_disable("minio")
+
+        # Remove labels
+        kubectl(f"label node {node_name} pvc-node-name-")

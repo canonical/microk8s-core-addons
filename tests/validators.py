@@ -16,9 +16,11 @@ from utils import (
     docker,
     update_yaml_with_arch,
     run_until_success,
+    is_multinode,
 )
 
 TEMPLATES = Path(__file__).absolute().parent / "templates"
+PATCH_TEMPLATES = Path(__file__).absolute().parent / "templates" / "patches"
 
 
 def validate_dns_dashboard():
@@ -64,6 +66,16 @@ def validate_storage():
     wait_for_pod_state(
         "", "kube-system", "running", label="k8s-app=hostpath-provisioner"
     )
+
+    if is_multinode():
+        patch = PATCH_TEMPLATES / "storage-affinity-patch.yaml"
+        # Apply kubectl patch to allow scheduling on node with the label "pvc-node-name=hostpath-test-node"
+        kubectl(
+            "patch deployment hostpath-provisioner -n kube-system --patch-file={}".format(
+                patch
+            )
+        )
+
     manifest = TEMPLATES / "pvc.yaml"
     kubectl("apply -f {}".format(manifest))
     wait_for_pod_state("hostpath-test-pod", "default", "running")
@@ -104,6 +116,16 @@ def validate_storage_custom_pvdir():
     wait_for_pod_state(
         "", "kube-system", "running", label="k8s-app=hostpath-provisioner"
     )
+
+    if is_multinode():
+        patch = PATCH_TEMPLATES / "storage-affinity-patch.yaml"
+        # Apply kubectl patch to allow scheduling on node with the label "pvc-node-name=hostpath-test-node"
+        kubectl(
+            "patch deployment hostpath-provisioner -n kube-system --patch-file={}".format(
+                patch
+            )
+        )
+
     manifest = TEMPLATES / "pvc-pvdir.yaml"
     kubectl("apply -f {}".format(manifest))
     wait_for_pod_state("hostpath-test-pod-pvdir", "default", "running")

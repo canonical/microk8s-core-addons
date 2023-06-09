@@ -278,3 +278,18 @@ def is_lxc_container():
         print("no indication of a container in /proc")
 
     return False
+
+
+def is_multinode():
+    """
+    Return: True if the deployment is multinode
+
+    """
+    try:
+        cmd = ["/snap/bin/microk8s.kubectl", "get", "no", "-o", "name"]
+        nodes = check_output(cmd).decode("utf-8").split()
+        return len(nodes) > 1
+    except CalledProcessError:
+        print("Failed to query the cluster nodes.")
+
+    return False

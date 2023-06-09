@@ -42,8 +42,6 @@ metadata:
     app: microbot
   name: microbot
 spec:
-  externalTrafficPolicy: Cluster
-  type: NodePort
   selector:
     app: microbot
   ports:
@@ -57,7 +55,6 @@ metadata:
   name: mock-ingress
   annotations:
     cert-manager.io/cluster-issuer: mock-issuer
-    acme.cert-manager.io/http01-edit-in-place: "true"
 spec:
   tls:
   - hosts:

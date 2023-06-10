@@ -11,8 +11,10 @@ microk8s enable cis-hardening
 ```
 
 The addon assumes a default configuration and reconfigures the MicroK8s services to comply with the CIS-1.24 recommendations.
-Enabling the addon also installs kube-bench as a plugin along with a revised version of CIS benchmark configurations applicable for MicroK8s.
-Call kube-bench with:
+
+
+Unless the `--install-kubebench` flag is set to `false`, enabling the addon also installs kube-bench as a plugin along with
+a revised version of CIS benchmark configurations applicable for MicroK8s. Call kube-bench with:
 
 ```
 sudo microk8s kube-bench

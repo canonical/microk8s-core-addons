@@ -457,7 +457,7 @@ def validate_cis_hardening():
     output = run_until_success("microk8s kube-bench")
 
     print(output)
-    assert "42 checks WARN" in output
+    assert "41 checks WARN" in output
     if os.environ.get("STRICT") == "yes":
         assert "80 checks PASS" in output
         assert "1 checks FAIL" in output

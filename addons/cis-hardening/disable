@@ -3,6 +3,7 @@
 import os
 import pathlib
 import subprocess
+
 import click
 
 DIR = pathlib.Path(__file__).parent.absolute()
@@ -68,7 +69,8 @@ def RemoveExtraConfigFiles():
     """Remove the extra configuration files placed under the args directory."""
     click.echo("Remove extra configuration files")
     for f in [ "admission-control-config-file.yaml", "eventconfig.yaml", "audit-policy.yaml"]:
-        os.remove(ARGS_DIR / f )
+        if os.path.exists(f):
+            os.remove(ARGS_DIR / f )
 
 
 def RemoveServiceArguments():
@@ -111,12 +113,7 @@ def RemoveServiceArguments():
         res = removeArgument(arg, "kubelet")
         restart = restart or res
 
-    if restart:
-        try:
-            subprocess.call("snapctl services microk8s.daemon-kubelite".split())
-        except subprocess.CalledProcessError as e:
-            click.echo(f"Failed to restart kubelite: {e}", err=True)
-            exit(4)
+    return restart
 
 
 def NeedsRoot():
@@ -144,12 +141,56 @@ def UninstallKubebench():
          click.echo(f"Failed to remove kube-bench: {e}", err=True)
 
 
+def UndoTokens():
+    """Remove tokens patches"""
+    if not os.path.exists(CREDS_DIR / "client.config.tokens.backup"):
+        return False
+
+    click.echo("Reverting to tokens auth")
+    files = [
+        (CREDS_DIR / "kubelet.config.tokens.backup", CREDS_DIR / "kubelet.config"),
+        (CREDS_DIR / "proxy.config.tokens.backup", CREDS_DIR / "proxy.config"),
+        (CREDS_DIR / "scheduler.config.tokens.backup", CREDS_DIR / "scheduler.config"),
+        (CREDS_DIR / "controller.config.tokens.backup", CREDS_DIR / "controller.config"),
+        (CREDS_DIR / "client.config.tokens.backup", CREDS_DIR / "client.config"),
+    ]
+
+    for file in files:
+        if os.path.exists(file[0]):
+            os.replace(file[0], file[1])
+
+    files = [ "admin", "system:kube-controller-manager", "system:kube-proxy", "system:kube-scheduler" ]
+    for file in files:
+        for ext in [ "crt", "key", "csr" ]:
+            f = CERTS_DIR / f"{file}.{ext}"
+            if os.path.exists(f):
+                os.remove(f)
+
+    with open(ARGS_DIR / "kube-apiserver", "a+") as file_object:
+        file_object.write("--token-auth-file=${SNAP_DATA}/credentials/known_tokens.csv\n")
+
+    return True
+
+
+def Restart():
+    click.echo("Restarting kubelet")
+    try:
+        subprocess.call("snapctl services microk8s.daemon-kubelite".split())
+    except subprocess.CalledProcessError as e:
+        click.echo(f"Failed to restart kubelite: {e}", err=True)
+        exit(4)
+
+
 @click.command()
 def main():
     NeedsRoot()
-    RemoveServiceArguments()
+    restart = False
+    restart = RemoveServiceArguments()
     RemoveExtraConfigFiles()
     UndoFilePermissions()
+    restart = UndoTokens() or restart
+    if restart:
+        Restart()        
     UninstallKubebench()
     MarkAddonDisabled()
 

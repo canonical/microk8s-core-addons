@@ -11,6 +11,7 @@ PLUGINS_DIR = pathlib.Path(os.path.expandvars("$SNAP_COMMON/plugins"))
 ARGS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/args"))
 CREDS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/credentials"))
 CERTS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/certs"))
+DQLITE_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/var/kubernetes/backend"))
 
 
 
@@ -57,8 +58,9 @@ def UndoFilePermissions():
     click.echo("Resetting file permissions")
     try:
         group = groupName()
-        for p in [ ARGS_DIR, CREDS_DIR, CERTS_DIR]:
+        for p in [ ARGS_DIR, CREDS_DIR, CERTS_DIR, DQLITE_DIR]:
             subprocess.call(f"chmod -R g+wr {p}".split())
+            subprocess.call(f"chmod g+x {p}".split())
             subprocess.call(f"chown -R root:{group} {p}".split())
     except subprocess.CalledProcessError as e:
         click.echo(f"Failed to set file permissions: {e}", err=True)

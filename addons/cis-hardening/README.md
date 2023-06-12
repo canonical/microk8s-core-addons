@@ -63,13 +63,13 @@ Each check presented below includes the following information:
 
 ### Check 1.1.1
 
-> Ensure that the API server pod specification file permissions are set to 644 or more restrictive (Automated)
+> Ensure that the API server pod specification file permissions are set to 600 or more restrictive (Automated)
 
 **Remediation**
 
 In MicroK8s the control plane is not self-hosted and therefore it does not run in pods. Instead the API server is a
 systemd service with its configuration found at `/var/snap/microk8s/current/args/kube-apiserver`. The permissions of this
-file need to be set to 644 or more restrictive:
+file need to be set to 600 or more restrictive:
 
 ```
 chmod 600 /var/snap/microk8s/current/args/kube-apiserver
@@ -133,7 +133,7 @@ root:root
 
 In MicroK8s the control plane is not self-hosted and therefore it does not run in pods. Instead the controller manager is a
 systemd service with its configuration found at `/var/snap/microk8s/current/args/kube-controller-manager`. The permissions of this
-file need to be set to 644 or more restrictive:
+file need to be set to 600 or more restrictive:
 
 ```
 chmod 600 /var/snap/microk8s/current/args/kube-controller-manager
@@ -197,7 +197,7 @@ root:root
 
 In MicroK8s the control plane is not self-hosted and therefore it does not run in pods. Instead the scheduler is a
 systemd service with its configuration found at `/var/snap/microk8s/current/args/kube-scheduler`. The permissions of this
-file need to be set to 644 or more restrictive:
+file need to be set to 600 or more restrictive:
 
 ```
 chmod 600 /var/snap/microk8s/current/args/kube-scheduler
@@ -259,15 +259,32 @@ root:root
 
 **Remediation**
 
-Not applicable. MicroK8s does not use etcd as its datastore.
+Not applicable. MicroK8s does not use etcd as its datastore it uses dqlite.
+
+Dqlite is a systemd service with its configuration found at `/var/snap/microk8s/current/args/k8s-dqlite`.
+To comply with the spirit of this CIS recommendation:
+
+```
+chmod 600 /var/snap/microk8s/current/args/k8s-dqlite
+```
 
 **Remediation by the cis-hardening addon**
 
-No.
+Yes. Permissions set to 600
 
 **Audit**
 
-Not applicable.
+As root:
+
+```
+/bin/sh -c 'if test -e /var/snap/microk8s/current/args/k8s-dqlite; then stat -c permissions=%a /var/snap/microk8s/current/args/k8s-dqlite; fi'
+```
+
+Expected output:
+
+```
+permissions=600
+```
 
 ### Check 1.1.8
 
@@ -275,15 +292,31 @@ Not applicable.
 
 **Remediation**
 
-Not applicable. MicroK8s does not use etcd as its datastore.
+Not applicable. MicroK8s does not use etcd as its datastore it uses dqlite.
+
+Dqlite is a systemd service with its configuration found at `/var/snap/microk8s/current/args/k8s-dqlite`.
+The configuration file is owned by the user `root` and is editable by users in the `microk8s` (or `snap_microk8s`) group.
+To comply with the spirit of this CIS recommendation:
+
+```
+chown root:root /var/snap/microk8s/current/args/k8s-dqlite
+```
 
 **Remediation by the cis-hardening addon**
 
-No.
+Yes. Ownership set to root:root
 
 **Audit**
 
-Not applicable.
+```
+/bin/sh -c 'if test -e /var/snap/microk8s/current/args/k8s-dqlite; then stat -c %U:%G /var/snap/microk8s/current/args/k8s-dqlite; fi'
+```
+
+Expected output:
+
+```
+root:root
+```
 
 ### Check 1.1.9
 
@@ -351,15 +384,33 @@ root:toot
 
 **Remediation**
 
-Not applicable. MicroK8s does not use etcd as its datastore.
+Not applicable. MicroK8s uses dqlite as its datastore.
+
+Dqlite data are kept by default under `/var/snap/microk8s/current/var/kubernetes/backend/`.
+To comply with the spirit of this CIS recommendation:
+
+```
+chmod -R 700 /var/snap/microk8s/current/var/kubernetes/backend/
+```
+
 
 **Remediation by the cis-hardening addon**
 
-No.
+Yes. Permission set to 700
 
 **Audit**
 
-Not applicable.
+As root:
+
+```
+stat -c permissions=%a /var/snap/microk8s/current/var/kubernetes/backend/
+```
+
+Expected output:
+
+```
+permissions=700
+```
 
 ### Check 1.1.12
 
@@ -367,15 +418,33 @@ Not applicable.
 
 **Remediation**
 
-Not applicable. MicroK8s does not use etcd as its datastore.
+Not applicable.  MicroK8s uses dqlite as its datastore owned by root.
+
+Dqlite data are kept by default under `/var/snap/microk8s/current/var/kubernetes/backend/`.
+To comply with the spirit of this CIS recommendation:
+
+```
+chown -R root:root /var/snap/microk8s/current/var/kubernetes/backend/
+```
+
 
 **Remediation by the cis-hardening addon**
 
-No.
+Yes. Ownership set to root:root
 
 **Audit**
 
-Not applicable.
+As root:
+
+```
+stat -c %U:%G /var/snap/microk8s/current/var/kubernetes/backend/
+```
+
+Expected output:
+
+```
+root:toot
+```
 
 ### Check 1.1.13
 
@@ -1496,7 +1565,9 @@ Expected output:
 
 **Remediation**
 
-Not applicable. MicroK8s used dqlite.
+Not applicable. MicroK8s used dqlite and the communication to this service is done through a
+local socket (`/var/snap/microk8s/current/var/kubernetes/backend/kine.sock:12379`) accessible
+to users with root permissions.
 
 **Remediation by the cis-hardening addon**
 
@@ -1578,7 +1649,9 @@ Expected output:
 
 **Remediation**
 
-Not applicable. MicroK8s used dqlite.
+Not applicable. MicroK8s used dqlite and the communication to this service is done through a
+local socket (`/var/snap/microk8s/current/var/kubernetes/backend/kine.sock:12379`) accessible
+to users with root permissions.
 
 **Remediation by the cis-hardening addon**
 
@@ -1952,6 +2025,160 @@ Expected output:
 ```
 
 ## Etcd Node Configuration, for dqlite
+
+### Check 2.1
+
+> Ensure that the --cert-file and --key-file arguments are set as appropriate (Automated)
+
+**Remediation**
+
+Not applicable. MicroK8s used dqlite and the communication to this service is done through a
+local socket (`/var/snap/microk8s/current/var/kubernetes/backend/kine.sock:12379`) accessible
+to users with root permissions.
+
+**Remediation by the cis-hardening addon**
+
+No. Not applicable.
+
+**Audit**
+
+Not applicable.
+
+
+### Check 2.2
+
+> Ensure that the --client-cert-auth argument is set to true (Automated)
+
+**Remediation**
+
+Not applicable. MicroK8s used dqlite and the communication to this service is done through a
+local socket (`/var/snap/microk8s/current/var/kubernetes/backend/kine.sock:12379`) accessible
+to users with root permissions.
+
+**Remediation by the cis-hardening addon**
+
+No. Not applicable.
+
+**Audit**
+
+Not applicable.
+
+
+### Check 2.3
+
+> Ensure that the --auto-tls argument is not set to true (Automated)
+
+**Remediation**
+
+Not applicable. MicroK8s used dqlite and the communication to this service is done through a
+local socket (`/var/snap/microk8s/current/var/kubernetes/backend/kine.sock:12379`) accessible
+to users with root permissions.
+
+**Remediation by the cis-hardening addon**
+
+No. Not applicable.
+
+**Audit**
+
+Not applicable.
+
+
+### Check 2.4
+
+> Ensure that the --peer-cert-file and --peer-key-file arguments are set as appropriate (Automated)
+
+**Remediation**
+
+MicroK8s used dqlite and tls peer communication uses the certificate pair
+`/var/snap/microk8s/current/var/kubernetes/backend/cluster.crt` and
+`/var/snap/microk8s/current/var/kubernetes/backend/cluster.key`.
+
+**Remediation by the cis-hardening addon**
+
+No. The default configuration enables TLS.
+
+**Audit**
+
+As root:
+
+```
+if [ -e /var/snap/microk8s/current/var/kubernetes/backend/cluster.crt ] &&
+  [ -e /var/snap/microk8s/current/var/kubernetes/backend/cluster.key ];
+then
+  echo 'certs-found';
+fi
+```
+
+Expected output:
+
+```
+certs-found
+```
+
+
+### Check 2.5
+
+> Ensure that the --peer-client-cert-auth argument is set to true (Automated)
+
+**Remediation**
+
+MicroK8s used dqlite and tls peer communication always uses is TLS unless the `--enable-tls` is set to false in
+`/var/snap/microk8s/current/args/k8s-dqlite`.
+
+**Remediation by the cis-hardening addon**
+
+No. The default configuration enables TLS.
+
+**Audit**
+
+As root:
+
+```
+grep enable-tls /var/snap/microk8s/current/args/k8s-dqlite
+```
+
+Expected no output or:
+
+```
+--enable-tls=true
+```
+
+### Check 2.6
+
+> Ensure that the --peer-auto-tls argument is not set to true (Automated)
+
+**Remediation**
+
+Not applicable. MicroK8s used dqlite and tls peer communication uses the certificates
+created upon the snap creation.
+
+**Remediation by the cis-hardening addon**
+
+No. Not applicable.
+
+**Audit**
+
+Not applicable.
+
+
+### Check 2.7
+
+> Ensure that a unique Certificate Authority is used for etcd (Manual)
+
+**Remediation**
+
+Not applicable. MicroK8s used dqlite and tls peer communication uses the certificates
+created upon the snap creation.
+
+**Remediation by the cis-hardening addon**
+
+No. Not applicable.
+
+**Audit**
+
+Not applicable.
+
+
 
 ## Control Plane Configuration
 

@@ -86,7 +86,7 @@ groups:
 
       - id: 1.1.7
         text: "Ensure that the etcd pod specification file permissions are set to 600 or more restrictive (Automated)"
-        audit: "/bin/sh -c 'if test -e $etcdconf; then find $etcdconf -name '*etcd*' | xargs stat -c permissions=%a; fi'"
+        audit: "/bin/sh -c 'if test -e $etcdconf; then find $etcdconf -name '*dqlite*' | xargs stat -c permissions=%a; fi'"
         use_multiple_values: true
         tests:
           test_items:
@@ -98,11 +98,11 @@ groups:
           Run the below command (based on the file location on your system) on the control plane node.
           For example,
           chmod 600 $etcdconf
-        scored: false
+        scored: true
 
       - id: 1.1.8
         text: "Ensure that the etcd pod specification file ownership is set to root:root (Automated)"
-        audit: "/bin/sh -c 'if test -e $etcdconf; then find $etcdconf -name '*etcd*' | xargs stat -c %U:%G; fi'"
+        audit: "/bin/sh -c 'if test -e $etcdconf; then find $etcdconf -name '*dqlite*' | xargs stat -c %U:%G; fi'"
         use_multiple_values: true
         tests:
           test_items:
@@ -111,7 +111,7 @@ groups:
           Run the below command (based on the file location on your system) on the control plane node.
           For example,
           chown root:root $etcdconf
-        scored: false
+        scored: true
 
       - id: 1.1.9
         text: "Ensure that the Container Network Interface file permissions are set to 600 or more restrictive (Manual)"
@@ -148,41 +148,38 @@ groups:
       - id: 1.1.11
         text: "Ensure that the etcd data directory permissions are set to 700 or more restrictive (Automated)"
         audit: |
-          DATA_DIR=''
-          for d in $(ps -ef | grep $etcdbin | grep -- --data-dir | sed 's%.*data-dir[= ]\([^ ]*\).*%\1%'); do
-            if test -d "$d"; then DATA_DIR="$d"; fi
-          done
+          DATA_DIR='/var/snap/microk8s/current/var/kubernetes/backend/'
           if ! test -d "$DATA_DIR"; then DATA_DIR=$etcddatadir; fi
           stat -c permissions=%a "$DATA_DIR"
         tests:
           test_items:
-            - binop: True
+            - flag: "permissions"
+              compare:
+                op: bitmask
+                value: "700"
         remediation: |
           On the etcd server node, get the etcd data directory, passed as an argument --data-dir,
           from the command 'ps -ef | grep etcd'.
           Run the below command (based on the etcd data directory found above). For example,
-          chmod 700 /var/lib/etcd
-        scored: false
+          chmod 700 /var/snap/microk8s/current/var/kubernetes/backend/
+        scored: true
 
       # Etcd is not running on MicroK8s master nodes
       - id: 1.1.12
         text: "Ensure that the etcd data directory ownership is set to etcd:etcd (Automated)"
         audit: |
-          DATA_DIR=''
-          for d in $(ps -ef | grep $etcdbin | grep -- --data-dir | sed 's%.*data-dir[= ]\([^ ]*\).*%\1%'); do
-            if test -d "$d"; then DATA_DIR="$d"; fi
-          done
+          DATA_DIR='/var/snap/microk8s/current/var/kubernetes/backend/'
           if ! test -d "$DATA_DIR"; then DATA_DIR=$etcddatadir; fi
           stat -c %U:%G "$DATA_DIR"
         tests:
           test_items:
-            - flag: "etcd:etcd"
+            - flag: "root:root"
         remediation: |
           On the etcd server node, get the etcd data directory, passed as an argument --data-dir,
           from the command 'ps -ef | grep etcd'.
           Run the below command (based on the etcd data directory found above).
-          For example, chown etcd:etcd /var/lib/etcd
-        scored: false
+          For example, chown root:root /var/snap/microk8s/current/var/kubernetes/backend/
+        scored: true
 
       - id: 1.1.13
         text: "Ensure that the admin.conf file permissions are set to 600 or more restrictive (Automated)"

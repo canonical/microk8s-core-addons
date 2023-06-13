@@ -152,7 +152,7 @@ def FixFilePermissions():
 
 def appendArgument(arg: str, append_value: str, service: str):
     """
-    Append aditional values to a argument in a service.
+    Append additional values to a argument in a service.
 
         Parameters:
             arg (str): arguments

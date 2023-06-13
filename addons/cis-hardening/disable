@@ -95,6 +95,12 @@ def RemoveServiceArguments():
         res = removeArgument(arg, "kube-apiserver")
         restart = restart or res
 
+    # The "--enable-admission-plugins" and "--admission-control-config-file" are enabled by default so we need to add them back.
+    with open(ARGS_DIR / "kube-apiserver", "a") as file_object:
+        file_object.write("--enable-admission-plugins=EventRateLimit\n")
+        file_object.write("--admission-control-config-file=${SNAP_DATA}/args/admission-control-config-file.yaml\n")
+
+
     click.echo("Setting controller manager arguments")
     args = ["--terminated-pod-gc-threshold"]
     

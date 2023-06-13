@@ -150,6 +150,28 @@ def FixFilePermissions():
         exit(3)
 
 
+def appendArgument(arg: str, append_value: str, service: str):
+    """
+    Append aditional values to a argument in a service.
+
+        Parameters:
+            arg (str): arguments
+            value (str): additional value for the argument
+            service (str): name of the service to add the argument to
+    """
+    file_path = ARGS_DIR / service
+    with open(file_path, "r") as file:
+        lines = file.readlines()
+
+    for line_number, line in enumerate(lines):
+        if arg in line:
+            lines[line_number] = line.rstrip() + append_value + "\n"
+            break
+
+    with open(file_path, "w") as file:
+        file.writelines(lines)
+
+
 def addArgument(arg: str, value: str, service: str):
     """
     Add argument to a service.
@@ -167,6 +189,9 @@ def addArgument(arg: str, value: str, service: str):
     with open(ARGS_DIR / service, "r") as file:
         for line_number, line in enumerate(file, start=1):
             if arg in line:
+                # We enable the "--enable-admission-plugins=EventRateLimit" admission plugins by default
+                if arg == "--enable-admission-plugins":
+                    appendArgument(arg, ",AlwaysPullImages,NodeRestriction", service)
                 exists = True
                 break
     if not exists:
@@ -179,9 +204,9 @@ def addArgument(arg: str, value: str, service: str):
 def SetServiceArguments():
     """Set arguments to all services for CIS hardening."""
     click.echo("Setting API server arguments")
-    args = [("--kubelet-certificate-authority", "${SNAP_DATA}/certs/ca.crt"),
-            ("--enable-admission-plugins", "EventRateLimit,AlwaysPullImages,NodeRestriction"),
+    args = [("--enable-admission-plugins", "EventRateLimit,AlwaysPullImages,NodeRestriction"),
             ("--admission-control-config-file", "${SNAP_DATA}/args/admission-control-config-file.yaml"),
+            ("--kubelet-certificate-authority", "${SNAP_DATA}/certs/ca.crt"),
             ("--audit-log-path", "/var/log/apiserver/audit.log"),
             ("--audit-log-maxage", "30"),
             ("--audit-log-maxbackup", "10"),

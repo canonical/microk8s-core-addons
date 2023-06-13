@@ -1055,13 +1055,9 @@ Follow the Kubernetes documentation and set the desired event rate limits in a c
 apiVersion: eventratelimit.admission.k8s.io/v1alpha1
 kind: Configuration
 limits:
-  - type: Namespace
-    qps: 50
-    burst: 100
-    cacheSize: 2000
-  - type: User
-    qps: 10
-    burst: 50
+  - type: Server
+    qps: 5000
+    burst: 20000
 ```
 
 Place this file in `/var/snap/microk8s/current/args/`, and name it `eventconfig.yaml`.

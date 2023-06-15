@@ -6,6 +6,7 @@ import os
 import pathlib
 import platform
 import shutil
+import socket
 import subprocess
 
 import click
@@ -69,7 +70,7 @@ def create_x509_kubeconfig(filename, user, path_to_cert, path_to_cert_key):
             fp.write(config_txt)
 
 
-def create_certificate(name, group):
+def create_certificate(name, group, extfile = None):
     snap_path = pathlib.Path(os.environ.get("SNAP"))
     cert = CERTS_DIR / f"{name}.crt"
     key = CERTS_DIR / f"{name}.key"
@@ -85,6 +86,8 @@ def create_certificate(name, group):
             cmd += f"/O={group}"
         subprocess.check_call(cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         cmd = f"{snap_path}/usr/bin/openssl x509 -req -in {csr} -CA {cacert} -CAkey {cakey} -CAcreateserial -out {cert} -days 3650"
+        if extfile:
+            cmd += f"-extfile {extfile}"
         subprocess.check_call(cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return (cert, key)
     except subprocess.CalledProcessError as e:
@@ -107,18 +110,23 @@ def FixTokens():
     
     click.echo("Removing tokens")
     entities = [
-        {"username": "admin", "group":"system:masters", "filename": "client.config"},
-        {"username": "system:kube-controller-manager", "group": None, "filename": "controller.config"},
-        {"username": "system:kube-proxy", "group": None, "filename": "proxy.config"},
-        {"username": "system:kube-scheduler", "group": None, "filename": "scheduler.config"},
+        {"username": "admin", "group":"system:masters", "filename": "client.config", "extfile": None},
+        {"username": "system:kube-controller-manager", "group": None, "filename": "controller.config", "extfile": None},
+        {"username": "system:kube-proxy", "group": None, "filename": "proxy.config", "extfile": None},
+        {"username": "system:kube-scheduler", "group": None, "filename": "scheduler.config", "extfile": None},
     ]
 
     with open(CREDS_DIR / "known_tokens.csv") as tokens_file:
         tokens_reader = csv.reader(tokens_file, delimiter=',')
         for row in tokens_reader:
             if row[2].startswith("kubelet"):
+                csr_file = f"{CERTS_DIR}/kubelet.csr.conf"
+                hostname = socket.gethostname().lower()
+                with open(csr_file, "w") as fp:
+                    fp.write("subjectAltName=DNS:{}\n".format(hostname))
+
                 entities.append(
-                    {"username": row[1], "group": "system:nodes", "filename": "kubelet.config"}
+                    {"username": row[1], "group": "system:nodes", "filename": "kubelet.config", "extfile": csr_file}
                 )
                 break
 
@@ -260,6 +268,17 @@ def Restart():
         exit(4)
 
 
+def ApplyClusterRoles():
+    """Create RBAC cluster roles for apisetver to kubelet communication."""
+    kubectl = os.path.expandvars("$SNAP/microk8s-kubectl.wrapper")
+    try:
+        cmd = f"{kubectl} apply -f {DIR}/kube-apiserver-to-kubelet.yaml"
+        subprocess.check_call(cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError as e:
+        click.echo(f"Failed to apply RBAC rules for kube-apiserver to kubelet communication: {e}", err=True)
+        exit(7)
+
+
 def EnableRBAC():
     """Enable RBAC addon."""
     click.echo("Enabling RBAC")
@@ -348,6 +367,7 @@ def main(kubebench_version: str, install_kubebench):
             kubebench_version (str): the version of kubebench we want to install
     """
     NeedsRoot()
+    ApplyClusterRoles()
     EnableRBAC()
     CopyExtraConfigFiles()
     if install_kubebench:

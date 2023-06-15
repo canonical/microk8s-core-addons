@@ -70,7 +70,7 @@ def UndoFilePermissions():
 def RemoveExtraConfigFiles():
     """Remove the extra configuration files placed under the args directory."""
     click.echo("Remove extra configuration files")
-    for f in [ "admission-control-config-file.yaml", "eventconfig.yaml", "audit-policy.yaml"]:
+    for f in [ "audit-policy.yaml"]:
         if os.path.exists(f):
             os.remove(ARGS_DIR / f )
 

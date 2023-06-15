@@ -150,26 +150,37 @@ def FixFilePermissions():
         exit(3)
 
 
-def appendArgument(arg: str, append_value: str, service: str):
+def ensureAdmissionPlugins(plugins: str):
     """
-    Append additional values to a argument in a service.
-
+    Ensure the provided admission plugin are set
         Parameters:
-            arg (str): arguments
-            value (str): additional value for the argument
-            service (str): name of the service to add the argument to
+            plugins (str): csv of plugins
+        Returns: True
     """
-    file_path = ARGS_DIR / service
-    with open(file_path, "r") as file:
+    config = ARGS_DIR / "kube-apiserver"
+    with open(config, "r") as file:
         lines = file.readlines()
 
+    found = False
     for line_number, line in enumerate(lines):
-        if arg in line:
-            lines[line_number] = line.rstrip() + append_value + "\n"
+        if line.startswith("--enable-admission-plugins"):
+            plugins_list = plugins.split(",")
+            current = line.split(" ")[-1]
+            current = current.split("=")[-1]
+            plugins_list = plugins_list.extend(current.split(","))
+            plugins_list = list(set(plugins_list))
+            plugins_str = ",".join(plugins_list)
+            lines[line_number] = f"--enable-admission-plugins={plugins_str}"
+            found = True
             break
 
-    with open(file_path, "w") as file:
+    if not found:
+        lines.append = f"--enable-admission-plugins={plugins}"
+
+    with open(config, "w") as file:
         file.writelines(lines)
+
+    return True
 
 
 def addArgument(arg: str, value: str, service: str):
@@ -189,9 +200,6 @@ def addArgument(arg: str, value: str, service: str):
     with open(ARGS_DIR / service, "r") as file:
         for line_number, line in enumerate(file, start=1):
             if arg in line:
-                # We enable the "--enable-admission-plugins=EventRateLimit" admission plugins by default
-                if arg == "--enable-admission-plugins":
-                    appendArgument(arg, ",AlwaysPullImages,NodeRestriction", service)
                 exists = True
                 break
     if not exists:
@@ -204,9 +212,8 @@ def addArgument(arg: str, value: str, service: str):
 def SetServiceArguments():
     """Set arguments to all services for CIS hardening."""
     click.echo("Setting API server arguments")
-    args = [("--enable-admission-plugins", "EventRateLimit,AlwaysPullImages,NodeRestriction"),
+    args = [("--kubelet-certificate-authority", "${SNAP_DATA}/certs/ca.crt"),
             ("--admission-control-config-file", "${SNAP_DATA}/args/admission-control-config-file.yaml"),
-            ("--kubelet-certificate-authority", "${SNAP_DATA}/certs/ca.crt"),
             ("--audit-log-path", "/var/log/apiserver/audit.log"),
             ("--audit-log-maxage", "30"),
             ("--audit-log-maxbackup", "10"),
@@ -216,7 +223,7 @@ def SetServiceArguments():
             ("--tls-cipher-suites", "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,TLS_RSA_WITH_3DES_EDE_CBC_SHA,TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_128_GCM_SHA256,TLS_RSA_WITH_AES_256_CBC_SHA,TLS_RSA_WITH_AES_256_GCM_SHA384"),
         ]
 
-    restart = False
+    restart = ensureAdmissionPlugins('EventRateLimit,AlwaysPullImages,NodeRestriction')
     for arg in args:
         res = addArgument(arg[0], arg[1], "kube-apiserver")
         restart = restart or res

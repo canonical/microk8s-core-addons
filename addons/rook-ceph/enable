@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+
+import os
+import pathlib
+import subprocess
+
+import click
+
+SNAP = pathlib.Path(os.getenv("SNAP") or "/snap/microk8s/current")
+KUBECTL = SNAP / "microk8s-kubectl.wrapper"
+
+
+def clone_repository(repo_url, destination_dir, branch):
+    """
+    Clone a particular branch of a git repository to a destination directory.
+
+    :param repo_url: The repository URL.
+    :param destination_dir: The destination directory.
+    :param branch: The branch to clone.
+    """
+    click.echo(f"Cloning repository version {branch} in {destination_dir}")
+    try:
+        subprocess.call("git clone {} {} -b {}".format(repo_url, destination_dir, branch).split())
+    except subprocess.CalledProcessError as e:
+        click.echo(f"Failed to clone repo: {e}", err=True)
+        exit(4)
+
+
+def update_manifest(file_path, old_path, new_path):
+    """
+    Change the path in a manifest file from old_path to new_path.
+
+    :param file_path: The path to the manifest file.
+    :param old_path: The old path to replace.
+    :param new_path: The new path to use.
+    """
+    click.echo(f"Updating {file_path} to use {new_path} instead of {old_path}")
+    try:
+        with open(file_path, "r+") as file:
+            content = file.read()
+            content = content.replace(old_path, new_path)
+            file.seek(0)
+            file.write(content)
+            file.truncate()
+    except (OSError, IndexError, ValueError) as e:
+        click.echo(f"Failed to update operator.yaml: {e}", err=True)
+        exit(4)
+
+
+@click.command()
+@click.option("--rook-version", default="v1.11.3")
+def main(rook_version: str):
+    rook_repo_url = "https://github.com/rook/rook"
+    destination_dir = "/tmp/rook"
+    example_manifest_dir = destination_dir + "/deploy/examples/"
+    operator_manifest = example_manifest_dir + "operator.yaml"
+    crds_manifest = example_manifest_dir + "crds.yaml"
+    common_manifest = example_manifest_dir + "common.yaml"
+    old_path = "/var/lib/kubelet"
+    new_path = "/var/snap/microk8s/common/var/lib/kubelet"
+
+    # Clone the rook-ceph repository
+    clone_repository(rook_repo_url, destination_dir, rook_version)
+
+    # Update the operator manifest to use the correct path for the kubelet
+    update_manifest(operator_manifest, old_path, new_path)
+
+    # Create the CRDs, common and operator
+    subprocess.run([KUBECTL, "create", "-f", crds_manifest, "-f", common_manifest, "-f", operator_manifest])
+
+    click.echo(
+        f"""
+============================================================
+
+INFO: Rook Ceph is now enabled.
+
+Rook provides `create-external-cluster-resources.py` and `import-external-cluster.sh` 
+scripts to create all the necessary resources for an external cluster.
+If you want to use an external Ceph cluster, please follow the instructions below:
+
+# Go to the rook examples directory
+$ cd path/to/rook/deploy/examples
+
+# deploy rbac rules
+$ kubectl create -f common-external.yaml
+
+# create and initialize an rbd pool
+$ ceph osd pool create rbd0
+$ rbd pool init rbd0
+
+# assuming ceph config file and user is available, creates all ceph clients and configurations
+$ ./create-external-cluster-resources.py --format bash --output config.rc
+
+# source configuration and deploy cluster resources
+$ . config.rc
+$ . ./import-external-cluster.sh
+
+# create external cluster resource, will pick up the configs/secrets deployed previously
+$ kubectl create -f cluster-external.yaml
+=============================================================
+"""
+    )
+
+
+if __name__ == "__main__":
+    main()

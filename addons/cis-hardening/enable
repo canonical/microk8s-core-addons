@@ -170,7 +170,7 @@ def ensureAdmissionPlugins(plugins: str):
             plugins_list.extend(current.split(","))
             plugins_list = list(set(plugins_list))
             plugins_str = ",".join(plugins_list)
-            lines[line_number] = f"--enable-admission-plugins={plugins_str}"
+            lines[line_number] = f"--enable-admission-plugins={plugins_str}\n"
             found = True
             break
 

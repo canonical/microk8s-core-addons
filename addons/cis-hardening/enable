@@ -175,7 +175,7 @@ def ensureAdmissionPlugins(plugins: str):
             break
 
     if not found:
-        lines.append(f"--enable-admission-plugins={plugins}")
+        lines.append(f"--enable-admission-plugins={plugins}\n")
 
     with open(config, "w") as file:
         file.writelines(lines)

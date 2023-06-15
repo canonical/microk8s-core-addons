@@ -150,6 +150,39 @@ def FixFilePermissions():
         exit(3)
 
 
+def ensureAdmissionPlugins(plugins: str):
+    """
+    Ensure the provided admission plugin are set
+        Parameters:
+            plugins (str): csv of plugins
+        Returns: True
+    """
+    config = ARGS_DIR / "kube-apiserver"
+    with open(config, "r") as file:
+        lines = file.readlines()
+
+    found = False
+    for line_number, line in enumerate(lines):
+        if line.startswith("--enable-admission-plugins"):
+            plugins_list = plugins.split(",")
+            current = line.rstrip().split(" ")[-1]
+            current = current.split("=")[-1]
+            plugins_list.extend(current.split(","))
+            plugins_list = list(set(plugins_list))
+            plugins_str = ",".join(plugins_list)
+            lines[line_number] = f"--enable-admission-plugins={plugins_str}\n"
+            found = True
+            break
+
+    if not found:
+        lines.append(f"--enable-admission-plugins={plugins}\n")
+
+    with open(config, "w") as file:
+        file.writelines(lines)
+
+    return True
+
+
 def addArgument(arg: str, value: str, service: str):
     """
     Add argument to a service.
@@ -180,7 +213,6 @@ def SetServiceArguments():
     """Set arguments to all services for CIS hardening."""
     click.echo("Setting API server arguments")
     args = [("--kubelet-certificate-authority", "${SNAP_DATA}/certs/ca.crt"),
-            ("--enable-admission-plugins", "EventRateLimit,AlwaysPullImages,NodeRestriction"),
             ("--admission-control-config-file", "${SNAP_DATA}/args/admission-control-config-file.yaml"),
             ("--audit-log-path", "/var/log/apiserver/audit.log"),
             ("--audit-log-maxage", "30"),
@@ -191,7 +223,7 @@ def SetServiceArguments():
             ("--tls-cipher-suites", "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,TLS_RSA_WITH_3DES_EDE_CBC_SHA,TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_128_GCM_SHA256,TLS_RSA_WITH_AES_256_CBC_SHA,TLS_RSA_WITH_AES_256_GCM_SHA384"),
         ]
 
-    restart = False
+    restart = ensureAdmissionPlugins('EventRateLimit,AlwaysPullImages,NodeRestriction')
     for arg in args:
         res = addArgument(arg[0], arg[1], "kube-apiserver")
         restart = restart or res

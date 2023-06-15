@@ -165,7 +165,7 @@ def ensureAdmissionPlugins(plugins: str):
     for line_number, line in enumerate(lines):
         if line.startswith("--enable-admission-plugins"):
             plugins_list = plugins.split(",")
-            current = line.split(" ")[-1]
+            current = line.rstrip().split(" ")[-1]
             current = current.split("=")[-1]
             plugins_list.extend(current.split(","))
             plugins_list = list(set(plugins_list))

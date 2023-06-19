@@ -6,6 +6,9 @@ import subprocess
 
 import click
 
+from utils import Stop, Start, NeedsRoot
+
+
 DIR = pathlib.Path(__file__).parent.absolute()
 PLUGINS_DIR = pathlib.Path(os.path.expandvars("$SNAP_COMMON/plugins"))
 ARGS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/args"))
@@ -19,7 +22,7 @@ def groupName():
     """Return the right group name based on the confinement level of the installed snap"""
     snap_yaml = pathlib.Path(os.path.expandvars("$SNAP/meta/snap.yaml"))
     with open(snap_yaml, "r") as file:
-        for line_number, line in enumerate(file, start=1):  
+        for line_number, line in enumerate(file, start=1):
             if "confinement" in line and "classic" in line:
                 return "microk8s"
     return "snap_microk8s"
@@ -40,7 +43,7 @@ def removeArgument(arg: str, service: str):
     restart = False
     lines = []
     with open(ARGS_DIR / service, "r") as file:
-        for line_number, line in enumerate(file, start=1):  
+        for line_number, line in enumerate(file, start=1):
             if arg in line:
                 exists = True
                 continue
@@ -89,7 +92,7 @@ def RemoveServiceArguments():
             "--request-timeout",
             "--tls-cipher-suites"
         ]
-    
+
     restart = False
     for arg in args:
         res = removeArgument(arg, "kube-apiserver")
@@ -103,7 +106,7 @@ def RemoveServiceArguments():
 
     click.echo("Setting controller manager arguments")
     args = ["--terminated-pod-gc-threshold"]
-    
+
     for arg in args:
         res = removeArgument(arg, "kube-controller-manager")
         restart = restart or res
@@ -116,20 +119,12 @@ def RemoveServiceArguments():
             "--tls-cert-file",
             "--tls-private-key-file",
         ]
-    
+
     for arg in args:
         res = removeArgument(arg, "kubelet")
         restart = restart or res
 
     return restart
-
-
-def NeedsRoot():
-    """Require we run the script as root (sudo)."""
-    if os.geteuid() != 0:
-        click.echo("Elevated permissions are needed for this addon.", err=True)
-        click.echo("Please try again, this time using 'sudo'.", err=True)
-        exit(1)
 
 
 def MarkAddonDisabled():
@@ -183,7 +178,7 @@ def UndoTokens():
 def Restart():
     click.echo("Restarting kubelet")
     try:
-        subprocess.call("snapctl services microk8s.daemon-kubelite".split())
+        subprocess.call("snapctl restart microk8s.daemon-kubelite".split())
     except subprocess.CalledProcessError as e:
         click.echo(f"Failed to restart kubelite: {e}", err=True)
         exit(4)
@@ -192,13 +187,12 @@ def Restart():
 @click.command()
 def main():
     NeedsRoot()
-    restart = False
-    restart = RemoveServiceArguments()
+    Stop()
+    RemoveServiceArguments()
     RemoveExtraConfigFiles()
     UndoFilePermissions()
-    restart = UndoTokens() or restart
-    if restart:
-        Restart()        
+    UndoTokens()
+    Start()
     UninstallKubebench()
     MarkAddonDisabled()
 

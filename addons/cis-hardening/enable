@@ -12,6 +12,9 @@ import subprocess
 import click
 import requests
 
+from utils import Stop, Start, NeedsRoot
+
+
 DIR = pathlib.Path(__file__).parent.absolute()
 PLUGINS_DIR = pathlib.Path(os.path.expandvars("$SNAP_COMMON/plugins"))
 ARGS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/args"))
@@ -42,10 +45,10 @@ def create_x509_kubeconfig(filename, user, path_to_cert, path_to_cert_key):
     """
     snap_path = pathlib.Path(os.environ.get("SNAP"))
     config_template = snap_path / "client-x509.config.template"
-    config = CREDS_DIR / filename
+    config = CREDS_DIR / f"{filename}.config"
     if os.path.exists(config):
         shutil.copyfile(config, "{}.tokens.backup".format(config))
-    
+
     with open(CERTS_DIR / "ca.crt", "r") as f:
         ca = f.read()
         ca_line = base64.b64encode(ca.encode("utf-8")).decode("utf-8")
@@ -70,14 +73,14 @@ def create_x509_kubeconfig(filename, user, path_to_cert, path_to_cert_key):
             fp.write(config_txt)
 
 
-def create_certificate(name, group, extfile = None):
+def create_certificate(filename, name, group, extfile = None):
     snap_path = pathlib.Path(os.environ.get("SNAP"))
-    cert = CERTS_DIR / f"{name}.crt"
-    key = CERTS_DIR / f"{name}.key"
-    csr = CERTS_DIR / f"{name}.csr"
+    cert = CERTS_DIR / f"{filename}.crt"
+    key = CERTS_DIR / f"{filename}.key"
+    csr = CERTS_DIR / f"{filename}.csr"
     cacert = CERTS_DIR / "ca.crt"
     cakey = CERTS_DIR / "ca.key"
-    
+
     try:
         cmd = f"{snap_path}/usr/bin/openssl genrsa -out {key} 2048"
         subprocess.check_call(cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -87,7 +90,7 @@ def create_certificate(name, group, extfile = None):
         subprocess.check_call(cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         cmd = f"{snap_path}/usr/bin/openssl x509 -req -in {csr} -CA {cacert} -CAkey {cakey} -CAcreateserial -out {cert} -days 3650"
         if extfile:
-            cmd += f"-extfile {extfile}"
+            cmd += f" -extfile {extfile}"
         subprocess.check_call(cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return (cert, key)
     except subprocess.CalledProcessError as e:
@@ -107,13 +110,13 @@ def FixTokens():
             lines.append(line)
     if not tokens:
         return False
-    
+
     click.echo("Removing tokens")
     entities = [
-        {"username": "admin", "group":"system:masters", "filename": "client.config", "extfile": None},
-        {"username": "system:kube-controller-manager", "group": None, "filename": "controller.config", "extfile": None},
-        {"username": "system:kube-proxy", "group": None, "filename": "proxy.config", "extfile": None},
-        {"username": "system:kube-scheduler", "group": None, "filename": "scheduler.config", "extfile": None},
+        {"username": "admin", "group":"system:masters", "filename": "client", "extfile": None},
+        {"username": "system:kube-controller-manager", "group": None, "filename": "controller", "extfile": None},
+        {"username": "system:kube-proxy", "group": None, "filename": "proxy", "extfile": None},
+        {"username": "system:kube-scheduler", "group": None, "filename": "scheduler", "extfile": None},
     ]
 
     with open(CREDS_DIR / "known_tokens.csv") as tokens_file:
@@ -126,12 +129,12 @@ def FixTokens():
                     fp.write("subjectAltName=DNS:{}\n".format(hostname))
 
                 entities.append(
-                    {"username": row[1], "group": "system:nodes", "filename": "kubelet.config", "extfile": csr_file}
+                    {"username": row[1], "group": "system:nodes", "filename": "kubelet", "extfile": csr_file}
                 )
                 break
 
     for entity in entities:
-        cert,key = create_certificate(entity["username"], entity["group"])
+        cert,key = create_certificate(entity["filename"], entity["username"], entity["group"], entity["extfile"])
         create_x509_kubeconfig(filename=entity["filename"], user=entity["username"], path_to_cert=cert, path_to_cert_key=key)
 
     with open(ARGS_DIR / "kube-apiserver", "w+") as file:
@@ -188,8 +191,6 @@ def ensureAdmissionPlugins(plugins: str):
     with open(config, "w") as file:
         file.writelines(lines)
 
-    return True
-
 
 def addArgument(arg: str, value: str, service: str):
     """
@@ -200,11 +201,8 @@ def addArgument(arg: str, value: str, service: str):
             value (str): value for the argument
             service (str): name of the service to add the argument to
 
-        Returns:
-            restart (bool): should the service be restarted
     """
     exists = False
-    restart = False
     with open(ARGS_DIR / service, "r") as file:
         for line_number, line in enumerate(file, start=1):
             if arg in line:
@@ -213,8 +211,6 @@ def addArgument(arg: str, value: str, service: str):
     if not exists:
         with open(ARGS_DIR / service, "a+") as file_object:
             file_object.write(f"{arg}={value}\n")
-            restart = True
-    return restart
 
 
 def SetServiceArguments():
@@ -231,17 +227,15 @@ def SetServiceArguments():
             ("--tls-cipher-suites", "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,TLS_RSA_WITH_3DES_EDE_CBC_SHA,TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_128_GCM_SHA256,TLS_RSA_WITH_AES_256_CBC_SHA,TLS_RSA_WITH_AES_256_GCM_SHA384"),
         ]
 
-    restart = ensureAdmissionPlugins('EventRateLimit,AlwaysPullImages,NodeRestriction')
+    ensureAdmissionPlugins('EventRateLimit,AlwaysPullImages,NodeRestriction')
     for arg in args:
-        res = addArgument(arg[0], arg[1], "kube-apiserver")
-        restart = restart or res
+        addArgument(arg[0], arg[1], "kube-apiserver")
 
     click.echo("Setting controller manager arguments")
     args = [("--terminated-pod-gc-threshold", "10")]
 
     for arg in args:
-        res = addArgument(arg[0], arg[1], "kube-controller-manager")
-        restart = restart or res
+        addArgument(arg[0], arg[1], "kube-controller-manager")
 
     click.echo("Setting kubelet arguments")
     args = [("--protect-kernel-defaults", "true"),
@@ -253,19 +247,7 @@ def SetServiceArguments():
         ]
 
     for arg in args:
-        res = addArgument(arg[0], arg[1], "kubelet")
-        restart = restart or res
-
-    return restart
-
-
-def Restart():
-    click.echo("Restarting kubelet")
-    try:
-        subprocess.call("snapctl services microk8s.daemon-kubelite".split())
-    except subprocess.CalledProcessError as e:
-        click.echo(f"Failed to restart kubelite: {e}", err=True)
-        exit(4)
+        addArgument(arg[0], arg[1], "kubelet")
 
 
 def ApplyClusterRoles():
@@ -288,14 +270,6 @@ def EnableRBAC():
     except subprocess.CalledProcessError as e:
         click.echo(f"Failed to enable RBAC: {e}", err=True)
         exit(5)
-
-
-def NeedsRoot():
-    """Require we run the script as root (sudo)."""
-    if os.geteuid() != 0:
-        click.echo("Elevated permissions are needed for this addon.", err=True)
-        click.echo("Please try again, this time using 'sudo'.", err=True)
-        exit(1)
 
 
 def CopyExtraConfigFiles():
@@ -372,12 +346,12 @@ def main(kubebench_version: str, install_kubebench):
     CopyExtraConfigFiles()
     if install_kubebench:
         DownloadKubebench(kubebench_version)
+    Stop()
     FixFilePermissions()
-    args_restart = SetServiceArguments()
-    token_restart = FixTokens()
-    if args_restart or token_restart:
-        Restart()
+    SetServiceArguments()
+    FixTokens()
     MarkAddonEnabled()
+    Start()
     PrintExitMessage(install_kubebench)
 
 

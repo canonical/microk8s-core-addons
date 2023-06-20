@@ -81,8 +81,7 @@ def RemoveExtraConfigFiles():
 def RemoveServiceArguments():
     """Remove arguments from all services."""
     click.echo("Setting API server arguments")
-    args = ["--kubelet-certificate-authority",
-            "--enable-admission-plugins",
+    args = ["--enable-admission-plugins",
             "--admission-control-config-file",
             "--audit-log-path",
             "--audit-log-maxage",

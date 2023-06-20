@@ -774,6 +774,7 @@ openssl req -new -sha256 -key /var/tmp/certs/client.key -out /var/tmp/certs/clie
 
 # kubelet cert
 hostname=$(hostname | tr '[:upper:]' '[:lower:]')
+echo "subjectAltName=DNS:$hostname" > /var/tmp/certs/kubelet.csr.conf
 subject="/CN=system:node:${hostname}/O=system:nodes"
 openssl req -new -sha256 -key /var/tmp/certs/kubelet.key -out /var/tmp/certs/kubelet.csr -subj ${subject}
 
@@ -789,9 +790,12 @@ openssl req -new -sha256 -key /var/tmp/certs/scheduler.key -out /var/tmp/certs/s
 subject="/CN=system:kube-controller-manager"
 openssl req -new -sha256 -key /var/tmp/certs/controller.key -out /var/tmp/certs/controller.csr -subj ${subject}
 
-for user in client kubelet scheduler controller proxy; do
+for user in client scheduler controller proxy; do
   openssl x509 -req -sha256 -in /var/tmp/certs/${user}.csr -CA /var/snap/microk8s/current/certs/ca.crt -CAkey /var/snap/microk8s/current/certs/ca.key -CAcreateserial -out /var/tmp/certs/${user}.crt -days 3650
 done
+
+openssl x509 -req -sha256 -in /var/tmp/certs/kubelet.csr -CA /var/snap/microk8s/current/certs/ca.crt -CAkey /var/snap/microk8s/current/certs/ca.key -CAcreateserial -out /var/tmp/certs/kubelet.crt -days 3650 -extfile /var/tmp/certs/kubelet.csr.conf
+
 ```
 
 Replace the kubeconfig files of the admin, kubelet, kube-proxy, controller manager and kube-scheduler:
@@ -2552,6 +2556,45 @@ set the parameter:
 ```
 --authorization-mode=Webhook
 ```
+
+Review and apply the following RBAC rules so calls from the API server to kubelet are authorized:
+
+```
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+  labels:
+    kubernetes.io/bootstrapping: rbac-defaults
+  name: system:kube-apiserver-to-kubelet
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes/proxy
+      - nodes/stats
+      - nodes/log
+      - nodes/spec
+      - nodes/metrics
+    verbs:
+      - "*"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: system:kube-apiserver
+  namespace: ""
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:kube-apiserver-to-kubelet
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: 127.0.0.1
+```
+
 
 **Remediation by the cis-hardening addon**
 

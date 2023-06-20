@@ -206,3 +206,11 @@ microk8s-addons:
       supported_architectures:
         - amd64
         - arm64
+
+    - name: "rook-ceph"
+      version: "1.11.3"
+      description: "Rook Ceph storage operator"
+      check_status: "deployment.apps/rook-ceph-operator"
+      supported_architectures:
+        - amd64
+        - arm64

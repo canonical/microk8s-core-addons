@@ -7,12 +7,13 @@ import subprocess
 import click
 
 SNAP = pathlib.Path(os.getenv("SNAP") or "/snap/microk8s/current")
+SNAP_DATA = pathlib.Path(os.getenv("SNAP_DATA") or "/var/snap/microk8s/current")
 KUBECTL = SNAP / "microk8s-kubectl.wrapper"
 
 
 @click.command()
 def main():
-    destination_dir = "/tmp/rook"
+    destination_dir = str(SNAP_DATA) + "/tmp/rook"
     example_manifest_dir = destination_dir + "/deploy/examples/"
     operator_manifest = example_manifest_dir + "operator.yaml"
     crds_manifest = example_manifest_dir + "crds.yaml"
@@ -20,6 +21,9 @@ def main():
 
     # Delete the CRDs, common and operator
     subprocess.run([KUBECTL, "delete", "-f", crds_manifest, "-f", common_manifest, "-f", operator_manifest])
+
+    # remove the rook-ceph repository
+    subprocess.run(["rm", "-rf", destination_dir])
 
 
 if __name__ == "__main__":

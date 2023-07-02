@@ -6,8 +6,8 @@ import subprocess
 
 import click
 
-SNAP = pathlib.Path(os.getenv("SNAP") or "/snap/microk8s/current")
-SNAP_DATA = pathlib.Path(os.getenv("SNAP_DATA") or "/var/snap/microk8s/current")
+SNAP = pathlib.Path(os.getenv("SNAP"))
+SNAP_DATA = pathlib.Path(os.getenv("SNAP_DATA"))
 KUBECTL = SNAP / "microk8s-kubectl.wrapper"
 
 def download_source_repo(destination_dir, version):
@@ -82,7 +82,7 @@ scripts to create all the necessary resources for an external cluster.
 If you want to use an external Ceph cluster, please follow the instructions below:
 
 # Go to the rook examples directory
-$ cd ${SNAP_DATA}/rook/deploy/examples
+$ cd /var/snap/microk8s/current/tmp/rook/deploy/examples
 
 # deploy rbac rules
 $ microk8s.kubectl create -f common-external.yaml

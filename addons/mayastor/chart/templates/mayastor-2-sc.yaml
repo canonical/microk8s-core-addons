@@ -3,9 +3,9 @@
 kind: StorageClass
 apiVersion: storage.k8s.io/v1
 metadata:
-  name: mayastor-3
+  name: mayastor-2
 parameters:
-  repl: "3"
+  repl: "2"
   protocol: "nvmf"
   ioTimeout: "60"
   local: "true"

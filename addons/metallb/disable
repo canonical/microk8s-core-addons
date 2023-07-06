@@ -12,4 +12,7 @@ $KUBECTL delete -f $CURRENT_DIR/crd.yaml
 
 $KUBECTL delete namespaces metallb-system
 
+# Due to the Webhook Configuration not being namespaced, we have to remove it manually
+$KUBECTL delete validatingwebhookconfiguration.admissionregistration.k8s.io/metallb-webhook-configuration
+
 echo "MetalLB is terminated"

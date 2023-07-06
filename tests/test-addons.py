@@ -18,6 +18,7 @@ from validators import (
     validate_metrics_server,
     validate_rbac,
     validate_metallb_config,
+    validate_metallb_frr_mode,
     validate_observability,
     validate_coredns_config,
     validate_mayastor,
@@ -274,8 +275,28 @@ class TestAddons(object):
             "192.168.0.105-192.168.0.105,192.168.0.110-192.168.0.111,192.168.1.240/28"
         )
         print("Enabling metallb")
-        microk8s_enable("{}:{}".format(addon, ip_ranges), timeout_insec=500)
+        output = microk8s_enable(
+            "{}:{}:{}:{}".format(addon, ip_ranges, "no-frr", "ignore"),
+            timeout_insec=500,
+        )
         validate_metallb_config(ip_ranges)
+        print("Disabling metallb")
+        microk8s_disable("metallb")
+
+    @pytest.mark.skipif(
+        platform.machine() != "x86_64",
+        reason="Metallb tests are only relevant in x86 architectures",
+    )
+    def test_metallb_frr_addon(self):
+        addon = "metallb"
+        ip_ranges = (
+            "192.168.0.105-192.168.0.105,192.168.0.110-192.168.0.111,192.168.1.240/28"
+        )
+        print("Enabling metallb in frr mode")
+        output = microk8s_enable(
+            "{}:{}:{}:{}".format(addon, ip_ranges, "frr", "ignore"), timeout_insec=500
+        )
+        validate_metallb_frr_mode()
         print("Disabling metallb")
         microk8s_disable("metallb")
 

@@ -62,12 +62,12 @@ groups:
 
       - id: 2.4
         text: "Ensure that the --peer-cert-file and --peer-key-file arguments are set as appropriate (Automated)"
-        audit: "if /bin/test -e /var/snap/microk8s/current/var/kubernetes/backend/cluster.crt && /bin/test -e /var/snap/microk8s/current/var/kubernetes/backend/cluster.key; then echo 'certs-found'; fi"
+        audit: "if test -e /var/snap/microk8s/current/var/kubernetes/backend/cluster.crt && test -e /var/snap/microk8s/current/var/kubernetes/backend/cluster.key; then echo 'certs-found'; fi"
         tests:
           test_items:
             - flag: "certs-found"
         remediation: |
-          MicroK8s used dqlite and tls peer communication uses the certificate pair
+          The certificate pair for dqlite and tls peer communication is
           /var/snap/microk8s/current/var/kubernetes/backend/cluster.crt and
           /var/snap/microk8s/current/var/kubernetes/backend/cluster.key.
         scored: true

@@ -23,6 +23,7 @@ from validators import (
     validate_mayastor,
     validate_cert_manager,
     validate_cis_hardening,
+    validate_rook_ceph,
 )
 from utils import (
     microk8s_enable,
@@ -347,3 +348,14 @@ class TestAddons(object):
 
         # Remove labels
         kubectl(f"label node {node_name} pvc-node-name-")
+
+    def test_rook_ceph_addon(self):
+        """
+        Test Rook Ceph.
+        """
+        print("Enabling Rook Ceph")
+        microk8s_enable("rook-ceph")
+        print("Validating Rook Ceph")
+        validate_rook_ceph()
+        print("Disabling Rook Ceph")
+        microk8s_disable("rook-ceph")

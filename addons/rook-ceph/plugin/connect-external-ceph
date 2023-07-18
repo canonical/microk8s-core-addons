@@ -1,0 +1,184 @@
+#!/usr/bin/env python3
+
+import os
+import shlex
+import subprocess
+import sys
+from pathlib import Path
+from typing import Tuple
+
+import click
+import rados
+import rbd
+
+DIR = Path(__file__).absolute().parent
+
+# Snap paths
+SNAP = Path(os.getenv("SNAP") or "/snap/microk8s/current")
+SNAP_COMMON = Path(os.getenv("SNAP_COMMON") or "/var/snap/microk8s/common")
+KUBECTL = SNAP / "microk8s-kubectl.wrapper"
+HELM = SNAP / "microk8s-helm.wrapper"
+
+# Helper scripts
+CREATE_EXTERNAL_CLUSTER_RESOURCES = DIR / ".rook-create-external-cluster-resources.py"
+IMPORT_EXTERNAL_CLUSTER = DIR / ".rook-import-external-cluster.sh"
+
+# Rook Ceph Cluster values
+VALUES_YAML = """
+cephClusterSpec:
+  skipUpgradeChecks: true
+  external:
+    enable: true
+  crashCollector:
+    disable: true
+  healthCheck:
+    daemonHealth:
+      mon:
+        disabled: false
+        interval: 45s
+
+cephBlockPools: []
+cephFileSystems: []
+cephObjectStores: []
+"""
+
+
+def maybe_autodetect_microceph() -> Tuple[str, str]:
+    """Attempt to auto-detect whether MicroCeph is installed. Return the paths to the
+    ceph.conf and ceph.keyring files if yes, otherwise (None, None)"""
+
+    for path in ["/var/snap/microceph/current/conf", "/snap/microk8s/current/microceph"]:
+        ceph_conf = Path(path) / "ceph.conf"
+        keyring = Path(path) / "ceph.keyring"
+
+        if ceph_conf.exists() and keyring.exists():
+            click.echo("Detected existing MicroCeph installation")
+            return ceph_conf.as_posix(), keyring.as_posix()
+
+    return None, None
+
+
+def ceph_initialize_rbd_pool(ceph_conf: str, keyring: str, rbd_pool: str):
+    """initialize an RBD pool"""
+    if not ceph_conf:
+        client = rados.Rados()
+    elif not keyring:
+        client = rados.Rados(conffile=ceph_conf)
+    else:
+        client = rados.Rados(conffile=ceph_conf, conf={"keyring": keyring})
+
+    click.echo("Attempting to connect to Ceph cluster")
+    client.connect()
+    click.echo("Successfully connected to Ceph cluster")
+
+    try:
+        if client.pool_exists(rbd_pool):
+            click.echo(f"WARNING: Pool {rbd_pool} already exists, will not do anything")
+            return
+
+        # ceph osd pool create $rbd_pool
+        click.echo(f"Creating pool {rbd_pool} in Ceph cluster")
+        client.create_pool(rbd_pool)
+
+        click.echo("Initializing RBD pool")
+        with client.open_ioctx(rbd_pool) as ioctx:
+            # rbd pool init $rbd_pool
+            rbd.RBD().pool_init(ioctx, False)
+
+        click.echo(f"Successfully initialized RBD pool {rbd_pool}")
+    finally:
+        client.shutdown()
+
+
+def import_external_ceph_cluster(ceph_conf: str, keyring: str, namespace: str, rbd_pool: str):
+    # create rook-ceph-external namespace
+    click.echo(f"Creating namespace {namespace}")
+    subprocess.run([KUBECTL, "create", "namespace", namespace])
+
+    # create-external-cluster-resources.py
+    args = [
+        "--format=bash",
+        f"--rbd-data-pool-name={rbd_pool}",
+    ]
+    if ceph_conf:
+        args += [f"--ceph-conf={ceph_conf}"]
+    if keyring:
+        args += [f"--keyring={keyring}"]
+
+    click.echo("Configuring Ceph CSI secrets")
+    p = subprocess.run(
+        [sys.executable, CREATE_EXTERNAL_CLUSTER_RESOURCES, *args], capture_output=True, check=True
+    )
+    click.echo("Successfully configured Ceph CSI secrets")
+    bashvars = p.stdout.decode()
+
+    # import-external-cluster.sh
+    click.echo("Importing Ceph CSI secrets into MicroK8s")
+    cmds = "\n".join(
+        [
+            bashvars,
+            f"NAMESPACE={shlex.quote(namespace)}",
+            f"alias kubectl={shlex.quote(KUBECTL.as_posix())}",
+            f". {shlex.quote(IMPORT_EXTERNAL_CLUSTER.as_posix())}",
+        ]
+    )
+    subprocess.check_call(["bash", "-c", cmds])
+
+    click.echo("Importing external Ceph cluster")
+    cmd = [
+        HELM,
+        "install",
+        f"--namespace={shlex.quote(namespace)}",
+        "rook-ceph-external",
+        "rook-release/rook-ceph-cluster",
+        "-f",
+        "-",
+    ]
+    subprocess.run(cmd, input=VALUES_YAML.encode())
+
+
+@click.command()
+@click.option("--rbd-pool", default=None, help="RBD pool name to use")
+@click.option(
+    "--rbd-pool-auto-create/--no-rbd-pool-auto-create",
+    is_flag=True,
+    default=True,
+    help="Automatically create the RBD pool (with default settings)",
+)
+@click.option("--ceph-conf", default=None, help="Path to ceph.conf file")
+@click.option("--keyring", default=None, help="Path to ceph.keyring file")
+@click.option("--namespace", default="rook-ceph-external", help="Namespace to deploy cluster")
+def main(rbd_pool: str, rbd_pool_auto_create: bool, ceph_conf: str, keyring: str, namespace: str):
+    if not rbd_pool_auto_create and not rbd_pool:
+        click.echo(f"--rbd-pool is required when using --no-rbd-pool-auto-create")
+        sys.exit(1)
+
+    # auto-detect MicroCeph
+    if not ceph_conf and not keyring:
+        click.echo("Looking for MicroCeph on the host")
+        ceph_conf, keyring = maybe_autodetect_microceph()
+
+    # Auto-create RBD pool if needed
+    if rbd_pool_auto_create:
+        if rbd_pool is None:
+            rbd_pool = "microk8s-rbd0"
+
+        ceph_initialize_rbd_pool(ceph_conf, keyring, rbd_pool)
+
+    # Import external Ceph cluster
+    import_external_ceph_cluster(ceph_conf, keyring, namespace, rbd_pool)
+
+    click.echo(
+        """
+=================================================
+
+Successfully imported external Ceph cluster. You can now use the following storageclass
+to provision PersistentVolumes using Ceph CSI:
+"""
+    )
+
+    subprocess.check_call([KUBECTL, "get", "storageclass"])
+
+
+if __name__ == "__main__":
+    main()

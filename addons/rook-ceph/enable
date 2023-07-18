@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+
+import click
+import os
+import subprocess
+import shutil
+from pathlib import Path
+
+# Script dir
+DIR = Path(__file__).absolute().parent
+
+# Snap paths
+SNAP = Path(os.getenv("SNAP") or "/snap/microk8s/current")
+SNAP_COMMON = Path(os.getenv("SNAP_COMMON") or "/var/snap/microk8s/common")
+KUBECTL = SNAP / "microk8s-kubectl.wrapper"
+HELM = SNAP / "microk8s-helm.wrapper"
+KUBELET_DIR = SNAP_COMMON / "var" / "lib" / "kubelet"
+
+# Addon specifics
+ROOK_PLUGINS = [
+    "connect-external-ceph",
+    ".rook-create-external-cluster-resources.py",
+    ".rook-import-external-cluster.sh",
+]
+
+
+@click.command()
+@click.option("--rook-version", default="v1.11.9")
+@click.option("--rook-repository", default="https://charts.rook.io/release")
+@click.option("--set", "helm_set", multiple=True)
+@click.option("-f", "--values", "helm_values", multiple=True, type=click.Path(exists=True))
+def main(rook_version: str, rook_repository: str, helm_set: list, helm_values: list):
+    click.echo(f"Add Rook Helm repository {rook_repository}")
+    subprocess.run([HELM, "repo", "add", "rook-release", rook_repository])
+    subprocess.run([HELM, "repo", "update", "rook-release"])
+
+    helm_args = [
+        "install",
+        "rook-ceph",
+        "rook-release/rook-ceph",
+        f"--version={rook_version}",
+        "--create-namespace",
+        "--namespace=rook-ceph",
+        f"--set=csi.kubeletDirPath={KUBELET_DIR}",
+    ]
+
+    for arg in helm_set:
+        helm_args.extend(["--set", arg])
+    for file in helm_values:
+        helm_args.extend(["--values", file])
+
+    click.echo(f"Install Rook version {rook_version}")
+    subprocess.run([HELM, *helm_args])
+
+    click.echo("Creating 'microk8s connect-external-ceph' command")
+    for plugin in ROOK_PLUGINS:
+        try:
+            shutil.copy(DIR / "plugin" / plugin, SNAP_COMMON / "plugins" / plugin)
+        except shutil.SameFileError:
+            pass
+
+    click.echo(
+        f"""
+=================================================
+
+Rook Ceph operator {rook_version} is now deployed in your MicroK8s cluster and
+will shortly be available for use.
+
+As a next step, you can either deploy Ceph on MicroK8s, or connect MicroK8s with an
+existing Ceph cluster.
+
+To connect MicroK8s with an existing Ceph cluster, you can use the helper command
+'microk8s connect-external-ceph'. If you are running MicroCeph on the same node, then
+you can use the following command:
+
+    microk8s connect-external-ceph
+
+Alternatively, you can connect MicroK8s with any external Ceph cluster using:
+
+    microk8s connect-external-ceph \\
+        --ceph-conf /path/to/cluster/ceph.conf \\
+        --keyring /path/to/cluster/ceph.keyring \\
+        --rbd-pool microk8s-rbd
+
+For a list of all supported options, use 'microk8s connect-external-ceph --help'.
+
+To deploy Ceph on the MicroK8s cluster using storage from your Kubernetes nodes, refer
+to https://rook.io/docs/rook/latest-release/CRDs/Cluster/ceph-cluster-crd/
+
+"""
+    )
+
+
+if __name__ == "__main__":
+    main()

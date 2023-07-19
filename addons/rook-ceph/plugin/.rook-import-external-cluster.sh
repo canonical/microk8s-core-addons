@@ -17,6 +17,7 @@
 # Originally https://github.com/rook/rook/blob/v1.11.9/deploy/examples/import-external-cluster.sh  # noqa
 # Changes:
 #   - Add original LICENSE text in the header
+#   - Enable setting a custom "${KUBECTL}" binary
 
 set -e
 
@@ -45,6 +46,8 @@ CEPHFS_PROVISIONER=$OPERATOR_NAMESPACE".cephfs.csi.ceph.com" # driver:namespace:
 CLUSTER_ID_RBD=$NAMESPACE
 CLUSTER_ID_CEPHFS=$NAMESPACE
 : "${ROOK_EXTERNAL_ADMIN_SECRET:=admin-secret}"
+
+KUBECTL="${KUBECTL:kubectl}"
 
 #############
 # FUNCTIONS #
@@ -87,16 +90,16 @@ function checkEnvVars() {
 
 function importClusterID() {
   if [ -n "$RADOS_NAMESPACE" ]; then
-    CLUSTER_ID_RBD=$(kubectl -n "$NAMESPACE" get cephblockpoolradosnamespace.ceph.rook.io/"$RADOS_NAMESPACE" -o jsonpath='{.status.info.clusterID}')
+    CLUSTER_ID_RBD=$("${KUBECTL}" -n "$NAMESPACE" get cephblockpoolradosnamespace.ceph.rook.io/"$RADOS_NAMESPACE" -o jsonpath='{.status.info.clusterID}')
   fi
   if [ -n "$SUBVOLUME_GROUP" ]; then
-    CLUSTER_ID_CEPHFS=$(kubectl -n "$NAMESPACE" get cephfilesystemsubvolumegroup.ceph.rook.io/"$SUBVOLUME_GROUP" -o jsonpath='{.status.info.clusterID}')
+    CLUSTER_ID_CEPHFS=$("${KUBECTL}" -n "$NAMESPACE" get cephfilesystemsubvolumegroup.ceph.rook.io/"$SUBVOLUME_GROUP" -o jsonpath='{.status.info.clusterID}')
   fi
 }
 
 function importSecret() {
-  if ! kubectl -n "$NAMESPACE" get secret "$MON_SECRET_NAME" &>/dev/null; then
-    kubectl -n "$NAMESPACE" \
+  if ! "${KUBECTL}" -n "$NAMESPACE" get secret "$MON_SECRET_NAME" &>/dev/null; then
+    "${KUBECTL}" -n "$NAMESPACE" \
       create \
       secret \
       generic \
@@ -114,8 +117,8 @@ function importSecret() {
 }
 
 function importConfigMap() {
-  if ! kubectl -n "$NAMESPACE" get configmap "$MON_ENDPOINT_CONFIGMAP_NAME" &>/dev/null; then
-    kubectl -n "$NAMESPACE" \
+  if ! "${KUBECTL}" -n "$NAMESPACE" get configmap "$MON_ENDPOINT_CONFIGMAP_NAME" &>/dev/null; then
+    "${KUBECTL}" -n "$NAMESPACE" \
       create \
       configmap \
       "$MON_ENDPOINT_CONFIGMAP_NAME" \
@@ -128,8 +131,8 @@ function importConfigMap() {
 }
 
 function importCsiRBDNodeSecret() {
-  if ! kubectl -n "$NAMESPACE" get secret "rook-$CSI_RBD_NODE_SECRET_NAME" &>/dev/null; then
-    kubectl -n "$NAMESPACE" \
+  if ! "${KUBECTL}" -n "$NAMESPACE" get secret "rook-$CSI_RBD_NODE_SECRET_NAME" &>/dev/null; then
+    "${KUBECTL}" -n "$NAMESPACE" \
       create \
       secret \
       generic \
@@ -143,8 +146,8 @@ function importCsiRBDNodeSecret() {
 }
 
 function importCsiRBDProvisionerSecret() {
-  if ! kubectl -n "$NAMESPACE" get secret "rook-$CSI_RBD_PROVISIONER_SECRET_NAME" &>/dev/null; then
-    kubectl -n "$NAMESPACE" \
+  if ! "${KUBECTL}" -n "$NAMESPACE" get secret "rook-$CSI_RBD_PROVISIONER_SECRET_NAME" &>/dev/null; then
+    "${KUBECTL}" -n "$NAMESPACE" \
       create \
       secret \
       generic \
@@ -158,8 +161,8 @@ function importCsiRBDProvisionerSecret() {
 }
 
 function importCsiCephFSNodeSecret() {
-  if ! kubectl -n "$NAMESPACE" get secret "rook-$CSI_CEPHFS_NODE_SECRET_NAME" &>/dev/null; then
-    kubectl -n "$NAMESPACE" \
+  if ! "${KUBECTL}" -n "$NAMESPACE" get secret "rook-$CSI_CEPHFS_NODE_SECRET_NAME" &>/dev/null; then
+    "${KUBECTL}" -n "$NAMESPACE" \
       create \
       secret \
       generic \
@@ -173,8 +176,8 @@ function importCsiCephFSNodeSecret() {
 }
 
 function importCsiCephFSProvisionerSecret() {
-  if ! kubectl -n "$NAMESPACE" get secret "rook-$CSI_CEPHFS_PROVISIONER_SECRET_NAME" &>/dev/null; then
-    kubectl -n "$NAMESPACE" \
+  if ! "${KUBECTL}" -n "$NAMESPACE" get secret "rook-$CSI_CEPHFS_PROVISIONER_SECRET_NAME" &>/dev/null; then
+    "${KUBECTL}" -n "$NAMESPACE" \
       create \
       secret \
       generic \
@@ -188,8 +191,8 @@ function importCsiCephFSProvisionerSecret() {
 }
 
 function importRGWAdminOpsUser() {
-  if ! kubectl -n "$NAMESPACE" get secret "$RGW_ADMIN_OPS_USER_SECRET_NAME" &>/dev/null; then
-    kubectl -n "$NAMESPACE" \
+  if ! "${KUBECTL}" -n "$NAMESPACE" get secret "$RGW_ADMIN_OPS_USER_SECRET_NAME" &>/dev/null; then
+    "${KUBECTL}" -n "$NAMESPACE" \
       create \
       secret \
       generic \
@@ -203,8 +206,8 @@ function importRGWAdminOpsUser() {
 }
 
 function createECRBDStorageClass() {
-  if ! kubectl -n "$NAMESPACE" get storageclass $RBD_STORAGE_CLASS_NAME &>/dev/null; then
-    cat <<eof | kubectl create -f -
+  if ! "${KUBECTL}" -n "$NAMESPACE" get storageclass $RBD_STORAGE_CLASS_NAME &>/dev/null; then
+    cat <<eof | "${KUBECTL}" create -f -
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -232,8 +235,8 @@ eof
 }
 
 function createRBDStorageClass() {
-  if ! kubectl -n "$NAMESPACE" get storageclass $RBD_STORAGE_CLASS_NAME &>/dev/null; then
-    cat <<eof | kubectl create -f -
+  if ! "${KUBECTL}" -n "$NAMESPACE" get storageclass $RBD_STORAGE_CLASS_NAME &>/dev/null; then
+    cat <<eof | "${KUBECTL}" create -f -
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -260,8 +263,8 @@ eof
 }
 
 function createCephFSStorageClass() {
-  if ! kubectl -n "$NAMESPACE" get storageclass $CEPHFS_STORAGE_CLASS_NAME &>/dev/null; then
-    cat <<eof | kubectl create -f -
+  if ! "${KUBECTL}" -n "$NAMESPACE" get storageclass $CEPHFS_STORAGE_CLASS_NAME &>/dev/null; then
+    cat <<eof | "${KUBECTL}" create -f -
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:

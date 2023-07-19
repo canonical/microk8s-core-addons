@@ -118,7 +118,7 @@ def import_external_ceph_cluster(ceph_conf: str, keyring: str, namespace: str, r
         [
             bashvars,
             f"NAMESPACE={shlex.quote(namespace)}",
-            f"alias kubectl={shlex.quote(KUBECTL.as_posix())}",
+            f"KUBECTL={shlex.quote(KUBECTL.as_posix())}",
             f". {shlex.quote(IMPORT_EXTERNAL_CLUSTER.as_posix())}",
         ]
     )

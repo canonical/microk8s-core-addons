@@ -34,3 +34,4 @@ Sourced from: https://github.com/rook/rook/blob/v1.11.9/deploy/examples/import-e
 This script is used to create the Kubernetes secrets and configmaps for connecting to an external Ceph cluster. The following changes are applied:
 
 - Add the Rook LICENSE header attribution at the top of the file
+- Add a KUBECTL variable to allow setting a custom kubectl binary

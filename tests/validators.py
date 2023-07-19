@@ -466,3 +466,11 @@ def validate_cis_hardening():
         # systemd kubelite service definition
         assert "83 checks PASS" in output
         assert "0 checks FAIL" in output
+
+
+def validate_rook_ceph():
+    """
+    Validate rook-ceph. Wait for rook-ceph operator to come up.
+    """
+    wait_for_installation()
+    wait_for_pod_state("", "rook-ceph", "running", label="app=rook-ceph-operator")

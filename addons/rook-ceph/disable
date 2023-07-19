@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+
+import click
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+# Snap paths
+SNAP = Path(os.getenv("SNAP") or "/snap/microk8s/current")
+SNAP_COMMON = Path(os.getenv("SNAP_COMMON") or "/var/snap/microk8s/common")
+KUBECTL = SNAP / "microk8s-kubectl.wrapper"
+HELM = SNAP / "microk8s-helm.wrapper"
+
+
+@click.command()
+@click.option("--force", is_flag=True, default=False)
+def main(force: bool):
+    click.echo("Checking for existing Ceph clusters")
+    try:
+        clusters = subprocess.check_output([KUBECTL, "get", "cephclusters", "-A"]).decode()
+        if len(clusters.split("\n")) > 2:
+            if not force:
+                click.echo(
+                    "Refusing to disable Rook Ceph since the following CephClusters were found:"
+                )
+                click.echo(clusters)
+                click.echo("Re-run with '--force' if you want to forcefully disable the addon")
+                sys.exit(1)
+            else:
+                click.echo("Force deleting the following CephClusters:")
+                click.echo(clusters)
+                subprocess.run([KUBECTL, "delete", "cephclusters", "-A", "--all", "--timeout=10s"])
+    except subprocess.CalledProcessError:
+        pass
+
+    click.echo("Remove external rook-ceph cluster")
+    subprocess.run(
+        [HELM, "uninstall", "--namespace=rook-ceph-external", "rook-ceph-external"],
+        stderr=subprocess.DEVNULL,
+    )
+
+    click.echo("Remove rook operator")
+    subprocess.run([HELM, "uninstall", "--namespace=rook-ceph", "rook-ceph"])
+
+    click.echo("Remove ceph-rbd storage class")
+    subprocess.run([KUBECTL, "delete", "storageclass", "ceph-rbd"], stderr=subprocess.DEVNULL)
+
+    click.echo("Successfully disabled Rook addon")
+
+
+if __name__ == "__main__":
+    main()

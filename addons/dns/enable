@@ -47,7 +47,12 @@ else
   echo "Will use ${nameserver_str} as upstream nameservers"
 fi
 
-DNSIP="10.152.183.10"
+if [ -e "${SNAP_DATA}/args/cni-env" ]; then
+  source "${SNAP_DATA}/args/cni-env"
+fi
+# Choose a random IP address from the service cidr.
+DNSIP=$(choose_random_ip "$IPv4_SERVICE_CIDR" || true)
+echo "Will use ${DNSIP} as dns service ip address"
 
 DNSIPARG=$2
 if [[ -n "$DNSIPARG" ]]; then

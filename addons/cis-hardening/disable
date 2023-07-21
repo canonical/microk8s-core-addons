@@ -17,7 +17,6 @@ CERTS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/certs"))
 DQLITE_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/var/kubernetes/backend"))
 
 
-
 def groupName():
     """Return the right group name based on the confinement level of the installed snap"""
     snap_yaml = pathlib.Path(os.path.expandvars("$SNAP/meta/snap.yaml"))
@@ -61,7 +60,7 @@ def UndoFilePermissions():
     click.echo("Resetting file permissions")
     try:
         group = groupName()
-        for p in [ ARGS_DIR, CREDS_DIR, CERTS_DIR, DQLITE_DIR]:
+        for p in [ARGS_DIR, CREDS_DIR, CERTS_DIR, DQLITE_DIR]:
             subprocess.call(f"chmod -R g+wr {p}".split())
             subprocess.call(f"chmod g+x {p}".split())
             subprocess.call(f"chown -R root:{group} {p}".split())
@@ -73,25 +72,26 @@ def UndoFilePermissions():
 def RemoveExtraConfigFiles():
     """Remove the extra configuration files placed under the args directory."""
     click.echo("Remove extra configuration files")
-    for f in [ "audit-policy.yaml"]:
+    for f in ["audit-policy.yaml"]:
         if os.path.exists(f):
-            os.remove(ARGS_DIR / f )
+            os.remove(ARGS_DIR / f)
 
 
 def RemoveServiceArguments():
     """Remove arguments from all services."""
     click.echo("Setting API server arguments")
-    args = ["--kubelet-certificate-authority",
-            "--enable-admission-plugins",
-            "--admission-control-config-file",
-            "--audit-log-path",
-            "--audit-log-maxage",
-            "--audit-log-maxbackup",
-            "--audit-log-maxsize",
-            "--audit-policy-file",
-            "--request-timeout",
-            "--tls-cipher-suites"
-        ]
+    args = [
+        "--kubelet-certificate-authority",
+        "--enable-admission-plugins",
+        "--admission-control-config-file",
+        "--audit-log-path",
+        "--audit-log-maxage",
+        "--audit-log-maxbackup",
+        "--audit-log-maxsize",
+        "--audit-policy-file",
+        "--request-timeout",
+        "--tls-cipher-suites",
+    ]
 
     restart = False
     for arg in args:
@@ -101,8 +101,9 @@ def RemoveServiceArguments():
     # The "--enable-admission-plugins" and "--admission-control-config-file" are enabled by default so we need to add them back.
     with open(ARGS_DIR / "kube-apiserver", "a") as file_object:
         file_object.write("--enable-admission-plugins=EventRateLimit\n")
-        file_object.write("--admission-control-config-file=${SNAP_DATA}/args/admission-control-config-file.yaml\n")
-
+        file_object.write(
+            "--admission-control-config-file=${SNAP_DATA}/args/admission-control-config-file.yaml\n"
+        )
 
     click.echo("Setting controller manager arguments")
     args = ["--terminated-pod-gc-threshold"]
@@ -112,13 +113,14 @@ def RemoveServiceArguments():
         restart = restart or res
 
     click.echo("Setting kubelet arguments")
-    args = ["--protect-kernel-defaults",
-            "--event-qps",
-            "--tls-cipher-suites",
-            "--authorization-mode",
-            "--tls-cert-file",
-            "--tls-private-key-file",
-        ]
+    args = [
+        "--protect-kernel-defaults",
+        "--event-qps",
+        "--tls-cipher-suites",
+        "--authorization-mode",
+        "--tls-cert-file",
+        "--tls-private-key-file",
+    ]
 
     for arg in args:
         res = removeArgument(arg, "kubelet")
@@ -141,7 +143,7 @@ def UninstallKubebench():
         if os.path.exists(bin):
             os.remove(bin)
     except subprocess.CalledProcessError as e:
-         click.echo(f"Failed to remove kube-bench: {e}", err=True)
+        click.echo(f"Failed to remove kube-bench: {e}", err=True)
 
 
 def UndoTokens():
@@ -162,9 +164,14 @@ def UndoTokens():
         if os.path.exists(file[0]):
             os.replace(file[0], file[1])
 
-    files = [ "admin", "system:kube-controller-manager", "system:kube-proxy", "system:kube-scheduler" ]
+    files = [
+        "admin",
+        "system:kube-controller-manager",
+        "system:kube-proxy",
+        "system:kube-scheduler",
+    ]
     for file in files:
-        for ext in [ "crt", "key", "csr" ]:
+        for ext in ["crt", "key", "csr"]:
             f = CERTS_DIR / f"{file}.{ext}"
             if os.path.exists(f):
                 os.remove(f)
@@ -197,5 +204,5 @@ def main():
     MarkAddonDisabled()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

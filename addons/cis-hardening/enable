@@ -21,7 +21,7 @@ ARGS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/args"))
 CREDS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/credentials"))
 CERTS_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/certs"))
 DQLITE_DIR = pathlib.Path(os.path.expandvars("$SNAP_DATA/var/kubernetes/backend"))
-
+SNAP = pathlib.Path(os.getenv("SNAP"))
 
 
 def isStrict():
@@ -32,70 +32,6 @@ def isStrict():
             if "confinement" in line and "strict" in line:
                 return True
     return False
-
-
-def create_x509_kubeconfig(filename, user, path_to_cert, path_to_cert_key):
-    """
-    Create a kubeconfig file. The file in stored under credentials named after the user
-
-    :param filename: the name of the config file
-    :param user: the user to use al login
-    :param path_to_cert: path to certificate file
-    :param path_to_cert_key: path to certificate key file
-    """
-    snap_path = pathlib.Path(os.environ.get("SNAP"))
-    config_template = snap_path / "client-x509.config.template"
-    config = CREDS_DIR / f"{filename}.config"
-    if os.path.exists(config):
-        shutil.copyfile(config, "{}.tokens.backup".format(config))
-
-    with open(CERTS_DIR / "ca.crt", "r") as f:
-        ca = f.read()
-        ca_line = base64.b64encode(ca.encode("utf-8")).decode("utf-8")
-
-    with open(path_to_cert, "r") as f:
-        cert = f.read()
-        cert_line = base64.b64encode(cert.encode("utf-8")).decode("utf-8")
-
-    with open(path_to_cert_key, "r") as f:
-        cert = f.read()
-        key_line = base64.b64encode(cert.encode("utf-8")).decode("utf-8")
-
-    with open(config_template, "r") as tfp:
-        with open(config, "w+") as fp:
-            config_txt = tfp.read()
-            config_txt = config_txt.replace("CADATA", ca_line)
-            config_txt = config_txt.replace("NAME", user)
-            config_txt = config_txt.replace("PATHTOCERT", cert_line)
-            config_txt = config_txt.replace("PATHTOKEYCERT", key_line)
-            config_txt = config_txt.replace("client-certificate", "client-certificate-data",)
-            config_txt = config_txt.replace("client-key", "client-key-data")
-            fp.write(config_txt)
-
-
-def create_certificate(filename, name, group, extfile = None):
-    snap_path = pathlib.Path(os.environ.get("SNAP"))
-    cert = CERTS_DIR / f"{filename}.crt"
-    key = CERTS_DIR / f"{filename}.key"
-    csr = CERTS_DIR / f"{filename}.csr"
-    cacert = CERTS_DIR / "ca.crt"
-    cakey = CERTS_DIR / "ca.key"
-
-    try:
-        cmd = f"{snap_path}/usr/bin/openssl genrsa -out {key} 2048"
-        subprocess.check_call(cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        cmd = f"{snap_path}/usr/bin/openssl req -new -key {key} -out {csr} -subj /CN={name}"
-        if group:
-            cmd += f"/O={group}"
-        subprocess.check_call(cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        cmd = f"{snap_path}/usr/bin/openssl x509 -req -in {csr} -CA {cacert} -CAkey {cakey} -CAcreateserial -out {cert} -days 3650"
-        if extfile:
-            cmd += f" -extfile {extfile}"
-        subprocess.check_call(cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return (cert, key)
-    except subprocess.CalledProcessError as e:
-        click.echo(f"Failed to generate certificates: {e}", err=True)
-        exit(6)
 
 
 def FixTokens():
@@ -110,35 +46,11 @@ def FixTokens():
             lines.append(line)
     if not tokens:
         return False
-
-    click.echo("Removing tokens")
-    entities = [
-        {"username": "admin", "group":"system:masters", "filename": "client", "extfile": None},
-        {"username": "system:kube-controller-manager", "group": None, "filename": "controller", "extfile": None},
-        {"username": "system:kube-proxy", "group": None, "filename": "proxy", "extfile": None},
-        {"username": "system:kube-scheduler", "group": None, "filename": "scheduler", "extfile": None},
-    ]
-
-    with open(CREDS_DIR / "known_tokens.csv") as tokens_file:
-        tokens_reader = csv.reader(tokens_file, delimiter=',')
-        for row in tokens_reader:
-            if row[2].startswith("kubelet"):
-                csr_file = f"{CERTS_DIR}/kubelet.csr.conf"
-                hostname = socket.gethostname().lower()
-                with open(csr_file, "w") as fp:
-                    fp.write("subjectAltName=DNS:{}\n".format(hostname))
-
-                entities.append(
-                    {"username": row[1], "group": "system:nodes", "filename": "kubelet", "extfile": csr_file}
-                )
-                break
-
-    for entity in entities:
-        cert,key = create_certificate(entity["filename"], entity["username"], entity["group"], entity["extfile"])
-        create_x509_kubeconfig(filename=entity["filename"], user=entity["username"], path_to_cert=cert, path_to_cert_key=key)
-
     with open(ARGS_DIR / "kube-apiserver", "w+") as file:
         file.writelines(lines)
+
+    subprocess.check_call([f"{SNAP}/actions/common/utils.sh", "create_user_certs_and_configs"])
+
     return True
 
 
@@ -146,7 +58,7 @@ def FixFilePermissions():
     """Set file permissions to 600 and restrict ownership to root:root."""
     click.echo("Setting file permissions")
     try:
-        dirs = [ ARGS_DIR, CREDS_DIR, CERTS_DIR, DQLITE_DIR ]
+        dirs = [ARGS_DIR, CREDS_DIR, CERTS_DIR, DQLITE_DIR]
         if not isStrict():
             service = "/etc/systemd/system/snap.microk8s.daemon-kubelite.service"
             dirs.extend([service])
@@ -216,18 +128,24 @@ def addArgument(arg: str, value: str, service: str):
 def SetServiceArguments():
     """Set arguments to all services for CIS hardening."""
     click.echo("Setting API server arguments")
-    args = [("--kubelet-certificate-authority", "${SNAP_DATA}/certs/ca.crt"),
-            ("--admission-control-config-file", "${SNAP_DATA}/args/admission-control-config-file.yaml"),
-            ("--audit-log-path", "/var/log/apiserver/audit.log"),
-            ("--audit-log-maxage", "30"),
-            ("--audit-log-maxbackup", "10"),
-            ("--audit-log-maxsize", "100"),
-            ("--audit-policy-file", "${SNAP_DATA}/args/audit-policy.yaml"),
-            ("--request-timeout", "300s"),
-            ("--tls-cipher-suites", "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,TLS_RSA_WITH_3DES_EDE_CBC_SHA,TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_128_GCM_SHA256,TLS_RSA_WITH_AES_256_CBC_SHA,TLS_RSA_WITH_AES_256_GCM_SHA384"),
-        ]
+    args = [
+        ("--kubelet-certificate-authority", "${SNAP_DATA}/certs/ca.crt"),
+        ("--kubelet-client-key", "${SNAP_DATA}/certs/apiserver-kubelet-client.key"),
+        ("--kubelet-client-certificate", "${SNAP_DATA}/certs/apiserver-kubelet-client.crt"),
+        ("--admission-control-config-file", "${SNAP_DATA}/args/admission-control-config-file.yaml"),
+        ("--audit-log-path", "/var/log/apiserver/audit.log"),
+        ("--audit-log-maxage", "30"),
+        ("--audit-log-maxbackup", "10"),
+        ("--audit-log-maxsize", "100"),
+        ("--audit-policy-file", "${SNAP_DATA}/args/audit-policy.yaml"),
+        ("--request-timeout", "300s"),
+        (
+            "--tls-cipher-suites",
+            "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,TLS_RSA_WITH_3DES_EDE_CBC_SHA,TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_128_GCM_SHA256,TLS_RSA_WITH_AES_256_CBC_SHA,TLS_RSA_WITH_AES_256_GCM_SHA384",
+        ),
+    ]
 
-    ensureAdmissionPlugins('EventRateLimit,AlwaysPullImages,NodeRestriction')
+    ensureAdmissionPlugins("EventRateLimit,AlwaysPullImages,NodeRestriction")
     for arg in args:
         addArgument(arg[0], arg[1], "kube-apiserver")
 
@@ -238,27 +156,20 @@ def SetServiceArguments():
         addArgument(arg[0], arg[1], "kube-controller-manager")
 
     click.echo("Setting kubelet arguments")
-    args = [("--protect-kernel-defaults", "true"),
-            ("--event-qps", "0"),
-            ("--tls-cipher-suites", "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256"),
-            ("--authorization-mode", "Webhook"),
-            ("--tls-cert-file", "${SNAP_DATA}/certs/kubelet.crt"),
-            ("--tls-private-key-file", "${SNAP_DATA}/certs/kubelet.key"),
-        ]
+    args = [
+        ("--protect-kernel-defaults", "true"),
+        ("--event-qps", "0"),
+        (
+            "--tls-cipher-suites",
+            "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256",
+        ),
+        ("--authorization-mode", "Webhook"),
+        ("--tls-cert-file", "${SNAP_DATA}/certs/kubelet.crt"),
+        ("--tls-private-key-file", "${SNAP_DATA}/certs/kubelet.key"),
+    ]
 
     for arg in args:
         addArgument(arg[0], arg[1], "kubelet")
-
-
-def ApplyClusterRoles():
-    """Create RBAC cluster roles for apisetver to kubelet communication."""
-    kubectl = os.path.expandvars("$SNAP/microk8s-kubectl.wrapper")
-    try:
-        cmd = f"{kubectl} apply -f {DIR}/kube-apiserver-to-kubelet.yaml"
-        subprocess.check_call(cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except subprocess.CalledProcessError as e:
-        click.echo(f"Failed to apply RBAC rules for kube-apiserver to kubelet communication: {e}", err=True)
-        exit(7)
 
 
 def EnableRBAC():
@@ -275,8 +186,8 @@ def EnableRBAC():
 def CopyExtraConfigFiles():
     """Move the extra configuration files under the args directory."""
     click.echo("Copy extra files")
-    for f in [ "admission-control-config-file.yaml", "eventconfig.yaml", "audit-policy.yaml"]:
-        shutil.copyfile(DIR / f, ARGS_DIR / f )
+    for f in ["admission-control-config-file.yaml", "eventconfig.yaml", "audit-policy.yaml"]:
+        shutil.copyfile(DIR / f, ARGS_DIR / f)
 
 
 def DownloadKubebench(kubebench_version: str):
@@ -321,7 +232,9 @@ def MarkAddonEnabled():
 def PrintExitMessage(install_kubebench):
     """Print info at the end of enabling the addon."""
     click.echo()
-    click.echo("CIS hardening configuration has been applied. All microk8s commands require sudo from now on.")
+    click.echo(
+        "CIS hardening configuration has been applied. All microk8s commands require sudo from now on."
+    )
     click.echo("Remember to enable this addon on nodes joining the custer.")
     if install_kubebench:
         click.echo("Inspect the CIS benchmark results with:")
@@ -341,7 +254,6 @@ def main(kubebench_version: str, install_kubebench):
             kubebench_version (str): the version of kubebench we want to install
     """
     NeedsRoot()
-    ApplyClusterRoles()
     EnableRBAC()
     CopyExtraConfigFiles()
     if install_kubebench:
@@ -355,5 +267,5 @@ def main(kubebench_version: str, install_kubebench):
     PrintExitMessage(install_kubebench)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

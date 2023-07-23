@@ -38,7 +38,6 @@ then
 fi
 
 echo "Reverting to a non-HA setup"
-"${SNAP}/microk8s-leave.wrapper"
 ${SNAP}/microk8s-status.wrapper --wait-ready --timeout 30 &>/dev/null
 
 workers=$("$SNAP/kubectl" "--kubeconfig=$SNAP_DATA/credentials/client.config" get no | grep " Ready" | wc -l)

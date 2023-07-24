@@ -304,7 +304,7 @@ def SetServiceArguments():
 
 
 def ApiServerToKubeletCertificate():
-    """Create certificate for apisetver to kubelet communication."""
+    """Create certificate for apiserver to kubelet communication."""
     fname = "apiserver-kubelet-client"
     if os.path.exists(CERTS_DIR / f"{fname}.crt" ):
         return

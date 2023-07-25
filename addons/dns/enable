@@ -53,14 +53,21 @@ if grep -e ubuntu /proc/version | grep 16.04 &> /dev/null; then
   ALLOWESCALATION="true"
 fi
 
+DNSIP=$2
+
 declare -A map
 map[\$ALLOWESCALATION]="$ALLOWESCALATION"
 map[\$NAMESERVERS]="$nameserver_str"
+if [[ -n "$DNSIP" ]]; then
+  map[\$DNSIP]="$DNSIP"
+fi
 use_addon_manifest dns/coredns apply "$(declare -p map)"
 sleep 5
 
-# Get the DNS IP assigned to the dns service
-DNSIP=$($KUBECTL get svc -n kube-system kube-dns -o jsonpath={.spec.clusterIP})
+# Get the DNS IP assigned to the dns service if not provided
+if [[ -z "$DNSIP" ]]; then
+  DNSIP=$($KUBECTL get svc -n kube-system kube-dns -o jsonpath={.spec.clusterIP})
+fi
 
 needs_restart=false
 if ! grep -q -- --cluster-domain=cluster.local "${SNAP_DATA}/args/kubelet"; then

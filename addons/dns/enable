@@ -53,20 +53,27 @@ if grep -e ubuntu /proc/version | grep 16.04 &> /dev/null; then
   ALLOWESCALATION="true"
 fi
 
-DNSIP=$2
-
 declare -A map
 map[\$ALLOWESCALATION]="$ALLOWESCALATION"
 map[\$NAMESERVERS]="$nameserver_str"
-if [[ -n "$DNSIP" ]]; then
-  map[\$DNSIP]="$DNSIP"
-fi
-use_addon_manifest dns/coredns apply "$(declare -p map)"
-sleep 5
 
-# Get the DNS IP assigned to the dns service if not provided
+DNSIP=$2
+
+# If $DNSIP is empty, remove clusterIP: $DNSIP from the coredns service manifest
 if [[ -z "$DNSIP" ]]; then
+  temp_manifest="${CURRENT_DIR}/../dns/coredns-temp.yaml"
+  sed '/clusterIP: \$DNSIP/d' "${CURRENT_DIR}/../dns/coredns.yaml" > $temp_manifest
+
+  use_addon_manifest dns/coredns-temp apply "$(declare -p map)"
+  sleep 5
+
   DNSIP=$($KUBECTL get svc -n kube-system kube-dns -o jsonpath={.spec.clusterIP})
+  rm "$temp_manifest"
+else
+  # Use the provided $DNSIP
+  map[\$DNSIP]="$DNSIP"
+  use_addon_manifest dns/coredns apply "$(declare -p map)"
+  sleep 5
 fi
 
 needs_restart=false

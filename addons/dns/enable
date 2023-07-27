@@ -47,6 +47,14 @@ else
   echo "Will use ${nameserver_str} as upstream nameservers"
 fi
 
+DNSIP="$2"
+if [ x"${DNSIP}" == "x" ]; then
+  # (QOL): If not using a custom service CIDR, then use the well-known address 10.152.183.10
+  if cat "${SNAP_DATA}/args/kube-apiserver" | grep -q -- '^--service-cluster-ip-range=10.152.183.0/24' 2>/dev/null; then
+    DNSIP="10.152.183.10"
+  fi
+fi
+
 echo "Applying manifest"
 ALLOWESCALATION="false"
 if grep -e ubuntu /proc/version | grep 16.04 &> /dev/null; then
@@ -56,25 +64,12 @@ fi
 declare -A map
 map[\$ALLOWESCALATION]="$ALLOWESCALATION"
 map[\$NAMESERVERS]="$nameserver_str"
+map[\$DNSIP]="$DNSIP"
+use_addon_manifest dns/coredns apply "$(declare -p map)"
+sleep 5
 
-DNSIP=$2
-
-# If $DNSIP is empty, remove clusterIP: $DNSIP from the coredns service manifest
-if [[ -z "$DNSIP" ]]; then
-  temp_manifest="${CURRENT_DIR}/../dns/coredns-temp.yaml"
-  sed '/clusterIP: \$DNSIP/d' "${CURRENT_DIR}/../dns/coredns.yaml" > $temp_manifest
-
-  use_addon_manifest dns/coredns-temp apply "$(declare -p map)"
-  sleep 5
-
-  DNSIP=$($KUBECTL get svc -n kube-system kube-dns -o jsonpath={.spec.clusterIP})
-  rm "$temp_manifest"
-else
-  # Use the provided $DNSIP
-  map[\$DNSIP]="$DNSIP"
-  use_addon_manifest dns/coredns apply "$(declare -p map)"
-  sleep 5
-fi
+DNSIP="$($KUBECTL get svc -n kube-system kube-dns -o jsonpath='{.spec.clusterIP}')"
+echo "CoreDNS service deployed with IP address $DNSIP"
 
 needs_restart=false
 if ! grep -q -- --cluster-domain=cluster.local "${SNAP_DATA}/args/kubelet"; then
@@ -83,7 +78,6 @@ elif ! grep -q -- "--cluster-dns=$DNSIP" "${SNAP_DATA}/args/kubelet"; then
   needs_restart=true
 fi
 
-echo "Setting dns ip address to $DNSIP"
 refresh_opt_in_config "cluster-domain" "cluster.local" kubelet
 refresh_opt_in_config "cluster-dns" "$DNSIP" kubelet
 

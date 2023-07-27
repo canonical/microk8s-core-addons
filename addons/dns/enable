@@ -47,13 +47,12 @@ else
   echo "Will use ${nameserver_str} as upstream nameservers"
 fi
 
-DNSIP="10.152.183.10"
-
-DNSIPARG=$2
-if [[ -n "$DNSIPARG" ]]; then
-  DNSIP="$DNSIPARG";
-  echo "Will use ${DNSIPARG} for dns service ip address"
-  echo "Make sure this address is in the service cidr!"
+DNSIP="$2"
+if [ x"${DNSIP}" == "x" ]; then
+  # (QOL): If not using a custom service CIDR, then use the well-known address 10.152.183.10
+  if cat "${SNAP_DATA}/args/kube-apiserver" | grep -q -- '^--service-cluster-ip-range=10.152.183.0/24' 2>/dev/null; then
+    DNSIP="10.152.183.10"
+  fi
 fi
 
 echo "Applying manifest"
@@ -69,6 +68,9 @@ map[\$DNSIP]="$DNSIP"
 use_addon_manifest dns/coredns apply "$(declare -p map)"
 sleep 5
 
+DNSIP="$($KUBECTL get svc -n kube-system kube-dns -o jsonpath='{.spec.clusterIP}')"
+echo "CoreDNS service deployed with IP address $DNSIP"
+
 needs_restart=false
 if ! grep -q -- --cluster-domain=cluster.local "${SNAP_DATA}/args/kubelet"; then
   needs_restart=true
@@ -76,7 +78,6 @@ elif ! grep -q -- "--cluster-dns=$DNSIP" "${SNAP_DATA}/args/kubelet"; then
   needs_restart=true
 fi
 
-#TODO(kjackal): do not hardcode the info below. Get it from the yaml
 refresh_opt_in_config "cluster-domain" "cluster.local" kubelet
 refresh_opt_in_config "cluster-dns" "$DNSIP" kubelet
 

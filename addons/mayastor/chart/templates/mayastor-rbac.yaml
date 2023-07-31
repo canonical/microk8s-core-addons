@@ -5,9 +5,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ .Values.mayastor.io_engine.serviceAccountName }}-cluster-role
 rules:
-  # must create mayastor pools
+  # must create disk pools
   - apiGroups: ["openebs.io"]
-    resources: ["mayastorpools"]
+    resources: ["diskpools"]
     verbs: ["create"]
 ---
 kind: ClusterRoleBinding

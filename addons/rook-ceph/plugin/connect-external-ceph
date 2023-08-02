@@ -9,7 +9,6 @@ from typing import Tuple
 
 import click
 import rados
-import rbd
 
 DIR = Path(__file__).absolute().parent
 
@@ -69,23 +68,26 @@ def ceph_initialize_rbd_pool(ceph_conf: str, keyring: str, rbd_pool: str):
 
     click.echo("Attempting to connect to Ceph cluster")
     client.connect()
-    click.echo("Successfully connected to Ceph cluster")
+    click.echo("Successfully connected to Ceph cluster", client.get_addrs())
 
     try:
         if client.pool_exists(rbd_pool):
-            click.echo(f"WARNING: Pool {rbd_pool} already exists, will not do anything")
-            return
+            click.echo(f"WARNING: Pool {rbd_pool} already exists")
+        else:
+            # ceph osd pool create $rbd_pool
+            click.echo(f"Creating pool {rbd_pool} in Ceph cluster")
+            client.create_pool(rbd_pool)
 
-        # ceph osd pool create $rbd_pool
-        click.echo(f"Creating pool {rbd_pool} in Ceph cluster")
-        client.create_pool(rbd_pool)
-
-        click.echo("Initializing RBD pool")
+        click.echo(f"Ensure application rbd on {rbd_pool}")
         with client.open_ioctx(rbd_pool) as ioctx:
-            # rbd pool init $rbd_pool
-            rbd.RBD().pool_init(ioctx, False)
+            # ceph osd pool application get $rbd_pool
+            if "rbd" not in ioctx.application_list():
+                # ceph osd pool application enable $rbd_pool rbd
+                ioctx.application_enable("rbd")
 
-        click.echo(f"Successfully initialized RBD pool {rbd_pool}")
+            click.echo(f"Enabled applications on {rbd_pool}: {ioctx.application_list()}")
+
+        click.echo(f"Successfully configured pool {rbd_pool} for RBD")
     finally:
         client.shutdown()
 

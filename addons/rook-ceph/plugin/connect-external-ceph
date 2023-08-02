@@ -47,7 +47,7 @@ def maybe_autodetect_microceph() -> Tuple[str, str]:
     """Attempt to auto-detect whether MicroCeph is installed. Return the paths to the
     ceph.conf and ceph.keyring files if yes, otherwise (None, None)"""
 
-    for path in ["/var/snap/microceph/current/conf", "/snap/microk8s/current/microceph"]:
+    for path in ["/var/snap/microceph/current/conf", "/snap/microk8s/current/microceph/conf"]:
         ceph_conf = Path(path) / "ceph.conf"
         keyring = Path(path) / "ceph.keyring"
 

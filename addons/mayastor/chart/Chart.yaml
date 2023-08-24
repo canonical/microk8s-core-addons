@@ -3,9 +3,9 @@ name: mayastor-aio
 description: A Helm chart to deploy zero-ops Mayastor to a Kubernetes cluster
 
 type: application
-version: 2.0.0-microk8s-1
+version: 2.0.0-microk8s-1b
 
-appVersion: "2.0.0-microk8s-1"
+appVersion: "2.0.0-microk8s-1b"
 
 dependencies:
   - name: etcd-operator
@@ -13,5 +13,5 @@ dependencies:
     repository: https://raw.githubusercontent.com/canonical/etcd-operator/master/chart
   # TODO(neoaggelos): Replace this with repository after upstream release of our changes
   - name: mayastor
-    version: 2.0.0-microk8s-1
-    repository: https://github.com/canonical/mayastor-extensions/releases/download/v2.0.0-microk8s-1
+    version: 2.0.0-microk8s-1b
+    repository: https://github.com/canonical/mayastor-extensions/releases/download/v2.0.0-microk8s-1b

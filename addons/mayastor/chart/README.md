@@ -140,6 +140,7 @@ git clone https://github.com/canonical/mayastor-extensions -b v2.0.0-microk8s
 cd mayastor-extensions
 
 # make any adjustments to the helm chart, under the "chart/" folder
+# - to update version, edit chart/Chart.yaml
 
 # push changes, tag new release
 git push origin v2.0.0-microk8s
@@ -147,6 +148,7 @@ git tag v2.0.0-microk8s-1
 git push origin v2.0.0-microk8s-1
 
 # package helm chart and create index.yaml for repository
+( cd chart && helm dependency update )
 helm package chart
 helm repo index .
 ```

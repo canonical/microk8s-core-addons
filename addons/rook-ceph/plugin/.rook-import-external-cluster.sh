@@ -227,7 +227,7 @@ parameters:
   csi.storage.k8s.io/node-stage-secret-namespace: $NAMESPACE
   csi.storage.k8s.io/fstype: ext4
 allowVolumeExpansion: true
-reclaimPolicy: Delete
+reclaimPolicy: Retain
 eof
   else
     echo "storageclass $RBD_STORAGE_CLASS_NAME already exists"
@@ -255,7 +255,7 @@ parameters:
   csi.storage.k8s.io/node-stage-secret-namespace: $NAMESPACE
   csi.storage.k8s.io/fstype: ext4
 allowVolumeExpansion: true
-reclaimPolicy: Delete
+reclaimPolicy: Retain
 eof
   else
     echo "storageclass $RBD_STORAGE_CLASS_NAME already exists"
@@ -281,7 +281,7 @@ parameters:
   csi.storage.k8s.io/node-stage-secret-name: "rook-$CSI_CEPHFS_NODE_SECRET_NAME"
   csi.storage.k8s.io/node-stage-secret-namespace: $NAMESPACE
 allowVolumeExpansion: true
-reclaimPolicy: Delete
+reclaimPolicy: Retain
 eof
   else
     echo "storageclass $CEPHFS_STORAGE_CLASS_NAME already exists"

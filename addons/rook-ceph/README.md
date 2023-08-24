@@ -35,3 +35,4 @@ This script is used to create the Kubernetes secrets and configmaps for connecti
 
 - Add the Rook LICENSE header attribution at the top of the file
 - Add a KUBECTL variable to allow setting a custom kubectl binary
+- Change reclaimPolicy to Retain for the created storage classes

@@ -2,9 +2,7 @@ name: Run tests
 
 on:
   pull_request:
-    branches: [main]
-  push:
-    branches: [main]
+    branches: [1.28]
 
 jobs:
   run-tests:
@@ -12,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        channel: [latest/edge, latest/edge/strict]
+        channel: [1.28/edge, 1.28-strict/edge]
 
     steps:
       - name: Check out code

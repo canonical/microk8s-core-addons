@@ -389,6 +389,13 @@ def PrintExitMessage(install_kubebench):
     click.echo()
     click.echo(
         "CIS hardening configuration has been applied. All microk8s commands require sudo from now on."
+        "Note: You may need to set up these additional configs in /etc/sysctl.conf:"
+            "vm.panic_on_oom=0"
+            "vm.overcommit_memory=1"
+            "kernel.panic=10"
+            "kernel.panic_on_oops=1"
+            "kernel.keys.root_maxkeys=1000000"
+            "kernel.keys.root_maxbytes=25000000"
     )
     click.echo("Remember to enable this addon on nodes joining the custer.")
     if install_kubebench:

@@ -2720,8 +2720,12 @@ set the parameter:
 
 Mind you may need set in `/etc/sysctl.conf`:
 ```
-vm.overcommit_memory = 1
-kernel.panic = 10
+vm.panic_on_oom=0
+vm.overcommit_memory=1
+kernel.panic=10
+kernel.panic_on_oops=1
+kernel.keys.root_maxkeys=1000000
+kernel.keys.root_maxbytes=25000000
 ```
 
 **Remediation by the cis-hardening addon**

@@ -108,16 +108,19 @@ def deploy_gpu_operator(
     type=click.Choice(["", "force-operator-driver", "force-system-driver"]),
 )
 @click.option("--requires", multiple=True, default=["core/dns", "core/helm3"])
-@click.option("--version", help="Deprecated, use --gpu-operator-version instead")
-@click.option("--driver", default="auto", type=click.Choice(["auto", "operator", "host"]))
-@click.option("--toolkit-version", default=None)
-@click.option("--set-as-default-runtime/--no-set-as-default-runtime", is_flag=True, default=True)
-@click.option("--set", "helm_set", multiple=True)
-@click.option("-f", "--values", "helm_values", multiple=True, type=click.Path(exists=True))
-@click.option("--gpu-operator-version", default="v22.9.1")
+@click.option("--version", hidden=True)
+@click.option("--gpu-operator-version")
+@click.option("--driver", type=click.Choice(["auto", "operator", "host"]), hidden=True)
+@click.option("--gpu-operator-driver", type=click.Choice(["auto", "operator", "host"]))
+@click.option("--set", "helm_set", multiple=True, hidden=True)
 @click.option("--gpu-operator-set", multiple=True)
+@click.option("-f", "--values", "helm_values", multiple=True, type=click.Path(exists=True), hidden=True)
 @click.option("--gpu-operator-values", multiple=True)
 @click.option("--gpu-operator/--no-gpu-operator", is_flag=True, default=True)
+@click.option("--toolkit-version", default=None, hidden=True)
+@click.option("--gpu-operator-toolkit-version", default=None)
+@click.option("--set-as-default-runtime/--no-set-as-default-runtime", is_flag=True, hidden=True)
+@click.option("--gpu-operator-set-as-default-runtime/--gpu-operator-no-set-as-default-runtime", is_flag=True, default=True)
 @click.option("--network-operator/--no-network-operator", is_flag=True, default=False)
 @click.option("--network-operator-version", default="23.7.0")
 @click.option("--network-operator-set", multiple=True)
@@ -127,9 +130,9 @@ def main(
     # gpu-operator args
     gpu_operator: bool,
     gpu_operator_version: str,
-    driver: str,
-    toolkit_version: str,
-    set_as_default_runtime: bool,
+    gpu_operator_driver: str,
+    gpu_operator_toolkit_version: str,
+    gpu_operator_set_as_default_runtime: bool,
     gpu_operator_set: list,
     gpu_operator_values: list,
     # network-operator args
@@ -138,8 +141,11 @@ def main(
     network_operator_set: list,
     network_operator_values: list,
     # deprecated args
-    driver_type: str,  # (replaced by driver)
+    driver_type: str,  # (replaced by gpu_operator_driver)
+    driver: str,  # (replaced by gpu_operator_driver)
     version: str,  # (replaced by gpu_operator_version)
+    toolkit_version: str, # (replaced by gpu_operator_toolkit_version)
+    set_as_default_runtime: bool, # (replaced by gpu_operator_set_as_default_runtime)
     helm_set: list,  # (replaced by gpu_operator_set)
     helm_values: list,  # (replaced by gpu_operator_values)
 ):
@@ -151,19 +157,26 @@ def main(
         subprocess.run([MICROK8S_ENABLE, addon])
 
     # handle the deprecated force-operator-driver and force-system-driver options
+    if driver:
+        if gpu_operator_driver:
+            click.echo("ERROR: Please use --gpu-operator-driver instead of --driver")
+            sys.exit(1)
+        click.echo("WARNING: --driver is deprecated, please use --gpu-operator-driver instead")
+        gpu_operator_driver = driver
+
     if driver_type == "force-operator-driver":
-        driver = "operator"
-        click.echo(f"WARNING: {driver_type} is deprecated. Please use --driver=operator")
+        gpu_operator_driver = "operator"
+        click.echo(f"WARNING: {driver_type} is deprecated. Please use --gpu-operator-driver=operator")
     elif driver_type == "force-system-driver":
-        driver = "host"
-        click.echo(f"WARNING: {driver_type} is deprecated. Please use --driver=host")
-    elif driver == "auto":
+        gpu_operator_driver = "host"
+        click.echo(f"WARNING: {driver_type} is deprecated. Please use --gpu-operator-driver=host")
+    elif gpu_operator_driver == "auto":
         try:
             click.echo("Checking if NVIDIA driver is already installed")
             subprocess.check_call(["nvidia-smi", "-L"])
-            driver = "host"
+            gpu_operator_driver = "host"
         except OSError:
-            driver = "operator"
+            gpu_operator_driver = "operator"
 
     # handle deprecated arguments for gpu-operator
     if helm_set:
@@ -187,6 +200,24 @@ def main(
         click.echo("WARNING: --version is deprecated, please use --gpu-operator-version instead")
         gpu_operator_version = version
 
+    if toolkit_version:
+        if gpu_operator_toolkit_version:
+            click.echo("ERROR: Please use --gpu-operator-toolkit-version instead of --toolkit-version")
+            sys.exit(1)
+        click.echo("WARNING: --toolkit-version is deprecated, please use --gpu-operator-toolkit-version instead")
+        gpu_operator_toolkit_version = toolkit_version
+
+    if not set_as_default_runtime and gpu_operator_set_as_default_runtime:
+        click.echo("WARNING: --set-as-default-runtime is deprecated, please use --gpu-operator-toolkit-version instead")
+        gpu_operator_set_as_default_runtime = set_as_default_runtime
+
+    # set default values
+    if not gpu_operator_version:
+        gpu_operator_version = "v22.9.1"
+
+    if not gpu_operator_driver:
+        gpu_operator_driver = "auto"
+
     # add helm repository for nvidia gpu-operator and network-operator
     subprocess.run([HELM, "repo", "add", "nvidia", "https://helm.ngc.nvidia.com/nvidia"])
     subprocess.run([HELM, "repo", "update", "nvidia"])
@@ -196,9 +227,9 @@ def main(
             gpu_operator_version,
             gpu_operator_set,
             gpu_operator_values,
-            toolkit_version,
-            driver,
-            set_as_default_runtime,
+            gpu_operator_toolkit_version,
+            gpu_operator_driver,
+            gpu_operator_set_as_default_runtime,
         )
 
     if network_operator:

@@ -79,10 +79,18 @@ microk8s-addons:
         - s390x
         - ppc64le
 
+    - name: "nvidia"
+      description: "NVIDIA hardware (GPU and network) support"
+      version: "gpu=22.9.1/network=23.7.0/microk8s-1"
+      check_status: "operator-node-feature-discovery"
+      confinement: "classic"
+      supported_architectures:
+        - amd64
+
     - name: "gpu"
-      description: "Automatic enablement of Nvidia CUDA"
+      description: "Alias to nvidia add-on"
       version: "22.9.1"
-      check_status: "daemonset.apps/nvidia-device-plugin-daemonset"
+      check_status: "operator-node-feature-discovery"
       confinement: "classic"
       supported_architectures:
         - amd64

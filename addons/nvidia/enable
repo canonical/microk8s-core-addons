@@ -1,0 +1,213 @@
+#!/usr/bin/env python3
+
+import json
+import os
+import pathlib
+import subprocess
+import sys
+
+import click
+
+
+DIR = pathlib.Path(__file__).absolute().parent
+SNAP = pathlib.Path(os.getenv("SNAP") or "/snap/microk8s/current")
+SNAP_DATA = pathlib.Path(os.getenv("SNAP_DATA") or "/var/snap/microk8s/current")
+SNAP_CURRENT = SNAP_DATA.parent / "current"
+SNAP_COMMON = pathlib.Path(os.getenv("SNAP_COMMON") or "/var/snap/microk8s/common")
+
+HELM = SNAP / "microk8s-helm3.wrapper"
+MICROK8S_ENABLE = SNAP / "microk8s-enable.wrapper"
+CONTAINERD_SOCKET = SNAP_COMMON / "run" / "containerd.sock"
+CONTAINERD_TOML = SNAP_CURRENT / "args" / "containerd-template.toml"
+
+
+def deploy_network_operator(version: str, helm_set: list, helm_values: list):
+    click.echo("Deploy NVIDIA Network operator")
+    helm_args = [
+        "install",
+        "network-operator",
+        "nvidia/network-operator",
+        f"--version={version}",
+        "--create-namespace",
+        "--namespace=nvidia-network-operator",
+    ]
+
+    for arg in helm_set:
+        helm_args.extend(["--set", arg])
+    for arg in helm_values:
+        helm_args.extend(["--values", arg])
+
+    if not helm_values and not helm_set:
+        # FIXME(neoaggelos): update docs and then improve the wording here
+        click.echo("WARNING: Extra configuration might be needed for network-operator")
+        click.echo("Please refer to the docs for more details")
+
+    subprocess.run([HELM, *helm_args])
+
+    click.echo("Deployed NVIDIA Network operator")
+
+
+def deploy_gpu_operator(
+    version: str,
+    helm_set: list,
+    helm_values: list,
+    toolkit_version: str,
+    driver: str,
+    set_as_default_runtime: bool,
+):
+    click.echo("Deploy NVIDIA GPU operator")
+
+    click.echo(f"Using {driver} GPU driver")
+    helm_args = [
+        "install",
+        "gpu-operator",
+        "nvidia/gpu-operator",
+        f"--version={version}",
+        "--create-namespace",
+        "--namespace=gpu-operator-resources",
+        "-f",
+        "-",
+    ]
+
+    helm_config = {
+        "operator": {
+            "defaultRuntime": "containerd",
+        },
+        "driver": {
+            "enabled": ("true" if driver == "operator" else "false"),
+        },
+        "toolkit": {
+            "enabled": "true",
+            "env": [
+                {"name": "CONTAINERD_CONFIG", "value": CONTAINERD_TOML.as_posix()},
+                {"name": "CONTAINERD_SOCKET", "value": CONTAINERD_SOCKET.as_posix()},
+                {
+                    "name": "CONTAINERD_SET_AS_DEFAULT",
+                    "value": "1" if set_as_default_runtime else "0",
+                },
+            ],
+        },
+    }
+    if toolkit_version is not None:
+        helm_config["toolkit"]["version"] = toolkit_version
+
+    for arg in helm_set:
+        helm_args.extend(["--set", arg])
+    for arg in helm_values:
+        helm_args.extend(["--values", arg])
+
+    subprocess.run([HELM, *helm_args], input=json.dumps(helm_config).encode())
+
+    click.echo("Deployed NVIDIA GPU operator")
+
+
+@click.command()
+@click.argument(
+    "driver-type",
+    default="",
+    type=click.Choice(["", "force-operator-driver", "force-system-driver"]),
+)
+@click.option("--requires", multiple=True, default=["core/dns", "core/helm3"])
+@click.option("--version", help="Deprecated, use --gpu-operator-version instead")
+@click.option("--driver", default="auto", type=click.Choice(["auto", "operator", "host"]))
+@click.option("--toolkit-version", default=None)
+@click.option("--set-as-default-runtime/--no-set-as-default-runtime", is_flag=True, default=True)
+@click.option("--set", "helm_set", multiple=True)
+@click.option("-f", "--values", "helm_values", multiple=True, type=click.Path(exists=True))
+@click.option("--gpu-operator-version", default="v22.9.1")
+@click.option("--gpu-operator-set", multiple=True)
+@click.option("--gpu-operator-values", multiple=True)
+@click.option("--gpu-operator/--no-gpu-operator", is_flag=True, default=True)
+@click.option("--network-operator/--no-network-operator", is_flag=True, default=False)
+@click.option("--network-operator-version", default="23.7.0")
+@click.option("--network-operator-set", multiple=True)
+@click.option("--network-operator-values", multiple=True, type=click.Path(exists=True))
+def main(
+    requires: list,
+    # gpu-operator args
+    gpu_operator: bool,
+    gpu_operator_version: str,
+    driver: str,
+    toolkit_version: str,
+    set_as_default_runtime: bool,
+    gpu_operator_set: list,
+    gpu_operator_values: list,
+    # network-operator args
+    network_operator: bool,
+    network_operator_version: str,
+    network_operator_set: list,
+    network_operator_values: list,
+    # deprecated args
+    driver_type: str,  # (replaced by driver)
+    version: str,  # (replaced by gpu_operator_version)
+    helm_set: list,  # (replaced by gpu_operator_set)
+    helm_values: list,  # (replaced by gpu_operator_values)
+):
+    if not gpu_operator and not network_operator:
+        click.echo("ERROR: At least one of --gpu-operator or --network-operator is required")
+        sys.exit(1)
+
+    for addon in requires:
+        subprocess.run([MICROK8S_ENABLE, addon])
+
+    # handle the deprecated force-operator-driver and force-system-driver options
+    if driver_type == "force-operator-driver":
+        driver = "operator"
+        click.echo(f"WARNING: {driver_type} is deprecated. Please use --driver=operator")
+    elif driver_type == "force-system-driver":
+        driver = "host"
+        click.echo(f"WARNING: {driver_type} is deprecated. Please use --driver=host")
+    elif driver == "auto":
+        try:
+            click.echo("Checking if NVIDIA driver is already installed")
+            subprocess.check_call(["nvidia-smi", "-L"])
+            driver = "host"
+        except OSError:
+            driver = "operator"
+
+    # handle deprecated arguments for gpu-operator
+    if helm_set:
+        if gpu_operator_set:
+            click.echo("ERROR: Please use --gpu-operator-set instead of --set")
+            sys.exit(1)
+        click.echo("WARNING: --set is deprecated, please use --gpu-operator-set instead")
+        gpu_operator_set = helm_set
+
+    if helm_values:
+        if gpu_operator_values:
+            click.echo("ERROR: Please use --gpu-operator-values instead of -f/--values")
+            sys.exit(1)
+        click.echo("WARNING: -f/--values is deprecated, please use --gpu-operator-values instead")
+        gpu_operator_values = helm_values
+
+    if version:
+        if gpu_operator_version:
+            click.echo("ERROR: Please use --gpu-operator-version instead of --version")
+            sys.exit(1)
+        click.echo("WARNING: --version is deprecated, please use --gpu-operator-version instead")
+        gpu_operator_version = version
+
+    # add helm repository for nvidia gpu-operator and network-operator
+    subprocess.run([HELM, "repo", "add", "nvidia", "https://helm.ngc.nvidia.com/nvidia"])
+    subprocess.run([HELM, "repo", "update", "nvidia"])
+
+    if gpu_operator:
+        deploy_gpu_operator(
+            gpu_operator_version,
+            gpu_operator_set,
+            gpu_operator_values,
+            toolkit_version,
+            driver,
+            set_as_default_runtime,
+        )
+
+    if network_operator:
+        deploy_network_operator(
+            network_operator_version,
+            network_operator_set,
+            network_operator_values,
+        )
+
+
+if __name__ == "__main__":
+    main()

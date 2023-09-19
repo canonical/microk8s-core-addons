@@ -1,34 +1,12 @@
-#!/usr/bin/env python3
+#!/usr/bin/env bash
 
-import os
-import json
-import pathlib
-import subprocess
+DIR=`realpath $(dirname $0)`
 
-import click
+echo "
+WARNING: The gpu addon has been renamed to nvidia.
 
-SNAP = pathlib.Path(os.getenv("SNAP") or "/snap/microk8s/current")
-HELM = SNAP / "microk8s-helm3.wrapper"
+Please use 'microk8s disable nvidia' instead.
 
+"
 
-@click.command()
-def main():
-    click.echo("Disabling NVIDIA GPU support")
-    try:
-        stdout = subprocess.check_output([HELM, "ls", "-A", "-o", "json"])
-        charts = json.loads(stdout)
-    except (OSError, json.JSONDecodeError):
-        click.echo("ERROR: Failed to retrieve installed charts", err=True)
-        charts = []
-
-    for chart in charts:
-        name = chart.get("name")
-        if chart.get("name") == "gpu-operator":
-            namespace = chart.get("namespace") or "default"
-            subprocess.run([HELM, "uninstall", name, "-n", namespace])
-
-    click.echo("GPU support disabled")
-
-
-if __name__ == "__main__":
-    main()
+$DIR/../nvidia/disable "${@}"

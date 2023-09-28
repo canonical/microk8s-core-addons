@@ -8,6 +8,14 @@ CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 echo "Disabling MetalLB"
 KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
 
+if $KUBECTL get validatingwebhookconfiguration -o yaml metallb-webhook-configuration 2>/dev/null | grep -q metallb.io; then
+  $KUBECTL delete validatingwebhookconfiguration metallb-webhook-configuration
+fi
+
+if $KUBECTL get validatingwebhookconfiguration -o yaml validating-webhook-configuration 2>/dev/null | grep -q metallb.io; then
+  $KUBECTL delete validatingwebhookconfiguration validating-webhook-configuration
+fi
+
 $KUBECTL delete -f $CURRENT_DIR/crd.yaml
 
 $KUBECTL delete namespaces metallb-system

@@ -384,7 +384,7 @@ def MarkAddonEnabled():
     pathlib.Path(lockfile).touch()
 
 
-def PrintExitMessage(install_kubebench):
+def PrintExitMessage(kubebench_installed: bool):
     """Print info at the end of enabling the addon."""
     click.echo()
     click.echo(
@@ -398,7 +398,7 @@ def PrintExitMessage(install_kubebench):
             "kernel.keys.root_maxbytes=25000000"
     )
     click.echo("Remember to enable this addon on nodes joining the custer.")
-    if install_kubebench:
+    if kubebench_installed:
         click.echo("Inspect the CIS benchmark results with:")
         click.echo()
         click.echo("  sudo microk8s kube-bench")
@@ -407,8 +407,9 @@ def PrintExitMessage(install_kubebench):
 
 @click.command()
 @click.option("--kubebench-version", default="0.6.13")
-@click.option("--install-kubebench", default=True)
-def main(kubebench_version: str, install_kubebench):
+@click.option("--install-kubebench", default="True", hidden=True)
+@click.option("--skip-kubebench-installation", is_flag=True, help="Do not install Kubebench.")
+def main(kubebench_version: str, install_kubebench:str, skip_kubebench_installation: bool):
     """
     The entry point to the enable script.
 
@@ -419,15 +420,18 @@ def main(kubebench_version: str, install_kubebench):
     ApiServerToKubeletCertificate()
     EnableRBAC()
     CopyExtraConfigFiles()
-    if install_kubebench:
+
+    should_install_kubebench = install_kubebench.lower() not in ["", "false"] and not skip_kubebench_installation
+    if should_install_kubebench:
         DownloadKubebench(kubebench_version)
+
     Stop()
     FixFilePermissions()
     SetServiceArguments()
     FixTokens()
     MarkAddonEnabled()
     Start()
-    PrintExitMessage(install_kubebench)
+    PrintExitMessage(should_install_kubebench)
 
 
 if __name__ == "__main__":

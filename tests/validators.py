@@ -509,7 +509,9 @@ def validate_rook_ceph_integration():
         kubectl("apply -f {}".format(manifest))
         wait_for_pod_state("nginx-rbd", "default", "running")
         # We do not test ceph-fs because its provisioner requires CPU cores
-        # that may not be avaibale on small VMs.
+        # that may not be available on small VMs. If you want to test ceph-fs
+        # comment in the following lines and run the tests in a machine
+        # with enough resoruces
         # wait_for_pod_state("nginx-fs-1", "default", "running")
         # wait_for_pod_state("nginx-fs-2", "default", "running")
 

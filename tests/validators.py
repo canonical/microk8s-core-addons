@@ -494,9 +494,11 @@ def validate_rook_ceph_integration():
                 loop_file = subprocess.check_output("mktemp -p /mnt XXXX.img".split())
                 loop_file = loop_file.decode().strip()
                 subprocess.check_call(f"truncate -s 1G {loop_file}".split())
-                loop_dev = subprocess.check_output(f"losetup --show -f {loop_file}".split())
+                loop_dev = subprocess.check_output(
+                    f"losetup --show -f {loop_file}".split()
+                )
                 loop_dev = loop_dev.decode().strip()
-                minor=loop_dev.replace("/dev/loop", "")
+                minor = loop_dev.replace("/dev/loop", "")
                 subprocess.check_call(f"mknod -m 0660 /dev/sdi{l} b 7 {minor}".split())
 
             subprocess.check_call(f"microceph disk add --wipe /dev/sdi{l}".split())

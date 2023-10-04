@@ -366,9 +366,7 @@ class TestAddons(object):
         Test Rook Ceph integration.
         """
         try:
-            subprocess.check_call(
-                "grep -E lxc /proc/1/environ /proc/cpuinfo".split()
-            )
+            subprocess.check_call("grep -E lxc /proc/1/environ /proc/cpuinfo".split())
             print("MicroCeph integration test cannot run on LXC. Skipped.")
             return
         except subprocess.CalledProcessError:
@@ -387,4 +385,3 @@ class TestAddons(object):
         run_until_success(cmd, timeout_insec=300)
         print("Uninstall microceph")
         subprocess.check_call("snap remove microceph --purge".split())
-

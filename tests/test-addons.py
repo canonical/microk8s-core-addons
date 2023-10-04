@@ -375,7 +375,6 @@ class TestAddons(object):
         print("Install microceph")
         subprocess.check_call("modprobe rbd".split())
         subprocess.check_call("snap install microceph --channel=quincy/stable".split())
-        subprocess.check_call("systemctl status snap.microceph.daemon.service".split())
         print("Enabling Rook Ceph")
         microk8s_enable("rook-ceph")
         print("Validating Rook-Ceph MicroCeph integration")

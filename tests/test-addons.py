@@ -24,6 +24,7 @@ from validators import (
     validate_cert_manager,
     validate_cis_hardening,
     validate_rook_ceph,
+    validate_rook_ceph_integration,
 )
 from utils import (
     microk8s_enable,
@@ -359,3 +360,27 @@ class TestAddons(object):
         validate_rook_ceph()
         print("Disabling Rook Ceph")
         microk8s_disable("rook-ceph")
+
+    def test_rook_ceph_integration(self):
+        """
+        Test Rook Ceph integration.
+        """
+        try:
+            subprocess.check_call("grep -E lxc /proc/1/environ /proc/cpuinfo".split())
+            print("MicroCeph integration test cannot run on LXC. Skipped.")
+            return
+        except subprocess.CalledProcessError:
+            pass
+
+        print("Install microceph")
+        subprocess.check_call("modprobe rbd".split())
+        subprocess.check_call("snap install microceph --channel=quincy/stable".split())
+        print("Enabling Rook Ceph")
+        microk8s_enable("rook-ceph")
+        print("Validating Rook-Ceph MicroCeph integration")
+        validate_rook_ceph_integration()
+        print("Disabling Rook Ceph")
+        cmd = "/snap/bin/microk8s.disable rook-ceph --force"
+        run_until_success(cmd, timeout_insec=300)
+        print("Uninstall microceph")
+        subprocess.check_call("snap remove microceph --purge".split())

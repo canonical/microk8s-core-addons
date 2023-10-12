@@ -7,18 +7,26 @@ CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 source $CURRENT_DIR/../common/utils.sh
 
 RECLAIM_POLICY="Delete"
-PARSED=$(getopt --options=r:h --longoptions=reclaim-policy:,help -- "$@")
-eval set -- "$PARSED"
+DEFAULT_CLASS="true"
+
+PARSED=$(getopt --options=r:d:h --longoptions=reclaim-policy:,default-class:,help -- "$@")
+
 while true; do
+    echo "$1"
     case "$1" in
         -r|--reclaim-policy)
             RECLAIM_POLICY=$2
+            shift 2
+            ;;
+        -d|--default-class)
+            DEFAULT_CLASS=$2
             shift 2
             ;;
         -h|--help)
             echo "Options:"
             echo " -h, --help            Show this help"
             echo " -r, --reclaim-policy  Set the reclaim policy. Available options are Delete (default) and Retain."
+            echo " -d, --default-class   Set the storage class as default. Available options are true (default) and false."
             exit 0
             ;;
         --)
@@ -37,12 +45,27 @@ do
     allowed_reclaim_policies[$policy]=1
 done
 
+declare -A allowed_default_class
+for default_check in true false
+do
+    allowed_default_class[$default_check]=1
+done
+
 if [[ ! ${allowed_reclaim_policies[$RECLAIM_POLICY]} ]]
 then
   echo ""
   echo "Please check submitted arguments."
   echo "You can use '--reclaim-policy' to set the reclaim policy. Allowed values: "${!allowed_reclaim_policies[@]}". Defaults to 'Delete'."
   echo "   microk8s enable hostpath-storage --reclaim-policy=Retain"
+  exit 1
+fi
+
+if [[ ! ${allowed_default_class[$DEFAULT_CLASS]} ]]
+then
+  echo ""
+  echo "Please check submitted arguments."
+  echo "You can use '--default-class' to set the storage class as default. Allowed values: "${!allowed_default_class[@]}". Defaults to 'true'."
+  echo "   microk8s enable hostpath-storage --default-class=true"
   exit 1
 fi
 
@@ -55,6 +78,7 @@ run_with_sudo mkdir -p ${SNAP_COMMON}/default-storage
 declare -A map
 map[\$SNAP_COMMON]="$SNAP_COMMON"
 map[\$RECLAIM_POLICY]="$RECLAIM_POLICY"
+map[\$DEFAULT_CLASS]="$DEFAULT_CLASS"
 
 use_addon_manifest hostpath-storage/storage apply "$(declare -p map)"
 echo "Storage will be available soon."

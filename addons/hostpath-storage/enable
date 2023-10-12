@@ -12,7 +12,6 @@ DEFAULT_CLASS="true"
 PARSED=$(getopt --options=r:d:h --longoptions=reclaim-policy:,default-class:,help -- "$@")
 
 while true; do
-    echo "$1"
     case "$1" in
         -r|--reclaim-policy)
             RECLAIM_POLICY=$2

@@ -120,7 +120,7 @@ rules:
   - apiGroups: ["coordination.k8s.io"]
     resources:
       - "leases"
-    verbs: 
+    verbs:
       - "get"
       - "create"
       - "update"

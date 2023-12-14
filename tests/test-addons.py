@@ -361,6 +361,10 @@ class TestAddons(object):
         print("Disabling Rook Ceph")
         microk8s_disable("rook-ceph")
 
+    @pytest.mark.skipif(
+        os.environ.get("STRICT") == "yes",
+        reason="Skipping rook-ceph testing in strict",
+    )
     def test_rook_ceph_integration(self):
         """
         Test Rook Ceph integration.

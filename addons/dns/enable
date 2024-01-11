@@ -55,6 +55,11 @@ if [ x"${DNSIP}" == "x" ]; then
   fi
 fi
 
+CLUSTER_DOMAIN="$3"
+if [ -z "$CLUSTER_DOMAIN" ]; then
+  CLUSTER_DOMAIN="cluster.local"
+fi
+
 echo "Applying manifest"
 ALLOWESCALATION="false"
 if grep -e ubuntu /proc/version | grep 16.04 &> /dev/null; then
@@ -65,6 +70,7 @@ declare -A map
 map[\$ALLOWESCALATION]="$ALLOWESCALATION"
 map[\$NAMESERVERS]="$nameserver_str"
 map[\$DNSIP]="$DNSIP"
+map[\$CLUSTERDOMAIN]="$CLUSTER_DOMAIN"
 use_addon_manifest dns/coredns apply "$(declare -p map)"
 sleep 5
 
@@ -72,13 +78,13 @@ DNSIP="$($KUBECTL get svc -n kube-system kube-dns -o jsonpath='{.spec.clusterIP}
 echo "CoreDNS service deployed with IP address $DNSIP"
 
 needs_restart=false
-if ! grep -q -- --cluster-domain=cluster.local "${SNAP_DATA}/args/kubelet"; then
+if ! grep -q -- "--cluster-domain=$CLUSTER_DOMAIN" "${SNAP_DATA}/args/kubelet"; then
   needs_restart=true
 elif ! grep -q -- "--cluster-dns=$DNSIP" "${SNAP_DATA}/args/kubelet"; then
   needs_restart=true
 fi
 
-refresh_opt_in_config "cluster-domain" "cluster.local" kubelet
+refresh_opt_in_config "cluster-domain" "$CLUSTER_DOMAIN" kubelet
 refresh_opt_in_config "cluster-dns" "$DNSIP" kubelet
 
 if [ -e ${SNAP_DATA}/var/lock/clustered.lock ] || [ "$needs_restart" = "true" ]; then

@@ -144,8 +144,8 @@ def main(
     driver_type: str,  # (replaced by gpu_operator_driver)
     driver: str,  # (replaced by gpu_operator_driver)
     version: str,  # (replaced by gpu_operator_version)
-    toolkit_version: str, # (replaced by gpu_operator_toolkit_version)
-    set_as_default_runtime: bool, # (replaced by gpu_operator_set_as_default_runtime)
+    toolkit_version: str,  # (replaced by gpu_operator_toolkit_version)
+    set_as_default_runtime: bool,  # (replaced by gpu_operator_set_as_default_runtime)
     helm_set: list,  # (replaced by gpu_operator_set)
     helm_values: list,  # (replaced by gpu_operator_values)
 ):
@@ -170,7 +170,7 @@ def main(
     elif driver_type == "force-system-driver":
         gpu_operator_driver = "host"
         click.echo(f"WARNING: {driver_type} is deprecated. Please use --gpu-operator-driver=host")
-    elif gpu_operator_driver == "auto":
+    elif gpu_operator_driver in ["auto", None]:
         try:
             click.echo("Checking if NVIDIA driver is already installed")
             subprocess.check_call(["nvidia-smi", "-L"])
@@ -214,9 +214,6 @@ def main(
     # set default values
     if not gpu_operator_version:
         gpu_operator_version = "v22.9.1"
-
-    if not gpu_operator_driver:
-        gpu_operator_driver = "auto"
 
     # add helm repository for nvidia gpu-operator and network-operator
     subprocess.run([HELM, "repo", "add", "nvidia", "https://helm.ngc.nvidia.com/nvidia"])

@@ -89,7 +89,17 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
             AVXTAG=NO_AVX_CPU_TAG
         f.close()
 
-    # 4. generate manifest and deploy ovn components
+    # Update kube-ovn.template and write it to kube-ovn.yaml
+    kube_ovn_yaml = DIR / "kube-ovn.yaml"
+    kube_ovn_template = DIR / "kube-ovn-template.yaml"
+    with open(kube_ovn_template, "r") as tpl:
+        kube_ovn_tpl = tpl.read()
+
+    kube_ovn_tpl = kube_ovn_tpl.replace("__AVXTAG__", AVXTAG)
+    with open(kube_ovn_yaml, "w") as ko:
+        ko.write(kube_ovn_tpl)
+
+    # 5. generate manifest and deploy ovn components
     click.echo("Deploy ovn components")
     with open(DIR / "ovn-template.yaml") as fin:
         ovn_template = fin.read()
@@ -103,11 +113,11 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
 
     subprocess.check_call([KUBECTL, "apply", "-f", ovn_yaml])
 
-    # 5. install kube-ovn plugins
+    # 6. install kube-ovn plugins
     click.echo("Deploy kube-ovn CNI")
     subprocess.check_call([KUBECTL, "apply", "-f", DIR / "kube-ovn.yaml"])
 
-    # 6. install microk8s hooks
+    # 7. install microk8s hooks
     for hook in ["reconcile"]:
         try:
             click.echo("Install {} hook".format(hook))

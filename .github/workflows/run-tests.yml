@@ -2,9 +2,7 @@ name: Run tests
 
 on:
   pull_request:
-    branches: [main]
-  push:
-    branches: [main]
+    branches: [1.29]
 
 jobs:
   run-tests:
@@ -12,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        channel: [latest/edge, latest/edge/strict]
+        channel: [1.29/edge, 1.29-strict/edge]
 
     steps:
       - name: Check out code
@@ -32,7 +30,7 @@ jobs:
           sudo microk8s addons repo remove core
           sudo microk8s addons repo add core .
           export UNDER_TIME_PRESSURE="True"
-          if [[ "${{ matrix.channel }}" == "latest/edge/strict" ]]
+          if [[ "${{ matrix.channel }}" == "1.29-strict/edge" ]]
           then
             export STRICT="yes"
           fi

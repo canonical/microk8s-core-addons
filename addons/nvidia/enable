@@ -119,7 +119,7 @@ def deploy_gpu_operator(
 @click.option("--gpu-operator/--no-gpu-operator", is_flag=True, default=True)
 @click.option("--toolkit-version", default=None, hidden=True)
 @click.option("--gpu-operator-toolkit-version", default=None)
-@click.option("--set-as-default-runtime/--no-set-as-default-runtime", is_flag=True, hidden=True)
+@click.option("--set-as-default-runtime/--no-set-as-default-runtime", is_flag=True, hidden=True, default=None)
 @click.option("--gpu-operator-set-as-default-runtime/--gpu-operator-no-set-as-default-runtime", is_flag=True, default=True)
 @click.option("--network-operator/--no-network-operator", is_flag=True, default=False)
 @click.option("--network-operator-version", default="23.7.0")
@@ -207,8 +207,8 @@ def main(
         click.echo("WARNING: --toolkit-version is deprecated, please use --gpu-operator-toolkit-version instead")
         gpu_operator_toolkit_version = toolkit_version
 
-    if not set_as_default_runtime and gpu_operator_set_as_default_runtime:
-        click.echo("WARNING: --set-as-default-runtime is deprecated, please use --gpu-operator-toolkit-version instead")
+    if set_as_default_runtime is not None:
+        click.echo("WARNING: --set-as-default-runtime is deprecated, please use --gpu-operator-set-as-default-runtime instead")
         gpu_operator_set_as_default_runtime = set_as_default_runtime
 
     # set default values

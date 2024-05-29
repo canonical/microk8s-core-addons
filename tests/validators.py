@@ -219,6 +219,7 @@ def validate_gpu():
         "gpu-operator-resources",
         "running",
         label="app=nvidia-device-plugin-daemonset",
+        timeout_insec=1500
     )
     manifest = TEMPLATES / "cuda-add.yaml"
 

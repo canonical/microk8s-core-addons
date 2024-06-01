@@ -25,13 +25,13 @@ echo "Enabled cert-manager"
 echo "
 ===========================
 
-Cert-manager is installed. As a next step, try creating a ClusterIssuer
+Cert-manager is installed. As a next step, try creating an Issuer
 for Let's Encrypt by creating the following resource:
 
 $ microk8s kubectl apply -f - <<EOF
 ---
 apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
+kind: Issuer
 metadata:
   name: letsencrypt
 spec:
@@ -48,13 +48,13 @@ spec:
     solvers:
     - http01:
         ingress:
-          class: public
+          ingressClassName: nginx
 EOF
 
 Then, you can create an ingress to expose 'my-service:80' on 'https://my-service.example.com' with:
 
 $ microk8s enable ingress
 $ microk8s kubectl create ingress my-ingress \\
-    --annotation cert-manager.io/cluster-issuer=letsencrypt \\
+    --annotation cert-manager.io/issuer=letsencrypt \\
     --rule 'my-service.example.com/*=my-service:80,tls=my-service-tls'
 "

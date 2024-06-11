@@ -9,6 +9,56 @@ KUBECTL="$SNAP/microk8s-kubectl.wrapper"
 
 echo "Enabling MetalLB"
 
+read -ra METALLB_ARGUMENTS <<< "$2"
+if [ -z "${METALLB_ARGUMENTS[@]}" ]
+then
+  echo "Do you want to install MetalLB in frr-mode (required for IPv6 BGP peering)?"
+  echo "You can also pass 'frr' as an argument to enable frr when enabling this addon: "
+  echo " microk8s enable metallb:192.168.1.240/24:frr"
+  read -p "(Yes/No): " answer
+  answer=$(echo "$answer" | tr '[:upper:]' '[:lower:]')
+  if [ "$answer" = "yes" ]; then
+    FRR_MODE=true
+  else
+    FRR_MODE=false
+  fi
+else
+  argument="${METALLB_ARGUMENTS[@]}"
+  if [ "$argument" = "frr" ]; then
+    FRR_MODE=true
+  else
+    FRR_MODE=false
+  fi
+fi
+echo "FRR-mode enabled: $FRR_MODE"
+
+
+# Due to a bug in metallb, sometimes, the cert configuration
+# for the validation endpoints is broken after deployment.
+# As this happens seemingly at random, the option to disable
+# them is provided. This is only a temporary fix, until the
+# real issue is fixed upstream. See Issue #1597 at github.com/metallb
+# for more information about this
+
+read -ra DISABLE_WEBHOOK_SAFETY_ARGUMENTS <<< "$3"
+if [ -z "${DISABLE_WEBHOOK_SAFETY_ARGUMENTS[@]}" ]
+then
+  echo "Setting Webhook Policy to 'Fail'"
+  WEBHOOK_FAILURE_POLICY="Fail"
+else
+  argument="${DISABLE_WEBHOOK_SAFETY_ARGUMENTS[@]}"
+  if [ "$argument" = "ignore" ]; then
+    WEBHOOK_FAILURE_POLICY="Ignore"
+    echo "The Webhook failure policy has been set to 'ignore'!"
+    echo "This can be dangerous, as it enables the kube-api to"
+    echo "potentially deploy invalid manifests, proceed with caution!"
+  else
+    WEBHOOK_FAILURE_POLICY="Fail"
+  fi
+  echo "Webhook Failure Policy: $WEBHOOK_FAILURE_POLICY"
+fi
+
+
 ALLOWESCALATION=false
 if grep  -e ubuntu /proc/version | grep 16.04 &> /dev/null
 then
@@ -47,7 +97,12 @@ done
 echo "Applying Metallb manifest"
 $KUBECTL apply -f $CURRENT_DIR/crd.yaml
 
-cat $CURRENT_DIR/metallb.yaml | $SNAP/bin/sed "s@{{allow_escalation}}@$ALLOWESCALATION@g" | $KUBECTL apply -f -
+if [ "$FRR_MODE" = true ] ; then
+  cat $CURRENT_DIR/metallb-frr.yaml | $SNAP/bin/sed "s@{{allow_escalation}}@$ALLOWESCALATION@g" | $SNAP/bin/sed "s@failurePolicy: Fail@failurePolicy: \"$WEBHOOK_FAILURE_POLICY\"@g" | $KUBECTL apply -f -
+else
+  cat $CURRENT_DIR/metallb.yaml | $SNAP/bin/sed "s@{{allow_escalation}}@$ALLOWESCALATION@g" | $SNAP/bin/sed "s@failurePolicy: Fail@failurePolicy: \"$WEBHOOK_FAILURE_POLICY\"@g" | $KUBECTL apply -f -
+fi
+
 
 echo "Waiting for Metallb controller to be ready."
 while ! $KUBECTL -n metallb-system  wait deployment controller --for condition=Available=True --timeout=30s ; do

@@ -30,13 +30,15 @@ then
 else
   ip_range_input="${ARGUMENTS[@]}"
 fi
-REGEX_IP_RANGE='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*-[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
-REGEX_IP_CIDR='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9]{1,3}\/[0-9]{1,3}$'
+REGEX_IPV4_RANGE='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*-[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+REGEX_IPV4_CIDR='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9]{1,3}\/[0-9]{1,3}$'
+REGEX_IPV6_RANGE='^(([0-9a-fA-F]{1,4}:){1,7}((([0-9a-fA-F]{1,4})?(:[0-9a-fA-F]{1,4}){1,6})|:))-(([0-9a-fA-F]{1,4}:){1,7}((([0-9a-fA-F]{1,4})?(:[0-9a-fA-F]{1,4}){1,6})|:))$'
+REGEX_IPV6_CIDR='^(([0-9a-fA-F]{1,4}:){1,7}((([0-9a-fA-F]{1,4})?(:[0-9a-fA-F]{1,4}){1,6})|:))\/[0-9]{1,3}$'
 ip_ranges=(`echo $ip_range_input | sed 's/,/\n/g'`)
 ip_range_str="addresses:"
 for ip_range in "${ip_ranges[@]}"
 do
-  if [[ $ip_range =~ $REGEX_IP_RANGE ||  $ip_range =~ $REGEX_IP_CIDR ]]
+  if [[ $ip_range =~ $REGEX_IPV4_RANGE ||  $ip_range =~ $REGEX_IPV4_CIDR || $ip_range =~ $REGEX_IPV6_RANGE ||  $ip_range =~ $REGEX_IPV6_CIDR ]]
   then
     ip_range_str="${ip_range_str}\n      - ${ip_range}"
   else

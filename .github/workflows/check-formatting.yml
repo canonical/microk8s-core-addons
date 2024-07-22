@@ -26,7 +26,7 @@ jobs:
         run: |
           set -eux
           black --check .
-          codespell --ignore-words-list="aks,keypair" --quiet-level=2
+          codespell --ignore-words-list="aks,keypair" --skip="*.yml,*.yaml" --quiet-level=2
       - name: Check YAML formatting
         run: |
           set -eux

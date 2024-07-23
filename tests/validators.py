@@ -372,6 +372,32 @@ def validate_metallb_config(ip_ranges="192.168.0.105"):
         assert ip_range in out
 
 
+def validate_metallb_frr_mode():
+    """
+    Validate that MetalLB has been installed with frr mode enabled
+    """
+    if platform.machine() != "x86_64":
+        print("Metallb tests are only relevant in x86 architectures")
+        return
+    pods = (
+        kubectl("get pod -n metallb-system -o=jsonpath='{.items..metadata.name}'")
+        .replace("'", "")
+        .replace('"', "")
+    )
+    frr_component_count = 0
+    for pod in pods.split(" "):
+        if "speaker" in pod:
+            containers_in_pod = kubectl(
+                "get pods "
+                + "{}".format(pod)
+                + " -o jsonpath='{.spec.containers[*].name}' -n metallb-system"
+            )
+            for container in containers_in_pod.split(" "):
+                if "frr" in str(container):
+                    frr_component_count += 1
+    assert frr_component_count > 0
+
+
 def validate_coredns_config(nameservers="8.8.8.8,1.1.1.1"):
     """
     Validate dns

@@ -272,9 +272,7 @@ class TestAddons(object):
     )
     def test_metallb_addon(self):
         addon = "metallb"
-        ip_ranges = (
-            "192.168.0.105-192.168.0.105,192.168.0.110-192.168.0.111,192.168.1.240/28,fd00:db8:1::/64,fd01:db9::-fd01:db9::1:FFFF"
-        )
+        ip_ranges = "192.168.0.105-192.168.0.105,192.168.0.110-192.168.0.111,192.168.1.240/28,fd00:db8:1::/64,fd01:db9::-fd01:db9::1:FFFF"
         print("Enabling metallb")
         microk8s_enable("{} {}".format(addon, ip_ranges), timeout_insec=500)
         validate_metallb_config(ip_ranges)

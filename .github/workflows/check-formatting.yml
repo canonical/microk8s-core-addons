@@ -21,6 +21,7 @@ jobs:
           sudo apt-get install python3-setuptools
           sudo pip3 install black codespell==2.2.4
           sudo snap install node --classic
+          sudo snap install yq
           sudo npm install --save-dev --save-exact -g prettier
       - name: Check Python formatting
         run: |

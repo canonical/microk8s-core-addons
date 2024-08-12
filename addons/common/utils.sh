@@ -27,6 +27,18 @@ use_addon_manifest() {
     do
         "$SNAP/bin/sed" -i 's@'$i'@'"${items[$i]}"'@g' "${tmp_manifest}"
     done
+
+    # extract the part-of label value
+    local part_of_label
+    part_of_label=$(echo "$manifest" | cut -d'/' -f1)
+
+    # insert label app.kubernetes.io/part-of
+    # for all resources
+    yq eval-all "
+      .metadata.labels |= (. // {}) |
+      .metadata.labels[\"app.kubernetes.io/part-of\"] = \"$part_of_label\"
+    " -i "${tmp_manifest}"
+
     "$SNAP/kubectl" "--kubeconfig=$SNAP_DATA/credentials/client.config" "$action" -f "${tmp_manifest}"
     use_manifest_result="$?"
     rm "${tmp_manifest}"

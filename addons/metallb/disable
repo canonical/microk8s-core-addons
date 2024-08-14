@@ -20,4 +20,9 @@ $KUBECTL delete -f $CURRENT_DIR/crd.yaml
 
 $KUBECTL delete namespaces metallb-system
 
+$KUBECTL delete clusterrolebinding/metallb-system:controller
+$KUBECTL delete clusterrolebinding/metallb-system:speaker
+$KUBECTL delete clusterrole/metallb-system:controller
+$KUBECTL delete clusterrole/metallb-system:speaker
+
 echo "MetalLB is terminated"

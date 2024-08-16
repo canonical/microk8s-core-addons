@@ -1,10 +1,9 @@
 #!/bin/bash -ex
 
 echo "Cleaning up MinIO tenants and operator"
-"${SNAP}/usr/bin/yes" | "${SNAP_COMMON}/plugins/kubectl-minio" delete
 
-echo "Remove kubectl-minio"
-rm "${SNAP_COMMON}/plugins/kubectl-minio"
-rm "${SNAP_COMMON}/plugins/.kubectl-minio"
+HELM="$SNAP/microk8s-helm3.wrapper"
+NAMESPACE="minio-operator"
+$HELM list -n $NAMESPACE --short | xargs $HELM uninstall -n $NAMESPACE
 
 echo "Disabled minio addon."

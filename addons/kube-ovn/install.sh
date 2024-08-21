@@ -56,7 +56,7 @@ SECURE_SERVING=${SECURE_SERVING:-false}
 # debug
 DEBUG_WRAPPER=${DEBUG_WRAPPER:-}
 
-KUBELET_DIR="/var/snap/microk8s/current/var/lib/kubelet"
+KUBELET_DIR="/var/snap/microk8s/current/args/kubelet"
 LOG_DIR="/var/snap/microk8s/common/var/log"
 ORIGIN_DIR="/var/snap/microk8s/current/etc/origin"
 

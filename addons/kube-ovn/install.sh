@@ -4928,9 +4928,9 @@ if ! sh -c "echo \":$PATH:\" | grep -q \":/usr/local/bin:\""; then
 fi
 
 echo "[Step 6/6] Run network diagnose"
-$KUBECTL cp kube-system/"$($KUBECTL  -n kube-system get pods -o wide | grep cni | awk '{print $1}' | awk 'NR==1{print}')":/kube-ovn/$KUBECTL-ko /usr/local/bin/$KUBECTL-ko
-chmod +x /usr/local/bin/$KUBECTL-ko
-$KUBECTL ko diagnose all
+#$KUBECTL cp kube-system/"$($KUBECTL  -n kube-system get pods -o wide | grep cni | awk '{print $1}' | awk 'NR==1{print}')":/kube-ovn/$KUBECTL-ko /usr/local/bin/$KUBECTL-ko
+#chmod +x /usr/local/bin/$KUBECTL-ko
+#$KUBECTL ko diagnose all
 
 echo "-------------------------------"
 echo "

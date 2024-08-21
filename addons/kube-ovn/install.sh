@@ -54,23 +54,23 @@ SECURE_SERVING=${SECURE_SERVING:-false}
 # debug
 DEBUG_WRAPPER=${DEBUG_WRAPPER:-}
 
-KUBELET_DIR=${KUBELET_DIR:-/var/lib/kubelet}
-LOG_DIR=${LOG_DIR:-/var/log}
-ORIGIN_DIR="/etc/origin"
+KUBELET_DIR="/var/snap/microk8s/current/var/lib/kubelet"
+LOG_DIR="/var/snap/microk8s/common/var/log"
+ORIGIN_DIR="/var/snap/microk8s/current/etc/origin"
 
-CNI_CONF_DIR="/etc/cni/net.d"
-CNI_BIN_DIR="/opt/cni/bin"
+CNI_CONF_DIR="/var/snap/microk8s/current/etc/cni/net.d"
+CNI_BIN_DIR="/var/snap/microk8s/current/opt/cni/bin"
 
 REGISTRY="docker.io/kubeovn"
 VPC_NAT_IMAGE="vpc-nat-gateway"
 VERSION="v1.12.21"
 IMAGE_PULL_POLICY="IfNotPresent"
-POD_CIDR="10.16.0.0/16"                # Do NOT overlap with NODE/SVC/JOIN CIDR
-POD_GATEWAY="10.16.0.1"
-SVC_CIDR="10.96.0.0/12"                # Do NOT overlap with NODE/POD/JOIN CIDR
+POD_CIDR="10.1.0.0/16"                # Do NOT overlap with NODE/SVC/JOIN CIDR
+POD_GATEWAY="10.1.0.1"
+SVC_CIDR="10.152.183.0/24"                # Do NOT overlap with NODE/POD/JOIN CIDR
 JOIN_CIDR="100.64.0.0/16"              # Do NOT overlap with NODE/POD/SVC CIDR
-PINGER_EXTERNAL_ADDRESS="114.114.114.114"  # Pinger check external ip probe
-PINGER_EXTERNAL_DOMAIN="alauda.cn."         # Pinger check external domain probe
+PINGER_EXTERNAL_ADDRESS="1.1.1.1"  # Pinger check external ip probe
+PINGER_EXTERNAL_DOMAIN="canonical.com"         # Pinger check external domain probe
 SVC_YAML_IPFAMILYPOLICY=""
 if [ "$IPV6" = "true" ]; then
   POD_CIDR="fd00:10:16::/112"                # Do NOT overlap with NODE/SVC/JOIN CIDR
@@ -81,9 +81,9 @@ if [ "$IPV6" = "true" ]; then
   PINGER_EXTERNAL_DOMAIN="google.com."
 fi
 if [ "$DUAL_STACK" = "true" ]; then
-  POD_CIDR="10.16.0.0/16,fd00:10:16::/112"                # Do NOT overlap with NODE/SVC/JOIN CIDR
-  POD_GATEWAY="10.16.0.1,fd00:10:16::1"
-  SVC_CIDR="10.96.0.0/12,fd00:10:96::/112"               # Do NOT overlap with NODE/POD/JOIN CIDR
+  POD_CIDR="10.1.0.0/16,fd00:10:16::/112"                # Do NOT overlap with NODE/SVC/JOIN CIDR
+  POD_GATEWAY="10.1.0.1,fd00:10:16::1"
+  SVC_CIDR="10.152.183.0/24,fd00:10:96::/112"               # Do NOT overlap with NODE/POD/JOIN CIDR
   JOIN_CIDR="100.64.0.0/16,fd00:100:64::/112"             # Do NOT overlap with NODE/POD/SVC CIDR
   PINGER_EXTERNAL_ADDRESS="114.114.114.114,2400:3200::1"
   PINGER_EXTERNAL_DOMAIN="google.com."
@@ -91,7 +91,7 @@ if [ "$DUAL_STACK" = "true" ]; then
 fi
 
 EXCLUDE_IPS=""                                    # EXCLUDE_IPS for default subnet
-LABEL="node-role.kubernetes.io/control-plane"     # The node label to deploy OVN DB
+LABEL="kube-ovn/role=master"     # The node label to deploy OVN DB
 DEPRECATED_LABEL="node-role.kubernetes.io/master" # The node label to deploy OVN DB in earlier versions
 NETWORK_TYPE="geneve"                             # geneve or vlan
 TUNNEL_TYPE="geneve"                              # geneve, vxlan or stt. ATTENTION: some networkpolicy cannot take effect when using vxlan and stt need custom compile ovs kernel module

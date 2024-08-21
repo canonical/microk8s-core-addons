@@ -13,6 +13,8 @@ set -euo pipefail
 # - (2022-10-12) remove PodSecurityPolicy
 # - (2022-10-12) remove ovn-config ConfigMap
 
+KUBECTL="$SNAP/microk8s-kubectl.wrapper"
+
 IPV6=${IPV6:-false}
 DUAL_STACK=${DUAL_STACK:-false}
 ENABLE_SSL=${ENABLE_SSL:-false}
@@ -35,7 +37,7 @@ ENABLE_NAT_GW=${ENABLE_NAT_GW:-true}
 ENABLE_KEEP_VM_IP=${ENABLE_KEEP_VM_IP:-true}
 ENABLE_ARP_DETECT_IP_CONFLICT=${ENABLE_ARP_DETECT_IP_CONFLICT:-true}
 NODE_LOCAL_DNS_IP=${NODE_LOCAL_DNS_IP:-}
-ENABLE_IC=${ENABLE_IC:-$(kubectl get node --show-labels | grep -q "ovn.kubernetes.io/ic-gw" && echo true || echo false)}
+ENABLE_IC=${ENABLE_IC:-$($KUBECTL get node --show-labels | grep -q "ovn.kubernetes.io/ic-gw" && echo true || echo false)}
 # exchange link names of OVS bridge and the provider nic
 # in the default provider-network
 EXCHANGE_LINK_NAME=${EXCHANGE_LINK_NAME:-false}
@@ -204,10 +206,10 @@ echo "-------------------------------"
 
 if [[ $ENABLE_SSL = "true" ]];then
   echo "[Step 0/6] Generate SSL key and cert"
-  exist=$(kubectl get secret -n kube-system kube-ovn-tls --ignore-not-found)
+  exist=$($KUBECTL get secret -n kube-system kube-ovn-tls --ignore-not-found)
   if [[ $exist == "" ]];then
     docker run --rm -v "$PWD":/etc/ovn $REGISTRY/kube-ovn:$VERSION bash generate-ssl.sh
-    kubectl create secret generic -n kube-system kube-ovn-tls --from-file=cacert=cacert.pem --from-file=cert=ovn-cert.pem --from-file=key=ovn-privkey.pem
+    $KUBECTL create secret generic -n kube-system kube-ovn-tls --from-file=cacert=cacert.pem --from-file=cert=ovn-cert.pem --from-file=key=ovn-privkey.pem
     rm -rf cacert.pem ovn-cert.pem ovn-privkey.pem ovn-req.pem
   fi
   echo "-------------------------------"
@@ -215,28 +217,28 @@ if [[ $ENABLE_SSL = "true" ]];then
 fi
 
 echo "[Step 1/6] Label kube-ovn-master node and label datapath type"
-count=$(kubectl get no -l$LABEL --no-headers | wc -l)
+count=$($KUBECTL get no -l$LABEL --no-headers | wc -l)
 node_label="$LABEL"
 if [ "${count}" -eq 0 ]; then
-  count=$(kubectl get no -l$DEPRECATED_LABEL --no-headers | wc -l)
+  count=$($KUBECTL get no -l$DEPRECATED_LABEL --no-headers | wc -l)
   node_label="$DEPRECATED_LABEL"
   if [ "${count}" -eq 0 ]; then
     echo "ERROR: No node with label $LABEL or $DEPRECATED_LABEL found"
     exit 1
   fi
 fi
-kubectl label no -l$node_label kube-ovn/role=master --overwrite
+$KUBECTL label no -l$node_label kube-ovn/role=master --overwrite
 
 if [ "$DPDK" = "true" ] || [ "$HYBRID_DPDK" = "true" ]; then
-  kubectl label no -lovn.kubernetes.io/ovs_dp_type!=userspace ovn.kubernetes.io/ovs_dp_type=kernel --overwrite
+  $KUBECTL label no -lovn.kubernetes.io/ovs_dp_type!=userspace ovn.kubernetes.io/ovs_dp_type=kernel --overwrite
 fi
 
 echo "-------------------------------"
 echo ""
 
 echo "[Step 2/6] Install OVN components"
-addresses=$(kubectl get no -lkube-ovn/role=master --no-headers -o wide | awk '{print $6}' | tr \\n ',' | sed 's/,$//')
-count=$(kubectl get no -lkube-ovn/role=master --no-headers | wc -l)
+addresses=$($KUBECTL get no -lkube-ovn/role=master --no-headers -o wide | awk '{print $6}' | tr \\n ',' | sed 's/,$//')
+count=$($KUBECTL get no -lkube-ovn/role=master --no-headers | wc -l)
 echo "Install OVN DB in $addresses"
 
 cat <<EOF > kube-ovn-crd.yaml
@@ -3257,11 +3259,11 @@ subjects:
     namespace: kube-system
 EOF
 
-kubectl apply -f kube-ovn-crd.yaml
-kubectl apply -f ovn-ovs-sa.yaml
-kubectl apply -f kube-ovn-sa.yaml
-kubectl apply -f kube-ovn-cni-sa.yaml
-kubectl apply -f kube-ovn-app-sa.yaml
+$KUBECTL apply -f kube-ovn-crd.yaml
+$KUBECTL apply -f ovn-ovs-sa.yaml
+$KUBECTL apply -f kube-ovn-sa.yaml
+$KUBECTL apply -f kube-ovn-cni-sa.yaml
+$KUBECTL apply -f kube-ovn-app-sa.yaml
 
 cat <<EOF > ovn.yaml
 ---
@@ -3489,7 +3491,7 @@ spec:
             secretName: kube-ovn-tls
 EOF
 
-kubectl apply -f ovn.yaml
+$KUBECTL apply -f ovn.yaml
 
 if $DPDK; then
   cat <<EOF > ovs-ovn-ds.yaml
@@ -3840,7 +3842,7 @@ spec:
 EOF
 fi
 
-kubectl apply -f ovs-ovn-ds.yaml
+$KUBECTL apply -f ovs-ovn-ds.yaml
 
 if $HYBRID_DPDK; then
 
@@ -4005,10 +4007,10 @@ spec:
             optional: true
             secretName: kube-ovn-tls
 EOF
-kubectl apply -f ovn-dpdk.yaml
+$KUBECTL apply -f ovn-dpdk.yaml
 fi
-kubectl rollout status deployment/ovn-central -n kube-system --timeout 300s
-kubectl rollout status daemonset/ovs-ovn -n kube-system --timeout 120s
+$KUBECTL rollout status deployment/ovn-central -n kube-system --timeout 300s
+$KUBECTL rollout status daemonset/ovs-ovn -n kube-system --timeout 120s
 echo "-------------------------------"
 echo ""
 
@@ -4765,9 +4767,9 @@ spec:
       name: metrics
 EOF
 
-kubectl apply -f kube-ovn.yaml
-kubectl rollout status deployment/kube-ovn-controller -n kube-system --timeout 300s
-kubectl rollout status daemonset/kube-ovn-cni -n kube-system --timeout 300s
+$KUBECTL apply -f kube-ovn.yaml
+$KUBECTL rollout status deployment/kube-ovn-controller -n kube-system --timeout 300s
+$KUBECTL rollout status daemonset/kube-ovn-cni -n kube-system --timeout 300s
 
 if $ENABLE_IC; then
 
@@ -4880,34 +4882,34 @@ spec:
             optional: true
             secretName: kube-ovn-tls
 EOF
-kubectl apply -f ovn-ic-controller.yaml
+$KUBECTL apply -f ovn-ic-controller.yaml
 fi
 
 echo "-------------------------------"
 echo ""
 
 echo "[Step 4/6] Delete pod that not in host network mode"
-for ns in $(kubectl get ns --no-headers -o custom-columns=NAME:.metadata.name); do
-  for pod in $(kubectl get pod --no-headers -n "$ns" --field-selector spec.restartPolicy=Always -o custom-columns=NAME:.metadata.name,HOST:spec.hostNetwork | awk '{if ($2!="true") print $1}'); do
-    kubectl delete pod "$pod" -n "$ns" --ignore-not-found --wait=false
+for ns in $($KUBECTL get ns --no-headers -o custom-columns=NAME:.metadata.name); do
+  for pod in $($KUBECTL get pod --no-headers -n "$ns" --field-selector spec.restartPolicy=Always -o custom-columns=NAME:.metadata.name,HOST:spec.hostNetwork | awk '{if ($2!="true") print $1}'); do
+    $KUBECTL delete pod "$pod" -n "$ns" --ignore-not-found --wait=false
   done
 done
 
-kubectl rollout status deployment/coredns -n kube-system --timeout 300s
+$KUBECTL rollout status deployment/coredns -n kube-system --timeout 300s
 while true; do 
-  pods=(`kubectl get pod -n kube-system -l app=kube-ovn-pinger --template '{{range .items}}{{if .metadata.deletionTimestamp}}{{.metadata.name}}{{"\n"}}{{end}}{{end}}'`)
+  pods=(`$KUBECTL get pod -n kube-system -l app=kube-ovn-pinger --template '{{range .items}}{{if .metadata.deletionTimestamp}}{{.metadata.name}}{{"\n"}}{{end}}{{end}}'`)
   if [ ${#pods[@]} -eq 0 ]; then
     break
   fi
   echo "Waiting for ${pods[@]} to be deleted..."
   sleep 1
 done
-kubectl rollout status daemonset/kube-ovn-pinger -n kube-system --timeout 120s
-kubectl wait pod --for=condition=Ready -l app=kube-ovn-pinger -n kube-system --timeout 120s
+$KUBECTL rollout status daemonset/kube-ovn-pinger -n kube-system --timeout 120s
+$KUBECTL wait pod --for=condition=Ready -l app=kube-ovn-pinger -n kube-system --timeout 120s
 echo "-------------------------------"
 echo ""
 
-echo "[Step 5/6] Add kubectl plugin PATH"
+echo "[Step 5/6] Add $KUBECTL plugin PATH"
 
 if ! sh -c "echo \":$PATH:\" | grep -q \":/usr/local/bin:\""; then
   echo "Tips:Please join the /usr/local/bin to your PATH. Temporarily, we do it for this execution."
@@ -4917,9 +4919,9 @@ if ! sh -c "echo \":$PATH:\" | grep -q \":/usr/local/bin:\""; then
 fi
 
 echo "[Step 6/6] Run network diagnose"
-kubectl cp kube-system/"$(kubectl  -n kube-system get pods -o wide | grep cni | awk '{print $1}' | awk 'NR==1{print}')":/kube-ovn/kubectl-ko /usr/local/bin/kubectl-ko
-chmod +x /usr/local/bin/kubectl-ko
-kubectl ko diagnose all
+$KUBECTL cp kube-system/"$($KUBECTL  -n kube-system get pods -o wide | grep cni | awk '{print $1}' | awk 'NR==1{print}')":/kube-ovn/$KUBECTL-ko /usr/local/bin/$KUBECTL-ko
+chmod +x /usr/local/bin/$KUBECTL-ko
+$KUBECTL ko diagnose all
 
 echo "-------------------------------"
 echo "

@@ -56,7 +56,7 @@ SECURE_SERVING=${SECURE_SERVING:-false}
 # debug
 DEBUG_WRAPPER=${DEBUG_WRAPPER:-}
 
-KUBELET_DIR="/var/snap/microk8s/current/args/kubelet"
+KUBELET_DIR="/var/snap/microk8s/current/var/lib/kubelet"
 LOG_DIR="/var/snap/microk8s/common/var/log"
 ORIGIN_DIR="/var/snap/microk8s/current/etc/origin"
 
@@ -4248,15 +4248,15 @@ spec:
         image: "$REGISTRY/kube-ovn:$VERSION"
         imagePullPolicy: $IMAGE_PULL_POLICY
         command:
-		    - bash
-            - -x
-            - -c
-            - |
-              # remove conflicting cni binaries
-              rm -fv /opt/cni/bin/portmap
-              rm -fv /opt/cni/bin/loopback
-              rm -fv /opt/cni/bin/macvlan
-              /kube-ovn/install-cni.sh
+        - bash
+        - -x
+        - -c
+        - |
+          # remove conflicting cni binaries
+          rm -fv /opt/cni/bin/portmap
+          rm -fv /opt/cni/bin/loopback
+          rm -fv /opt/cni/bin/macvlan
+          /kube-ovn/install-cni.sh
         securityContext:
           runAsUser: 0
           privileged: true

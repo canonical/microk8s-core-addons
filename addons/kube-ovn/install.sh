@@ -60,7 +60,7 @@ KUBELET_DIR="/var/snap/microk8s/current/var/lib/kubelet"
 LOG_DIR="/var/snap/microk8s/common/var/log"
 ORIGIN_DIR="/var/snap/microk8s/current/etc/origin"
 
-CNI_CONF_DIR="/var/snap/microk8s/current/args/cni-network"
+CNI_CONF_DIR="/var/snap/microk8s/current/etc/cni/net.d"
 CNI_BIN_DIR="/var/snap/microk8s/current/opt/cni/bin"
 
 REGISTRY="docker.io/kubeovn"

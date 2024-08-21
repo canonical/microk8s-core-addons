@@ -2,6 +2,16 @@
 set -euo pipefail
 
 # Sourced from https://raw.githubusercontent.com/kubeovn/kube-ovn/v1.12.21/dist/images/install.sh
+# Changelog:
+# - change cni config directory to $SNAP_DATA/args/cni-network
+# - change cni bin directory to $SNAP_DATA/opt/cni/bin
+# - change log directories to $SNAP_COMMON/var/log/...
+# - change openvswitch config directory $SNAP_DATA/etc/origin/openvswitch
+# - change ovn config directory $SNAP_DATA/etc/origin/ovn
+# - template variable __NODE_IPS__ for the ovn db address
+# - template variable __REPLICAS__ for the ovn db replicas
+# - (2022-10-12) remove PodSecurityPolicy
+# - (2022-10-12) remove ovn-config ConfigMap
 
 IPV6=${IPV6:-false}
 DUAL_STACK=${DUAL_STACK:-false}
@@ -46,6 +56,7 @@ DEBUG_WRAPPER=${DEBUG_WRAPPER:-}
 
 KUBELET_DIR=${KUBELET_DIR:-/var/lib/kubelet}
 LOG_DIR=${LOG_DIR:-/var/log}
+ORIGIN_DIR="/etc/origin"
 
 CNI_CONF_DIR="/etc/cni/net.d"
 CNI_BIN_DIR="/opt/cni/bin"
@@ -3459,10 +3470,10 @@ spec:
             path: /sys
         - name: host-config-openvswitch
           hostPath:
-            path: /etc/origin/openvswitch
+            path: $ORIGIN_DIR/openvswitch
         - name: host-config-ovn
           hostPath:
-            path: /etc/origin/ovn
+            path: $ORIGIN_DIR/ovn
         - name: host-log-ovs
           hostPath:
             path: $LOG_DIR/openvswitch
@@ -3619,13 +3630,13 @@ spec:
             path: /var/run/netns
         - name: cni-conf
           hostPath:
-            path: /etc/cni/net.d
+            path: $CNI_CONF_DIR
         - name: host-config-openvswitch
           hostPath:
-            path: /etc/origin/openvswitch
+            path: $ORIGIN_DIR/openvswitch
         - name: host-config-ovn
           hostPath:
-            path: /etc/origin/ovn
+            path: $ORIGIN_DIR/ovn
         - name: host-log-ovs
           hostPath:
             path: $LOG_DIR/openvswitch
@@ -3806,10 +3817,10 @@ spec:
             path: /var/run/netns
         - name: host-config-openvswitch
           hostPath:
-            path: /etc/origin/openvswitch
+            path: $ORIGIN_DIR/openvswitch
         - name: host-config-ovn
           hostPath:
-            path: /etc/origin/ovn
+            path: $ORIGIN_DIR/ovn
         - name: host-log-ovs
           hostPath:
             path: $LOG_DIR/openvswitch
@@ -3976,10 +3987,10 @@ spec:
             path: /sys
         - name: host-config-openvswitch
           hostPath:
-            path: /etc/origin/openvswitch
+            path: $ORIGIN_DIR/openvswitch
         - name: host-config-ovn
           hostPath:
-            path: /etc/origin/ovn
+            path: $ORIGIN_DIR/ovn
         - name: host-log-ovs
           hostPath:
             path: $LOG_DIR/openvswitch
@@ -4380,7 +4391,7 @@ spec:
             path: $KUBELET_DIR/pods
         - name: systemid
           hostPath:
-            path: /etc/origin/openvswitch
+            path: $ORIGIN_DIR/openvswitch
         - name: host-run-ovs
           hostPath:
             path: /run/openvswitch
@@ -4516,7 +4527,7 @@ spec:
             path: /run/ovn
         - name: host-config-openvswitch
           hostPath:
-            path: /etc/origin/openvswitch
+            path: $ORIGIN_DIR/openvswitch
         - name: host-log-ovs
           hostPath:
             path: $LOG_DIR/openvswitch
@@ -4673,10 +4684,10 @@ spec:
             path: /run/ovn
         - name: host-config-openvswitch
           hostPath:
-            path: /etc/origin/openvswitch
+            path: $ORIGIN_DIR/openvswitch
         - name: host-config-ovn
           hostPath:
-            path: /etc/origin/ovn
+            path: $ORIGIN_DIR/ovn
         - name: host-log-ovn
           hostPath:
             path: $LOG_DIR/ovn
@@ -4854,16 +4865,16 @@ spec:
             path: /run/ovn
         - name: host-config-ovn
           hostPath:
-            path: /etc/origin/ovn
+            path: $ORIGIN_DIR/ovn
         - name: host-log-ovn
           hostPath:
-            path: /var/log/ovn
+            path: $LOG_DIR/ovn
         - name: localtime
           hostPath:
             path: /etc/localtime
         - name: kube-ovn-log
           hostPath:
-            path: /var/log/kube-ovn
+            path: $LOG_DIR/kube-ovn
         - name: kube-ovn-tls
           secret:
             optional: true

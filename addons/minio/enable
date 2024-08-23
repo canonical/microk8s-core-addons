@@ -11,14 +11,15 @@ CAPACITY="20Gi"
 SERVERS=1
 VOLUMES=1
 TENANT="microk8s"
-VERSION="4.5.1"
+VERSION="v6.0.2"
 TLS="no"
 PROMETHEUS="no"
-REPO="https://github.com/minio/operator"
+REPO="https://operator.min.io"
 
 # Enable dependenciess
 MICROK8S_ENABLE="${SNAP}/microk8s-enable.wrapper"
 "${MICROK8S_ENABLE}" dns
+"${MICROK8S_ENABLE}" helm3
 "${MICROK8S_ENABLE}" hostpath-storage
 
 function usage {
@@ -29,13 +30,13 @@ function usage {
   echo "   -h               Print this help message"
   echo "   -k               Do not create default tenant"
   echo "   -s STORAGECLASS  Storage class to use for the default tenant (default: ${STORAGE_CLASS})"
-  echo "   -c CAPACITY      Capacity of the default tenant (default: ${CAPACITY})"
-  echo "   -n SERVERS       Servers of the default tenant (default: ${SERVERS})"
-  echo "   -v VOLUMES       Volumes of the default tenant (default: ${VOLUMES})"
+  echo "   -c CAPACITY      Capacity of each volume for the default tenant (default: ${CAPACITY})"
+  echo "   -n SERVERS       Number of servers of the default tenant (default: ${SERVERS})"
+  echo "   -v VOLUMES       Number of volumes for each server of the default tenant (default: ${VOLUMES})"
   echo "   -t TENANTNAME    Name of the default tenant (default: ${TENANT})"
   echo "   -T               Enable TLS for the default tenant (default: disabled)"
   echo "   -p               Enable Prometheus for the default tenant (default: disabled)"
-  echo "   -r REPOSITORY    Minio Operator GitHub repository (default: ${REPO})"
+  echo "   -r REPOSITORY    Minio Operator Helm chart repository (default: ${REPO})"
   echo "   -V VERSION       Minio Operator version (default: ${VERSION})"
 }
 
@@ -68,25 +69,12 @@ while getopts ":hkTps:c:n:v:t:r:V:" arg; do
   esac
 done
 
-echo "Download kubectl-minio"
+HELM="$SNAP/microk8s-helm3.wrapper"
 
-if [ ! -f "${SNAP_COMMON}/plugins/kubectl-minio" ]; then
-  fetch_as "${REPO}/releases/download/v${VERSION}/kubectl-minio_${VERSION}_linux_${ARCH}" "${SNAP_COMMON}/plugins/.kubectl-minio"
-  run_with_sudo chmod +x "${SNAP_COMMON}/plugins/.kubectl-minio"
-  cp "${DIR}/kubectl-minio" "${SNAP_COMMON}/plugins/kubectl-minio"
-fi
-
-# Ensure kubectl exists in PATH
-mkdir -p "${SNAP_COMMON}/plugins/.kubectl"
-ln -f -s "${SNAP}/microk8s-kubectl.wrapper" "${SNAP_COMMON}/plugins/.kubectl/kubectl"
-
-if ! "${SNAP_COMMON}/plugins/kubectl-minio" version > /dev/null; then
-  echo "Could not execute kubectl-minio"
-  exit 1
-fi
-
-echo "Initialize minio operator"
-"${SNAP_COMMON}/plugins/kubectl-minio" init
+echo "Installing minio operator"
+$HELM upgrade --install minio-operator operator \
+  --repo $REPO --version "${VERSION}" \
+  --create-namespace --namespace "minio-operator"
 
 if [ "x${CREATE_TENANT}" = "xyes" ]; then
   echo "Create default tenant with:"
@@ -100,26 +88,27 @@ if [ "x${CREATE_TENANT}" = "xyes" ]; then
   echo "  Prometheus: ${PROMETHEUS}"
   echo ""
 
-  declare -a ARGS=(
-    "${TENANT}"
-    --storage-class "${STORAGE_CLASS}"
-    --capacity "${CAPACITY}"
-    --servers "${SERVERS}"
-    --volumes "${VOLUMES}"
-    --namespace "minio-operator"
-    --enable-audit-logs="false"
-  )
+  HELM_OPTS=
 
   if [ "x${TLS}" = "xno" ]; then
-    ARGS+=("--disable-tls")
+    HELM_OPTS+="--set tenant.certificate.requestAutoCert=false "
   fi
 
-  if [ "x${PROMETHEUS}" = "xno" ]; then
-    ARGS+=("--enable-prometheus=false")
+  if [ "x${PROMETHEUS}" != "xno" ]; then
+    HELM_OPTS+="--set tenant.prometheusOperator=true "
   fi
 
   set -x
-  "${SNAP_COMMON}/plugins/kubectl-minio" tenant create ${ARGS[@]}
+  $HELM upgrade --install "${TENANT}" tenant \
+    --repo $REPO --version "${VERSION}" \
+    --namespace "minio-operator" \
+    --set "tenant.name=${TENANT}" \
+    --set "tenant.pools[0].name=${TENANT}" \
+    --set "tenant.pools[0].storageClassName=${STORAGE_CLASS}" \
+    --set "tenant.pools[0].size=${CAPACITY}" \
+    --set "tenant.pools[0].servers=${SERVERS}" \
+    --set "tenant.pools[0].volumesPerServer=${VOLUMES}" \
+    ${HELM_OPTS}
   set +x
 fi
 

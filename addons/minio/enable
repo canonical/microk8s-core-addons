@@ -88,6 +88,15 @@ if [ "x${CREATE_TENANT}" = "xyes" ]; then
   echo "  Prometheus: ${PROMETHEUS}"
   echo ""
 
+  # Previously, kubectl-minio created an additional user. We will create here as well.
+  # This is done by creating a secret containing CONSOLE_ACCESS_KEY and CONSOLE_SECRET_KEY
+  # and referencing it in the helm chart below.
+  KUBECTL="$SNAP/microk8s-kubectl.wrapper"
+  SECRET_NAME="${TENANT}-user-1"
+  $KUBECTL create -n minio-operator secret generic "${SECRET_NAME}" \
+    --from-literal=CONSOLE_ACCESS_KEY="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20)" \
+    --from-literal=CONSOLE_SECRET_KEY="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 40)"
+
   HELM_OPTS=
 
   if [ "x${TLS}" = "xno" ]; then
@@ -103,6 +112,7 @@ if [ "x${CREATE_TENANT}" = "xyes" ]; then
     --repo $REPO --version "${VERSION}" \
     --namespace "minio-operator" \
     --set "tenant.name=${TENANT}" \
+    --set "tenant.users[0].name=${SECRET_NAME}" \
     --set "tenant.pools[0].name=${TENANT}" \
     --set "tenant.pools[0].storageClassName=${STORAGE_CLASS}" \
     --set "tenant.pools[0].size=${CAPACITY}" \
@@ -116,9 +126,5 @@ fi
 echo "================================"
 echo "Enabled minio addon."
 echo ""
-echo "You can manage minio tenants using the kubectl-minio plugin."
-echo ""
-echo "For more details, use"
-echo ""
-echo "    microk8s kubectl-minio --help"
+echo "You can interact with minio through the minio client (https://min.io/docs/minio/linux/reference/minio-mc.html#minio-client)."
 echo ""

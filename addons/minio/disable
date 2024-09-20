@@ -3,7 +3,13 @@
 echo "Cleaning up MinIO tenants and operator"
 
 HELM="$SNAP/microk8s-helm3.wrapper"
+KUBECTL="$SNAP/microk8s-kubectl.wrapper"
 NAMESPACE="minio-operator"
+
+# Delete the secret we created for the tenant.
+tenant_name="$($HELM list -n $NAMESPACE --short | grep -v 'minio-operator')"
+$KUBECTL delete -n $NAMESPACE secret "${tenant_name}-user-1"
+
 $HELM list -n $NAMESPACE --short | xargs $HELM uninstall -n $NAMESPACE
 
 echo "Disabled minio addon."

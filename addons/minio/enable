@@ -108,6 +108,7 @@ if [ "x${CREATE_TENANT}" = "xyes" ]; then
   fi
 
   set -x
+  # secrets and tenant.configSecret are mutually exclusive.
   $HELM upgrade --install "${TENANT}" tenant \
     --repo $REPO --version "${VERSION}" \
     --namespace "minio-operator" \
@@ -118,6 +119,11 @@ if [ "x${CREATE_TENANT}" = "xyes" ]; then
     --set "tenant.pools[0].size=${CAPACITY}" \
     --set "tenant.pools[0].servers=${SERVERS}" \
     --set "tenant.pools[0].volumesPerServer=${VOLUMES}" \
+    --set "tenant.configuration.name=${TENANT}-env-configuration" \
+    --set "tenant.configSecret.name=${TENANT}-env-configuration" \
+    --set "tenant.configSecret.accessKey=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20)" \
+    --set "tenant.configSecret.secretKey=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 40)" \
+    --set "secrets=" \
     ${HELM_OPTS}
   set +x
 fi

@@ -54,7 +54,6 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
         sys.exit(1)
 
     hosts = hostname.split(",")
-    node_ips = []
 
     # 1. label nodes that will run ovn-db
     for host in hosts:
@@ -62,9 +61,7 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
             [KUBECTL, "get", "node", host, "-o", JSONPATH_INTERNAL_IP]
         )
         node_ip = stdout.decode().strip()
-        if node_ip:
-            node_ips.append(node_ip)
-
+        
         click.echo("Label node {} ({})".format(host, node_ip))
         subprocess.check_call(
             [KUBECTL, "label", "node", host, "kube-ovn/role=master", "--overwrite"]
@@ -77,42 +74,10 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
         subprocess.run([KUBECTL, "delete", "-f", cni_yaml])
         shutil.move(cni_yaml, SNAP_DATA / "args" / "cni-network" / "cni.yaml.backup")
 
-    # 3. apply ovn CRDs
-    click.echo("Deploy kube-ovn CRDs")
-    subprocess.check_call([KUBECTL, "apply", "-f", DIR / "crd.yaml"])
-
     has_avx_flag = cpu_has_avx_flag()
 
-    # 4. generate manifest and deploy ovn components
-    if not has_avx_flag:
-        # Update kube-ovn-template.yaml and write it to kube-ovn.yaml
-        kube_ovn_yaml = DIR / "kube-ovn.yaml"
-        kube_ovn_template = DIR / "kube-ovn-template.yaml"
-        with open(kube_ovn_template, "r") as tpl:
-            kube_ovn_tpl = tpl.read()
-
-        kube_ovn_tpl = kube_ovn_tpl.replace("__AVXTAG__", NO_AVX_CPU_TAG)
-        with open(kube_ovn_yaml, "w") as ko:
-            ko.write(kube_ovn_tpl)
-
-    click.echo("Deploy ovn components")
-    # Update ovn-template.yaml and write it to ovn.yaml
-    with open(DIR / "ovn-template.yaml") as fin:
-        ovn_template = fin.read()
-
-    ovn_yaml = SNAP_DATA / "args" / "cni-network" / "ovn.yaml"
-    ovn_template = ovn_template.replace("__REPLICAS__", str(len(node_ips)))
-    ovn_template = ovn_template.replace("__NODE_IPS__", ",".join(node_ips))
-    if not has_avx_flag:
-        ovn_template = ovn_template.replace("__AVXTAG__", NO_AVX_CPU_TAG)
-    with open(ovn_yaml, "w") as fout:
-        fout.write(ovn_template)
-
-    subprocess.check_call([KUBECTL, "apply", "-f", ovn_yaml])
-
-    # 5. install kube-ovn plugins
-    click.echo("Deploy kube-ovn CNI")
-    subprocess.check_call([KUBECTL, "apply", "-f", DIR / "kube-ovn.yaml"])
+    click.echo("Run kube-ovn install script")
+    subprocess.check_call(["/bin/bash", DIR / "install.sh"])
 
     # 6. install microk8s hooks
     for hook in ["reconcile"]:

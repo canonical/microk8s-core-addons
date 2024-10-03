@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Sourced from: https://github.com/kubeovn/kube-ovn/blob/master/dist/images/cleanup.sh
+# Sourced from: https://github.com/kubeovn/kube-ovn/blob/v1.12.21/dist/images/cleanup.sh
 # Changelog:
 # - use microk8s.$KUBECTL instead of $KUBECTL
 
@@ -8,18 +8,78 @@ set -eu
 
 KUBECTL="$SNAP/microk8s-kubectl.wrapper"
 
-$KUBECTL delete --ignore-not-found ds kube-ovn-pinger -n kube-system
+$KUBECTL delete --ignore-not-found -n kube-system ds kube-ovn-pinger
 # ensure kube-ovn-pinger has been deleted
 while :; do
-  if [ $($KUBECTL get pod --no-headers -n kube-system -l app=kube-ovn-pinger | wc -l) -eq 0 ]; then
+  if [ $($KUBECTL get pod -n kube-system -l app=kube-ovn-pinger -o name | wc -l) -eq 0 ]; then
     break
   fi
-  sleep 5
+  sleep 1
 done
 
+for gw in $($KUBECTL get vpc-nat-gw -o name); do
+  $KUBECTL delete --ignore-not-found $gw
+done
+
+for vd in $($KUBECTL  get vpc-dns -o name); do
+  $KUBECTL delete --ignore-not-found $vd
+done
+
+for vip in $($KUBECTL get vip -o name); do
+   $KUBECTL delete --ignore-not-found $vip
+done
+
+for snat in $($KUBECTL get snat -o name); do
+   $KUBECTL delete --ignore-not-found $snat
+done
+
+for dnat in $($KUBECTL get dnat -o name); do
+   $KUBECTL delete --ignore-not-found $dnat
+done
+
+for fip in $($KUBECTL get fip -o name); do
+   $KUBECTL delete --ignore-not-found $fip
+done
+
+for eip in $($KUBECTL get eip -o name); do
+   $KUBECTL delete --ignore-not-found $eip
+done
+
+for odnat in $($KUBECTL get odnat -o name); do
+   $KUBECTL delete --ignore-not-found $odnat
+done
+
+for osnat in $($KUBECTL get osnat -o name); do
+   $KUBECTL delete --ignore-not-found $osnat
+done
+
+for ofip in $($KUBECTL get ofip -o name); do
+   $KUBECTL delete --ignore-not-found $ofip
+done
+
+for oeip in $($KUBECTL get oeip -o name); do
+   $KUBECTL delete --ignore-not-found $oeip
+done
+
+for slr in $($KUBECTL get switch-lb-rule -o name); do
+   $KUBECTL delete --ignore-not-found $slr
+done
+
+for ippool in $($KUBECTL get ippool -o name); do
+  $KUBECTL delete --ignore-not-found $ippool
+done
+
+set +e
 for subnet in $($KUBECTL get subnet -o name); do
   $KUBECTL patch "$subnet" --type='json' -p '[{"op": "replace", "path": "/metadata/finalizers", "value": []}]'
   $KUBECTL delete --ignore-not-found "$subnet"
+done
+# subnet join will recreate, so delete subnet crd right now
+$KUBECTL delete --ignore-not-found crd subnets.kubeovn.io
+set -e
+
+for vpc in $($KUBECTL get vpc -o name); do
+  $KUBECTL delete --ignore-not-found $vpc
 done
 
 for vlan in $($KUBECTL get vlan -o name); do
@@ -30,27 +90,28 @@ for pn in $($KUBECTL get provider-network -o name); do
   $KUBECTL delete --ignore-not-found $pn
 done
 
-sleep 5
-
 # Delete Kube-OVN components
-$KUBECTL delete --ignore-not-found deploy kube-ovn-monitor -n kube-system
-$KUBECTL delete --ignore-not-found cm ovn-config ovn-ic-config ovn-external-gw-config -n kube-system
-$KUBECTL delete --ignore-not-found svc kube-ovn-pinger kube-ovn-controller kube-ovn-cni kube-ovn-monitor -n kube-system
-$KUBECTL delete --ignore-not-found ds kube-ovn-cni -n kube-system
-$KUBECTL delete --ignore-not-found deploy kube-ovn-controller -n kube-system
+$KUBECTL delete --ignore-not-found -n kube-system deploy kube-ovn-monitor
+$KUBECTL delete --ignore-not-found -n kube-system cm ovn-config ovn-ic-config ovn-external-gw-config
+$KUBECTL delete --ignore-not-found -n kube-system svc kube-ovn-pinger kube-ovn-controller kube-ovn-cni kube-ovn-monitor
+$KUBECTL delete --ignore-not-found -n kube-system deploy kube-ovn-controller
+$KUBECTL delete --ignore-not-found -n kube-system deploy ovn-ic-controller
+$KUBECTL delete --ignore-not-found -n kube-system deploy ovn-ic-server
+
+# wait for provier-networks to be deleted before deleting kube-ovn-cni
+sleep 5
+$KUBECTL delete --ignore-not-found -n kube-system ds kube-ovn-cni
 
 # ensure kube-ovn-cni has been deleted
 while :; do
-  if [ $($KUBECTL get pod --no-headers -n kube-system -l app=kube-ovn-cni | wc -l) -eq 0 ]; then
+  if [ $($KUBECTL get pod -n kube-system -l app=kube-ovn-cni -o name | wc -l) -eq 0 ]; then
     break
   fi
-  sleep 5
+  sleep 1
 done
 
 for pod in $($KUBECTL get pod -n kube-system -l app=ovs -o 'jsonpath={.items[?(@.status.phase=="Running")].metadata.name}'); do
-  node=$($KUBECTL get pod -n kube-system $pod -o 'jsonpath={.spec.nodeName}')
-  nodeIPs=$($KUBECTL get node $node -o 'jsonpath={.status.addresses[?(@.type=="InternalIP")].address}' | sed 's/ /,/')
-  $KUBECTL exec -n kube-system "$pod" -- bash /kube-ovn/uninstall.sh "$nodeIPs"
+  $KUBECTL exec -n kube-system "$pod" -- bash /kube-ovn/uninstall.sh
 done
 
 $KUBECTL delete --ignore-not-found svc ovn-nb ovn-sb ovn-northd -n kube-system
@@ -58,28 +119,56 @@ $KUBECTL delete --ignore-not-found deploy ovn-central -n kube-system
 $KUBECTL delete --ignore-not-found ds ovs-ovn -n kube-system
 $KUBECTL delete --ignore-not-found ds ovs-ovn-dpdk -n kube-system
 $KUBECTL delete --ignore-not-found secret kube-ovn-tls -n kube-system
-$KUBECTL delete --ignore-not-found sa ovn -n kube-system
-$KUBECTL delete --ignore-not-found clusterrole system:ovn
-$KUBECTL delete --ignore-not-found clusterrolebinding ovn
+
+# delete vpc-dns content
+$KUBECTL delete --ignore-not-found cm vpc-dns-config -n kube-system
+$KUBECTL delete --ignore-not-found clusterrole system:vpc-dns
+$KUBECTL delete --ignore-not-found clusterrolebinding vpc-dns
+$KUBECTL delete --ignore-not-found sa vpc-dns -n kube-system
 
 # delete CRD
-$KUBECTL delete --ignore-not-found crd htbqoses.kubeovn.io security-groups.kubeovn.io ips.kubeovn.io subnets.kubeovn.io \
-                                      vpc-nat-gateways.kubeovn.io vpcs.kubeovn.io vlans.kubeovn.io provider-networks.kubeovn.io \
-                                      iptables-dnat-rules.kubeovn.io  iptables-eips.kubeovn.io  iptables-fip-rules.kubeovn.io \
-                                      iptables-snat-rules.kubeovn.io vips.kubeovn.io
+$KUBECTL delete --ignore-not-found crd \
+  htbqoses.kubeovn.io \
+  security-groups.kubeovn.io \
+  ippools.kubeovn.io \
+  vpc-nat-gateways.kubeovn.io \
+  vpcs.kubeovn.io \
+  vlans.kubeovn.io \
+  provider-networks.kubeovn.io \
+  iptables-dnat-rules.kubeovn.io \
+  iptables-snat-rules.kubeovn.io \
+  iptables-fip-rules.kubeovn.io \
+  iptables-eips.kubeovn.io \
+  vips.kubeovn.io \
+  switch-lb-rules.kubeovn.io \
+  vpc-dnses.kubeovn.io \
+  ovn-dnat-rules.kubeovn.io \
+  ovn-snat-rules.kubeovn.io \
+  ovn-fips.kubeovn.io \
+  ovn-eips.kubeovn.io \
+  qos-policies.kubeovn.io
+
+# in case of ip not delete
+set +e
+for ip in $($KUBECTL get ip -o name); do
+  $KUBECTL patch "$ip" --type='json' -p '[{"op": "replace", "path": "/metadata/finalizers", "value": []}]'
+  $KUBECTL delete --ignore-not-found "$ip"
+done
+$KUBECTL delete --ignore-not-found crd ips.kubeovn.io
+set -e
 
 # Remove annotations/labels in namespaces and nodes
-$KUBECTL annotate no --all ovn.kubernetes.io/cidr-
-$KUBECTL annotate no --all ovn.kubernetes.io/gateway-
-$KUBECTL annotate no --all ovn.kubernetes.io/ip_address-
-$KUBECTL annotate no --all ovn.kubernetes.io/logical_switch-
-$KUBECTL annotate no --all ovn.kubernetes.io/mac_address-
-$KUBECTL annotate no --all ovn.kubernetes.io/port_name-
-$KUBECTL annotate no --all ovn.kubernetes.io/allocated-
-$KUBECTL annotate no --all ovn.kubernetes.io/chassis-
+$KUBECTL annotate node --all ovn.kubernetes.io/cidr-
+$KUBECTL annotate node --all ovn.kubernetes.io/gateway-
+$KUBECTL annotate node --all ovn.kubernetes.io/ip_address-
+$KUBECTL annotate node --all ovn.kubernetes.io/logical_switch-
+$KUBECTL annotate node --all ovn.kubernetes.io/mac_address-
+$KUBECTL annotate node --all ovn.kubernetes.io/port_name-
+$KUBECTL annotate node --all ovn.kubernetes.io/allocated-
+$KUBECTL annotate node --all ovn.kubernetes.io/chassis- 
 $KUBECTL label node --all kube-ovn/role-
 
-$KUBECTL get no -o name | while read node; do
+$KUBECTL get node -o name | while read node; do
   $KUBECTL get "$node" -o 'go-template={{ range $k, $v := .metadata.labels }}{{ $k }}{{"\n"}}{{ end }}' | while read label; do
     if echo "$label" | grep -qE '^(.+\.provider-network\.kubernetes\.io/(ready|mtu|interface|exclude))$'; then
       $KUBECTL label "$node" "$label-"
@@ -97,24 +186,35 @@ $KUBECTL annotate ns --all ovn.kubernetes.io/allocated-
 
 # ensure kube-ovn components have been deleted
 while :; do
-  sleep 5
-  if [ $($KUBECTL get pod --no-headers -n kube-system -l component=network | wc -l) -eq 0 ]; then
+  sleep 10
+  if [ $($KUBECTL get pod -n kube-system -l component=network -o name | wc -l) -eq 0 ]; then
     break
   fi
+  for pod in `$KUBECTL -n kube-system get pod -l component=network -o name`; do
+    echo "$pod logs:"
+    $KUBECTL -n kube-system logs $pod --timestamps --tail 50
+  done
 done
 
+# wait for all pods to be deleted before deleting serviceaccount/clusterrole/clusterrolebinding
+$KUBECTL delete --ignore-not-found sa ovn ovn-ovs kube-ovn-cni kube-ovn-app -n kube-system
+$KUBECTL delete --ignore-not-found clusterrole system:ovn system:ovn-ovs system:kube-ovn-cni system:kube-ovn-app
+$KUBECTL delete --ignore-not-found clusterrolebinding ovn ovn ovn-ovs kube-ovn-cni kube-ovn-app
+
+$KUBECTL delete --ignore-not-found -n kube-system lease kube-ovn-controller
+
 # Remove annotations in all pods of all namespaces
-for ns in $($KUBECTL get ns -o name |cut -c 11-); do
-  echo "annotating pods in  ns:$ns"
-  $KUBECTL annotate pod --all ovn.kubernetes.io/cidr- -n "$ns"
-  $KUBECTL annotate pod --all ovn.kubernetes.io/gateway- -n "$ns"
-  $KUBECTL annotate pod --all ovn.kubernetes.io/ip_address- -n "$ns"
-  $KUBECTL annotate pod --all ovn.kubernetes.io/logical_switch- -n "$ns"
-  $KUBECTL annotate pod --all ovn.kubernetes.io/mac_address- -n "$ns"
-  $KUBECTL annotate pod --all ovn.kubernetes.io/port_name- -n "$ns"
-  $KUBECTL annotate pod --all ovn.kubernetes.io/allocated- -n "$ns"
-  $KUBECTL annotate pod --all ovn.kubernetes.io/routed- -n "$ns"
-  $KUBECTL annotate pod --all ovn.kubernetes.io/vlan_id- -n "$ns"
-  $KUBECTL annotate pod --all ovn.kubernetes.io/network_type- -n "$ns"
-  $KUBECTL annotate pod --all ovn.kubernetes.io/provider_network- -n "$ns"
+for ns in $($KUBECTL get ns -o name | awk -F/ '{print $2}'); do
+  echo "annotating pods in namespace $ns"
+  $KUBECTL annotate pod --all -n $ns ovn.kubernetes.io/cidr-
+  $KUBECTL annotate pod --all -n $ns ovn.kubernetes.io/gateway-
+  $KUBECTL annotate pod --all -n $ns ovn.kubernetes.io/ip_address-
+  $KUBECTL annotate pod --all -n $ns ovn.kubernetes.io/logical_switch-
+  $KUBECTL annotate pod --all -n $ns ovn.kubernetes.io/mac_address-
+  $KUBECTL annotate pod --all -n $ns ovn.kubernetes.io/port_name-
+  $KUBECTL annotate pod --all -n $ns ovn.kubernetes.io/allocated-
+  $KUBECTL annotate pod --all -n $ns ovn.kubernetes.io/routed-
+  $KUBECTL annotate pod --all -n $ns ovn.kubernetes.io/vlan_id-
+  $KUBECTL annotate pod --all -n $ns ovn.kubernetes.io/network_type-
+  $KUBECTL annotate pod --all -n $ns ovn.kubernetes.io/provider_network-
 done

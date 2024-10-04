@@ -213,7 +213,7 @@ def main(
 
     # set default values
     if not gpu_operator_version:
-        gpu_operator_version = "v23.9.1"
+        gpu_operator_version = "v24.6.2"
 
     # add helm repository for nvidia gpu-operator and network-operator
     subprocess.run([HELM, "repo", "add", "nvidia", "https://helm.ngc.nvidia.com/nvidia"])

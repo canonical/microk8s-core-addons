@@ -61,7 +61,7 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
             [KUBECTL, "get", "node", host, "-o", JSONPATH_INTERNAL_IP]
         )
         node_ip = stdout.decode().strip()
-        
+
         click.echo("Label node {} ({})".format(host, node_ip))
         subprocess.check_call(
             [KUBECTL, "label", "node", host, "kube-ovn/role=master", "--overwrite"]

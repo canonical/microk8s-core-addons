@@ -67,33 +67,33 @@ REGISTRY="docker.io/kubeovn"
 VPC_NAT_IMAGE="vpc-nat-gateway"
 VERSION="v1.12.21"
 IMAGE_PULL_POLICY="IfNotPresent"
-POD_CIDR="10.1.0.0/16"                # Do NOT overlap with NODE/SVC/JOIN CIDR
+POD_CIDR="10.1.0.0/16" # Do NOT overlap with NODE/SVC/JOIN CIDR
 POD_GATEWAY="10.1.0.1"
-SVC_CIDR="10.152.183.0/24"                # Do NOT overlap with NODE/POD/JOIN CIDR
+SVC_CIDR="10.152.183.0/24"             # Do NOT overlap with NODE/POD/JOIN CIDR
 JOIN_CIDR="100.64.0.0/16"              # Do NOT overlap with NODE/POD/SVC CIDR
-PINGER_EXTERNAL_ADDRESS="1.1.1.1"  # Pinger check external ip probe
-PINGER_EXTERNAL_DOMAIN="canonical.com"         # Pinger check external domain probe
+PINGER_EXTERNAL_ADDRESS="1.1.1.1"      # Pinger check external ip probe
+PINGER_EXTERNAL_DOMAIN="canonical.com" # Pinger check external domain probe
 SVC_YAML_IPFAMILYPOLICY=""
 if [ "$IPV6" = "true" ]; then
-  POD_CIDR="fd00:10:16::/112"                # Do NOT overlap with NODE/SVC/JOIN CIDR
+  POD_CIDR="fd00:10:16::/112" # Do NOT overlap with NODE/SVC/JOIN CIDR
   POD_GATEWAY="fd00:10:16::1"
-  SVC_CIDR="fd00:10:96::/112"               # Do NOT overlap with NODE/POD/JOIN CIDR
-  JOIN_CIDR="fd00:100:64::/112"              # Do NOT overlap with NODE/POD/SVC CIDR
+  SVC_CIDR="fd00:10:96::/112"   # Do NOT overlap with NODE/POD/JOIN CIDR
+  JOIN_CIDR="fd00:100:64::/112" # Do NOT overlap with NODE/POD/SVC CIDR
   PINGER_EXTERNAL_ADDRESS="2400:3200::1"
   PINGER_EXTERNAL_DOMAIN="google.com."
 fi
 if [ "$DUAL_STACK" = "true" ]; then
-  POD_CIDR="10.1.0.0/16,fd00:10:16::/112"                # Do NOT overlap with NODE/SVC/JOIN CIDR
+  POD_CIDR="10.1.0.0/16,fd00:10:16::/112" # Do NOT overlap with NODE/SVC/JOIN CIDR
   POD_GATEWAY="10.1.0.1,fd00:10:16::1"
-  SVC_CIDR="10.152.183.0/24,fd00:10:96::/112"               # Do NOT overlap with NODE/POD/JOIN CIDR
-  JOIN_CIDR="100.64.0.0/16,fd00:100:64::/112"             # Do NOT overlap with NODE/POD/SVC CIDR
+  SVC_CIDR="10.152.183.0/24,fd00:10:96::/112" # Do NOT overlap with NODE/POD/JOIN CIDR
+  JOIN_CIDR="100.64.0.0/16,fd00:100:64::/112" # Do NOT overlap with NODE/POD/SVC CIDR
   PINGER_EXTERNAL_ADDRESS="114.114.114.114,2400:3200::1"
   PINGER_EXTERNAL_DOMAIN="google.com."
   SVC_YAML_IPFAMILYPOLICY="ipFamilyPolicy: PreferDualStack"
 fi
 
 EXCLUDE_IPS=""                                    # EXCLUDE_IPS for default subnet
-LABEL="kube-ovn/role=master"     # The node label to deploy OVN DB
+LABEL="kube-ovn/role=master"                      # The node label to deploy OVN DB
 DEPRECATED_LABEL="node-role.kubernetes.io/master" # The node label to deploy OVN DB in earlier versions
 NETWORK_TYPE="geneve"                             # geneve or vlan
 TUNNEL_TYPE="geneve"                              # geneve, vxlan or stt. ATTENTION: some networkpolicy cannot take effect when using vxlan and stt need custom compile ovs kernel module
@@ -117,8 +117,8 @@ HYBRID_DPDK="false"
 DPDK="false"
 DPDK_SUPPORTED_VERSIONS=("19.11")
 DPDK_VERSION=""
-DPDK_CPU="1000m"                        # Default CPU configuration for if --dpdk-cpu flag is not included
-DPDK_MEMORY="2Gi"                       # Default Memory configuration for it --dpdk-memory flag is not included
+DPDK_CPU="1000m"  # Default CPU configuration for if --dpdk-cpu flag is not included
+DPDK_MEMORY="2Gi" # Default Memory configuration for it --dpdk-memory flag is not included
 
 # performance
 MODULES="kube_ovn_fastpath.ko"
@@ -127,62 +127,59 @@ GC_INTERVAL=360
 INSPECT_INTERVAL=20
 
 display_help() {
-    echo "Usage: $0 [option...]"
-    echo
-    echo "  -h, --help               Print Help (this message) and exit"
-    echo "  --with-hybrid-dpdk       Install Kube-OVN with nodes which run ovs-dpdk or ovs-kernel"
-    echo "  --with-dpdk=<version>    Install Kube-OVN with OVS-DPDK instead of kernel OVS"
-    echo "  --dpdk-cpu=<amount>m     Configure DPDK to use a specific amount of CPU"
-    echo "  --dpdk-memory=<amount>Gi Configure DPDK to use a specific amount of memory"
-    echo
-    exit 0
+  echo "Usage: $0 [option...]"
+  echo
+  echo "  -h, --help               Print Help (this message) and exit"
+  echo "  --with-hybrid-dpdk       Install Kube-OVN with nodes which run ovs-dpdk or ovs-kernel"
+  echo "  --with-dpdk=<version>    Install Kube-OVN with OVS-DPDK instead of kernel OVS"
+  echo "  --dpdk-cpu=<amount>m     Configure DPDK to use a specific amount of CPU"
+  echo "  --dpdk-memory=<amount>Gi Configure DPDK to use a specific amount of memory"
+  echo
+  exit 0
 }
 
-if [ -n "${1-}" ]
-then
+if [ -n "${1-}" ]; then
   set +u
   while :; do
     case $1 in
-      -h|--help)
-        display_help
+    -h | --help)
+      display_help
       ;;
-      --with-hybrid-dpdk)
+    --with-hybrid-dpdk)
       HYBRID_DPDK="true"
       ;;
-      --with-dpdk=*)
-        DPDK=true
-        DPDK_VERSION="${1#*=}"
-        if [[ ! "${DPDK_SUPPORTED_VERSIONS[*]}" = "${DPDK_VERSION}" ]] || [[ -z "${DPDK_VERSION}" ]]; then
-          echo "Unsupported DPDK version: ${DPDK_VERSION}"
-          echo "Supported DPDK versions: ${DPDK_SUPPORTED_VERSIONS[*]}"
-          exit 1
-        fi
-      ;;
-      --dpdk-cpu=*)
-        DPDK_CPU="${1#*=}"
-        if [[ $DPDK_CPU =~ ^[0-9]+(m)$ ]]
-        then
-           echo "CPU $DPDK_CPU"
-        else
-           echo "$DPDK_CPU is not valid, please use the format --dpdk-cpu=<amount>m"
-           exit 1
-        fi
-      ;;
-      --dpdk-memory=*)
-        DPDK_MEMORY="${1#*=}"
-        if [[ $DPDK_MEMORY =~ ^[0-9]+(Gi)$ ]]
-        then
-           echo "MEMORY $DPDK_MEMORY"
-        else
-           echo "$DPDK_MEMORY is not valid, please use the format --dpdk-memory=<amount>Gi"
-           exit 1
-        fi
-      ;;
-      -?*)
-        echo "Unknown argument $1"
+    --with-dpdk=*)
+      DPDK=true
+      DPDK_VERSION="${1#*=}"
+      if [[ ! "${DPDK_SUPPORTED_VERSIONS[*]}" = "${DPDK_VERSION}" ]] || [[ -z "${DPDK_VERSION}" ]]; then
+        echo "Unsupported DPDK version: ${DPDK_VERSION}"
+        echo "Supported DPDK versions: ${DPDK_SUPPORTED_VERSIONS[*]}"
         exit 1
+      fi
       ;;
-      *) break
+    --dpdk-cpu=*)
+      DPDK_CPU="${1#*=}"
+      if [[ $DPDK_CPU =~ ^[0-9]+(m)$ ]]; then
+        echo "CPU $DPDK_CPU"
+      else
+        echo "$DPDK_CPU is not valid, please use the format --dpdk-cpu=<amount>m"
+        exit 1
+      fi
+      ;;
+    --dpdk-memory=*)
+      DPDK_MEMORY="${1#*=}"
+      if [[ $DPDK_MEMORY =~ ^[0-9]+(Gi)$ ]]; then
+        echo "MEMORY $DPDK_MEMORY"
+      else
+        echo "$DPDK_MEMORY is not valid, please use the format --dpdk-memory=<amount>Gi"
+        exit 1
+      fi
+      ;;
+    -?*)
+      echo "Unknown argument $1"
+      exit 1
+      ;;
+    *) break ;;
     esac
     shift
   done
@@ -192,7 +189,7 @@ fi
 echo "-------------------------------"
 echo "Kube-OVN Version:     $VERSION"
 echo "Default Network Mode: $NETWORK_TYPE"
-if [[ $NETWORK_TYPE = "vlan" ]];then
+if [[ $NETWORK_TYPE = "vlan" ]]; then
   echo "Default Vlan Nic:     $VLAN_INTERFACE_NAME"
   echo "Default Vlan ID:      $VLAN_ID"
 fi
@@ -204,10 +201,10 @@ echo "Enable EIP and SNAT:  $ENABLE_EIP_SNAT"
 echo "Enable Mirror:        $ENABLE_MIRROR"
 echo "-------------------------------"
 
-if [[ $ENABLE_SSL = "true" ]];then
+if [[ $ENABLE_SSL = "true" ]]; then
   echo "[Step 0/6] Generate SSL key and cert"
   exist=$($KUBECTL get secret -n kube-system kube-ovn-tls --ignore-not-found)
-  if [[ $exist == "" ]];then
+  if [[ $exist == "" ]]; then
     docker run --rm -v "$PWD":/etc/ovn $REGISTRY/kube-ovn:$VERSION bash generate-ssl.sh
     $KUBECTL create secret generic -n kube-system kube-ovn-tls --from-file=cacert=cacert.pem --from-file=cert=ovn-cert.pem --from-file=key=ovn-privkey.pem
     rm -rf cacert.pem ovn-cert.pem ovn-privkey.pem ovn-req.pem
@@ -241,7 +238,7 @@ addresses=$($KUBECTL get no -lkube-ovn/role=master --no-headers -o wide | awk '{
 count=$($KUBECTL get no -lkube-ovn/role=master --no-headers | wc -l)
 echo "Install OVN DB in $addresses"
 
-cat <<EOF > kube-ovn-crd.yaml
+cat <<EOF >kube-ovn-crd.yaml
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -2831,7 +2828,7 @@ spec:
                   x-kubernetes-list-type: map
 EOF
 
-cat <<EOF > ovn-ovs-sa.yaml
+cat <<EOF >ovn-ovs-sa.yaml
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -2882,7 +2879,7 @@ subjects:
     namespace: kube-system
 EOF
 
-cat <<EOF > kube-ovn-sa.yaml
+cat <<EOF >kube-ovn-sa.yaml
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -3086,7 +3083,7 @@ subjects:
     namespace: kube-system
 EOF
 
-cat <<EOF > kube-ovn-cni-sa.yaml
+cat <<EOF >kube-ovn-cni-sa.yaml
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -3189,7 +3186,7 @@ subjects:
     namespace: kube-system
 EOF
 
-cat <<EOF > kube-ovn-app-sa.yaml
+cat <<EOF >kube-ovn-app-sa.yaml
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -3265,7 +3262,7 @@ $KUBECTL apply -f kube-ovn-sa.yaml
 $KUBECTL apply -f kube-ovn-cni-sa.yaml
 $KUBECTL apply -f kube-ovn-app-sa.yaml
 
-cat <<EOF > ovn.yaml
+cat <<EOF >ovn.yaml
 ---
 kind: Service
 apiVersion: v1
@@ -3406,7 +3403,7 @@ spec:
             - name: PROBE_INTERVAL
               value: "180000"
             - name: OVN_NORTHD_PROBE_INTERVAL
-              value: "5000" 
+              value: "5000"
             - name: OVN_LEADER_PROBE_INTERVAL
               value: "5"
             - name: OVN_NORTHD_N_THREADS
@@ -3494,7 +3491,7 @@ EOF
 $KUBECTL apply -f ovn.yaml
 
 if $DPDK; then
-  cat <<EOF > ovs-ovn-ds.yaml
+  cat <<EOF >ovs-ovn-ds.yaml
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
@@ -3552,7 +3549,7 @@ spec:
             - name: OVN_DB_IPS
               value: $addresses
             - name: OVN_REMOTE_PROBE_INTERVAL
-              value: "10000" 
+              value: "10000"
             - name: OVN_REMOTE_OPENFLOW_INTERVAL
               value: "180"
           volumeMounts:
@@ -3662,7 +3659,7 @@ spec:
 EOF
 
 else
-  cat <<EOF > ovs-ovn-ds.yaml
+  cat <<EOF >ovs-ovn-ds.yaml
 ---
 kind: DaemonSet
 apiVersion: apps/v1
@@ -3742,7 +3739,7 @@ spec:
             - name: DEBUG_WRAPPER
               value: "$DEBUG_WRAPPER"
             - name: OVN_REMOTE_PROBE_INTERVAL
-              value: "10000" 
+              value: "10000"
             - name: OVN_REMOTE_OPENFLOW_INTERVAL
               value: "180"
           volumeMounts:
@@ -3846,7 +3843,7 @@ $KUBECTL apply -f ovs-ovn-ds.yaml
 
 if $HYBRID_DPDK; then
 
-cat <<EOF > ovn-dpdk.yaml
+  cat <<EOF >ovn-dpdk.yaml
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
@@ -3902,7 +3899,7 @@ spec:
             - name: OVN_DB_IPS
               value: $addresses
             - name: OVN_REMOTE_PROBE_INTERVAL
-              value: "10000" 
+              value: "10000"
             - name: OVN_REMOTE_OPENFLOW_INTERVAL
               value: "180"
           volumeMounts:
@@ -4007,7 +4004,7 @@ spec:
             optional: true
             secretName: kube-ovn-tls
 EOF
-$KUBECTL apply -f ovn-dpdk.yaml
+  $KUBECTL apply -f ovn-dpdk.yaml
 fi
 $KUBECTL rollout status deployment/ovn-central -n kube-system --timeout 300s
 $KUBECTL rollout status daemonset/ovs-ovn -n kube-system --timeout 120s
@@ -4016,7 +4013,7 @@ echo ""
 
 echo "[Step 3/6] Install Kube-OVN"
 
-cat <<EOF > kube-ovn.yaml
+cat <<EOF >kube-ovn.yaml
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -4782,7 +4779,7 @@ $KUBECTL rollout status daemonset/kube-ovn-cni -n kube-system --timeout 300s
 
 if $ENABLE_IC; then
 
-cat <<EOF > ovn-ic-controller.yaml
+  cat <<EOF >ovn-ic-controller.yaml
 kind: Deployment
 apiVersion: apps/v1
 metadata:
@@ -4891,7 +4888,7 @@ spec:
             optional: true
             secretName: kube-ovn-tls
 EOF
-$KUBECTL apply -f ovn-ic-controller.yaml
+  $KUBECTL apply -f ovn-ic-controller.yaml
 fi
 
 echo "-------------------------------"
@@ -4905,8 +4902,8 @@ for ns in $($KUBECTL get ns --no-headers -o custom-columns=NAME:.metadata.name);
 done
 
 $KUBECTL rollout status deployment/coredns -n kube-system --timeout 300s
-while true; do 
-  pods=(`$KUBECTL get pod -n kube-system -l app=kube-ovn-pinger --template '{{range .items}}{{if .metadata.deletionTimestamp}}{{.metadata.name}}{{"\n"}}{{end}}{{end}}'`)
+while true; do
+  pods=($($KUBECTL get pod -n kube-system -l app=kube-ovn-pinger --template '{{range .items}}{{if .metadata.deletionTimestamp}}{{.metadata.name}}{{"\n"}}{{end}}{{end}}'))
   if [ ${#pods[@]} -eq 0 ]; then
     break
   fi

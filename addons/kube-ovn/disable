@@ -21,48 +21,48 @@ for gw in $($KUBECTL get vpc-nat-gw -o name); do
   $KUBECTL delete --ignore-not-found $gw
 done
 
-for vd in $($KUBECTL  get vpc-dns -o name); do
+for vd in $($KUBECTL get vpc-dns -o name); do
   $KUBECTL delete --ignore-not-found $vd
 done
 
 for vip in $($KUBECTL get vip -o name); do
-   $KUBECTL delete --ignore-not-found $vip
+  $KUBECTL delete --ignore-not-found $vip
 done
 
 for snat in $($KUBECTL get snat -o name); do
-   $KUBECTL delete --ignore-not-found $snat
+  $KUBECTL delete --ignore-not-found $snat
 done
 
 for dnat in $($KUBECTL get dnat -o name); do
-   $KUBECTL delete --ignore-not-found $dnat
+  $KUBECTL delete --ignore-not-found $dnat
 done
 
 for fip in $($KUBECTL get fip -o name); do
-   $KUBECTL delete --ignore-not-found $fip
+  $KUBECTL delete --ignore-not-found $fip
 done
 
 for eip in $($KUBECTL get eip -o name); do
-   $KUBECTL delete --ignore-not-found $eip
+  $KUBECTL delete --ignore-not-found $eip
 done
 
 for odnat in $($KUBECTL get odnat -o name); do
-   $KUBECTL delete --ignore-not-found $odnat
+  $KUBECTL delete --ignore-not-found $odnat
 done
 
 for osnat in $($KUBECTL get osnat -o name); do
-   $KUBECTL delete --ignore-not-found $osnat
+  $KUBECTL delete --ignore-not-found $osnat
 done
 
 for ofip in $($KUBECTL get ofip -o name); do
-   $KUBECTL delete --ignore-not-found $ofip
+  $KUBECTL delete --ignore-not-found $ofip
 done
 
 for oeip in $($KUBECTL get oeip -o name); do
-   $KUBECTL delete --ignore-not-found $oeip
+  $KUBECTL delete --ignore-not-found $oeip
 done
 
 for slr in $($KUBECTL get switch-lb-rule -o name); do
-   $KUBECTL delete --ignore-not-found $slr
+  $KUBECTL delete --ignore-not-found $slr
 done
 
 for ippool in $($KUBECTL get ippool -o name); do
@@ -165,7 +165,7 @@ $KUBECTL annotate node --all ovn.kubernetes.io/logical_switch-
 $KUBECTL annotate node --all ovn.kubernetes.io/mac_address-
 $KUBECTL annotate node --all ovn.kubernetes.io/port_name-
 $KUBECTL annotate node --all ovn.kubernetes.io/allocated-
-$KUBECTL annotate node --all ovn.kubernetes.io/chassis- 
+$KUBECTL annotate node --all ovn.kubernetes.io/chassis-
 $KUBECTL label node --all kube-ovn/role-
 
 $KUBECTL get node -o name | while read node; do
@@ -190,7 +190,7 @@ while :; do
   if [ $($KUBECTL get pod -n kube-system -l component=network -o name | wc -l) -eq 0 ]; then
     break
   fi
-  for pod in `$KUBECTL -n kube-system get pod -l component=network -o name`; do
+  for pod in $($KUBECTL -n kube-system get pod -l component=network -o name); do
     echo "$pod logs:"
     $KUBECTL -n kube-system logs $pod --timestamps --tail 50
   done

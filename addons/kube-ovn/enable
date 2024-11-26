@@ -81,28 +81,30 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
     click.echo("Deploy kube-ovn CRDs")
     subprocess.check_call([KUBECTL, "apply", "-f", DIR / "crd.yaml"])
 
-    avx_tag_replacement = "" if cpu_has_avx_flag() else NO_AVX_CPU_TAG
+    has_avx_flag = cpu_has_avx_flag()
 
     # 4. generate manifest and deploy ovn components
-    #   4.1 Update kube-ovn-template.yaml and write it to kube-ovn.yaml
-    kube_ovn_yaml = DIR / "kube-ovn.yaml"
-    kube_ovn_template = DIR / "kube-ovn-template.yaml"
-    with open(kube_ovn_template, "r") as tpl:
-        kube_ovn_tpl = tpl.read()
+    if not has_avx_flag:
+        # Update kube-ovn-template.yaml and write it to kube-ovn.yaml
+        kube_ovn_yaml = DIR / "kube-ovn.yaml"
+        kube_ovn_template = DIR / "kube-ovn-template.yaml"
+        with open(kube_ovn_template, "r") as tpl:
+            kube_ovn_tpl = tpl.read()
 
-    kube_ovn_tpl = kube_ovn_tpl.replace("__AVXTAG__", avx_tag_replacement)
-    with open(kube_ovn_yaml, "w") as ko:
-        ko.write(kube_ovn_tpl)
+        kube_ovn_tpl = kube_ovn_tpl.replace("__AVXTAG__", NO_AVX_CPU_TAG)
+        with open(kube_ovn_yaml, "w") as ko:
+            ko.write(kube_ovn_tpl)
 
     click.echo("Deploy ovn components")
-    #   4.2 Update ovn-template.yaml and write it to ovn.yaml
+    # Update ovn-template.yaml and write it to ovn.yaml
     with open(DIR / "ovn-template.yaml") as fin:
         ovn_template = fin.read()
 
     ovn_yaml = SNAP_DATA / "args" / "cni-network" / "ovn.yaml"
     ovn_template = ovn_template.replace("__REPLICAS__", str(len(node_ips)))
     ovn_template = ovn_template.replace("__NODE_IPS__", ",".join(node_ips))
-    ovn_template = ovn_template.replace("__AVXTAG__", avx_tag_replacement)
+    if not has_avx_flag:
+        ovn_template = ovn_template.replace("__AVXTAG__", NO_AVX_CPU_TAG)
     with open(ovn_yaml, "w") as fout:
         fout.write(ovn_template)
 
@@ -123,13 +125,15 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
 
 def cpu_has_avx_flag() -> bool:
     """
-    Check if the CPU has the AVX2 or AVX512 flag.
+    Check if the CPU has the AVX2 or AXV512 flag.
 
     Returns:
         bool: True if the CPU has the AVX2 or AVX512 flag, False otherwise.
     """
     with open("/proc/cpuinfo", "r") as f:
-        if re.search(r"^.*(avx[0-9]{1,3}).*$", f.read(), re.MULTILINE):
+        l = f.read()
+        # Take any string after the specified field name and colon.
+        if re.search(r"^.*(avx[0-9]{1,3}).*$", l, re.MULTILINE):
             return True
 
     return False

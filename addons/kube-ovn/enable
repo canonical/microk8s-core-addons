@@ -84,7 +84,7 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
     avx_tag_replacement = "" if cpu_has_avx_flag() else NO_AVX_CPU_TAG
 
     # 4. generate manifest and deploy ovn components
-    #   - Update kube-ovn-template.yaml and write it to kube-ovn.yaml
+    #   4.1 Update kube-ovn-template.yaml and write it to kube-ovn.yaml
     kube_ovn_yaml = DIR / "kube-ovn.yaml"
     kube_ovn_template = DIR / "kube-ovn-template.yaml"
     with open(kube_ovn_template, "r") as tpl:
@@ -95,7 +95,7 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
         ko.write(kube_ovn_tpl)
 
     click.echo("Deploy ovn components")
-    # Update ovn-template.yaml and write it to ovn.yaml
+    #   4.2 Update ovn-template.yaml and write it to ovn.yaml
     with open(DIR / "ovn-template.yaml") as fin:
         ovn_template = fin.read()
 

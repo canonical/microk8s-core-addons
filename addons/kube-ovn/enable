@@ -88,17 +88,17 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
             if not calico_resources:
                 print("All Calico resource(s) have been cleaned up.")
                 break
-            else:
+
+            print(
+                f"Still cleaning up {len(calico_resources)} Calico resources(s)..."
+            )
+            if elapsed >= timeout:
                 print(
-                    f"Still cleaning up {len(calico_resources)} Calico resources(s)..."
+                    f"Failed to cleanup {len(calico_resources)} remaining resource(s) in time, exiting."
                 )
-                if elapsed >= timeout:
-                    print(
-                        f"Failed to cleanup {len(calico_resources)} remaining resource(s) in time, exiting."
-                    )
-                    return
-                time.sleep(5)
-                elapsed += 5
+                return
+            time.sleep(5)
+            elapsed += 5
 
     # Run kube-ovn install script
     click.echo("Run kube-ovn install script")

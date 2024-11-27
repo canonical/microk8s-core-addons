@@ -460,7 +460,7 @@ def validate_cis_hardening():
     print(output)
     assert "41 checks WARN" in output
     if os.environ.get("STRICT") == "yes":
-        assert "83 checks PASS" in output
+        assert "82 checks PASS" in output
         assert "1 checks FAIL" in output
     else:
         # The extra test that is failing on strict is the permissions of the

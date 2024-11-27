@@ -75,21 +75,30 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
         subprocess.run([KUBECTL, "delete", "-f", cni_yaml])
         shutil.move(cni_yaml, SNAP_DATA / "args" / "cni-network" / "cni.yaml.backup")
         print("Cleaning up Calico resources...")
+        timeout, elapsed = 120, 0
         while True:
             result = subprocess.run(
                 [KUBECTL, "get", "all", "-A", "--no-headers"],
                 stdout=subprocess.PIPE,
                 text=True,
             )
-            pods = result.stdout.splitlines()
-            calico_resources = [pod for pod in pods if "calico" in pod]
+            resources = result.stdout.splitlines()
+            calico_resources = [r for r in resources if "calico" in r]
 
             if not calico_resources:
-                print("All Calico resources have been cleaned up.")
+                print("All Calico resource(s) have been cleaned up.")
                 break
             else:
-                print(f"Still cleaning up {len(calico_resources)} Calico resources(s)...")
+                print(
+                    f"Still cleaning up {len(calico_resources)} Calico resources(s)..."
+                )
+                if elapsed >= timeout:
+                    print(
+                        f"Failed to cleanup {len(calico_resources)} remaining resource(s) in time, exiting."
+                    )
+                    return
                 time.sleep(5)
+                elapsed += 5
 
     # Run kube-ovn install script
     click.echo("Run kube-ovn install script")
@@ -102,20 +111,6 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
             shutil.copy(DIR / "hooks" / hook, HOOKS / "{}.d".format(hook) / "10-ovn")
         except OSError as e:
             click.echo("Failed to install {} hook: {}".format(hook, e), err=True)
-
-
-def cpu_has_avx_flag() -> bool:
-    """
-    Check if the CPU has the AVX2 or AVX512 flag.
-
-    Returns:
-        bool: True if the CPU has the AVX2 or AVX512 flag, False otherwise.
-    """
-    with open("/proc/cpuinfo", "r") as f:
-        if re.search(r"^.*(avx[0-9]{1,3}).*$", f.read(), re.MULTILINE):
-            return True
-
-    return False
 
 
 if __name__ == "__main__":

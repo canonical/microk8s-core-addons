@@ -5,6 +5,7 @@ import socket
 import subprocess
 import sys
 import re
+import time
 from pathlib import Path
 import shutil
 
@@ -54,7 +55,6 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
         sys.exit(1)
 
     hosts = hostname.split(",")
-    node_ips = []
 
     # 1. label nodes that will run ovn-db
     for host in hosts:
@@ -62,8 +62,6 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
             [KUBECTL, "get", "node", host, "-o", JSONPATH_INTERNAL_IP]
         )
         node_ip = stdout.decode().strip()
-        if node_ip:
-            node_ips.append(node_ip)
 
         click.echo("Label node {} ({})".format(host, node_ip))
         subprocess.check_call(
@@ -76,43 +74,35 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
         click.echo("Remove Calico CNI")
         subprocess.run([KUBECTL, "delete", "-f", cni_yaml])
         shutil.move(cni_yaml, SNAP_DATA / "args" / "cni-network" / "cni.yaml.backup")
+        print("Cleaning up Calico resources...")
+        timeout, elapsed = 120, 0
+        while True:
+            result = subprocess.run(
+                [KUBECTL, "get", "all", "-A", "--no-headers"],
+                stdout=subprocess.PIPE,
+                text=True,
+            )
+            resources = result.stdout.splitlines()
+            calico_resources = [r for r in resources if "calico" in r]
 
-    # 3. apply ovn CRDs
-    click.echo("Deploy kube-ovn CRDs")
-    subprocess.check_call([KUBECTL, "apply", "-f", DIR / "crd.yaml"])
+            if not calico_resources:
+                print("All Calico resource(s) have been cleaned up.")
+                break
 
-    has_avx_flag = cpu_has_avx_flag()
+            print(
+                f"Still cleaning up {len(calico_resources)} Calico resources(s)..."
+            )
+            if elapsed >= timeout:
+                print(
+                    f"Failed to cleanup {len(calico_resources)} remaining resource(s) in time, exiting."
+                )
+                return
+            time.sleep(5)
+            elapsed += 5
 
-    # 4. generate manifest and deploy ovn components
-    if not has_avx_flag:
-        # Update kube-ovn-template.yaml and write it to kube-ovn.yaml
-        kube_ovn_yaml = DIR / "kube-ovn.yaml"
-        kube_ovn_template = DIR / "kube-ovn-template.yaml"
-        with open(kube_ovn_template, "r") as tpl:
-            kube_ovn_tpl = tpl.read()
-
-        kube_ovn_tpl = kube_ovn_tpl.replace("__AVXTAG__", NO_AVX_CPU_TAG)
-        with open(kube_ovn_yaml, "w") as ko:
-            ko.write(kube_ovn_tpl)
-
-    click.echo("Deploy ovn components")
-    # Update ovn-template.yaml and write it to ovn.yaml
-    with open(DIR / "ovn-template.yaml") as fin:
-        ovn_template = fin.read()
-
-    ovn_yaml = SNAP_DATA / "args" / "cni-network" / "ovn.yaml"
-    ovn_template = ovn_template.replace("__REPLICAS__", str(len(node_ips)))
-    ovn_template = ovn_template.replace("__NODE_IPS__", ",".join(node_ips))
-    if not has_avx_flag:
-        ovn_template = ovn_template.replace("__AVXTAG__", NO_AVX_CPU_TAG)
-    with open(ovn_yaml, "w") as fout:
-        fout.write(ovn_template)
-
-    subprocess.check_call([KUBECTL, "apply", "-f", ovn_yaml])
-
-    # 5. install kube-ovn plugins
-    click.echo("Deploy kube-ovn CNI")
-    subprocess.check_call([KUBECTL, "apply", "-f", DIR / "kube-ovn.yaml"])
+    # Run kube-ovn install script
+    click.echo("Run kube-ovn install script")
+    subprocess.check_call(["/bin/bash", DIR / "install.sh"])
 
     # 6. install microk8s hooks
     for hook in ["reconcile"]:
@@ -121,22 +111,6 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
             shutil.copy(DIR / "hooks" / hook, HOOKS / "{}.d".format(hook) / "10-ovn")
         except OSError as e:
             click.echo("Failed to install {} hook: {}".format(hook, e), err=True)
-
-
-def cpu_has_avx_flag() -> bool:
-    """
-    Check if the CPU has the AVX2 or AXV512 flag.
-
-    Returns:
-        bool: True if the CPU has the AVX2 or AVX512 flag, False otherwise.
-    """
-    with open("/proc/cpuinfo", "r") as f:
-        l = f.read()
-        # Take any string after the specified field name and colon.
-        if re.search(r"^.*(avx[0-9]{1,3}).*$", l, re.MULTILINE):
-            return True
-
-    return False
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ microk8s-addons:
   addons:
     - name: "dns"
       description: "CoreDNS"
-      version: "1.10.1"
+      version: "1.12.0"
       check_status: "pod/coredns"
       supported_architectures:
         - amd64
@@ -33,7 +33,7 @@ microk8s-addons:
 
     - name: "ingress"
       description: "Ingress controller for external access"
-      version: "1.8.0"
+      version: "1.12.0"
       check_status: "pod/nginx-ingress-microk8s-controller"
       supported_architectures:
         - arm64
@@ -61,7 +61,7 @@ microk8s-addons:
 
     - name: "registry"
       description: "Private image registry exposed on localhost:32000"
-      version: "2.8.1"
+      version: "2.8.3"
       check_status: "deployment.apps/registry"
       supported_architectures:
         - arm64
@@ -71,7 +71,7 @@ microk8s-addons:
 
     - name: "metrics-server"
       description: "K8s Metrics Server for API access to service metrics"
-      version: "0.6.3"
+      version: "0.7.2"
       check_status: "pod/metrics-server"
       supported_architectures:
         - arm64
@@ -181,7 +181,7 @@ microk8s-addons:
 
     - name: "cert-manager"
       description: "Cloud native certificate management"
-      version: "1.8.0"
+      version: "1.17.1"
       check_status: "deployment.apps/cert-manager"
       supported_architectures:
         - arm64
@@ -198,7 +198,7 @@ microk8s-addons:
         - amd64
 
     - name: "minio"
-      version: "4.5.1"
+      version: "v6.0.4"
       check_status: "deployment.apps/minio-operator"
       description: "MinIO object storage"
       supported_architectures:

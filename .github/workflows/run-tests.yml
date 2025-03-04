@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        channel: [latest/edge, latest/edge/strict]
+        channel: [1.32/edge, 1.32-strict/edge]
 
     steps:
       - name: Check out code

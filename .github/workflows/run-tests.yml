@@ -20,8 +20,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install python3-setuptools
-          sudo pip3 install --upgrade pip
-          sudo pip3 install -U pytest
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -U pytest
       - name: Running addons tests
         run: |
           set -x

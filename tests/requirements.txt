@@ -1,4 +1,4 @@
-pytest
+pytest==8.3.4
 sh
 PyYaml
 requests

@@ -20,9 +20,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install python3-setuptools pip
-          sudo pip3 install -U pytest
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r tests/requirements.txt
       - name: Running addons tests
         run: |
           set -x
@@ -36,5 +37,5 @@ jobs:
             export STRICT="yes"
           fi
           export SKIP_PROMETHEUS="False"
-          sudo -E pytest -s -ra ./tests/test-addons.py
+          sudo -E venv/bin/pytest -s -ra ./tests/test-addons.py
           sudo snap remove microk8s --purge

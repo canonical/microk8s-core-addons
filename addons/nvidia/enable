@@ -122,7 +122,7 @@ def deploy_gpu_operator(
 @click.option("--set-as-default-runtime/--no-set-as-default-runtime", is_flag=True, hidden=True, default=None)
 @click.option("--gpu-operator-set-as-default-runtime/--gpu-operator-no-set-as-default-runtime", is_flag=True, default=True)
 @click.option("--network-operator/--no-network-operator", is_flag=True, default=False)
-@click.option("--network-operator-version", default="23.7.0")
+@click.option("--network-operator-version", default="25.1.0")
 @click.option("--network-operator-set", multiple=True)
 @click.option("--network-operator-values", multiple=True, type=click.Path(exists=True))
 def main(
@@ -213,7 +213,7 @@ def main(
 
     # set default values
     if not gpu_operator_version:
-        gpu_operator_version = "v24.6.2"
+        gpu_operator_version = "v25.3.0"
 
     # add helm repository for nvidia gpu-operator and network-operator
     subprocess.run([HELM, "repo", "add", "nvidia", "https://helm.ngc.nvidia.com/nvidia"])

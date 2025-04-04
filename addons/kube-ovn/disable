@@ -1,13 +1,13 @@
 #!/bin/bash
+set -eux
 
-# Sourced from: https://github.com/kubeovn/kube-ovn/blob/v1.12.21/dist/images/cleanup.sh
+# Sourced from: https://github.com/kubeovn/kube-ovn/blob/v1.13.8/dist/images/cleanup.sh
 # Changelog:
 # - use microk8s.$KUBECTL instead of $KUBECTL
 # - remove *-kube-ovn.conflist from $CNI_CONF_DIR
 # - restart the default CNI after disabling addon
 # - restart CodeDNS after disabling addon and reenabling default CNI
 
-set -eu
 source $SNAP/actions/common/utils.sh
 
 KUBECTL="$SNAP/microk8s-kubectl.wrapper"
@@ -133,7 +133,6 @@ $KUBECTL delete --ignore-not-found sa vpc-dns -n kube-system
 
 # delete CRD
 $KUBECTL delete --ignore-not-found crd \
-  htbqoses.kubeovn.io \
   security-groups.kubeovn.io \
   ippools.kubeovn.io \
   vpc-nat-gateways.kubeovn.io \
@@ -207,6 +206,7 @@ $KUBECTL delete --ignore-not-found clusterrole system:ovn system:ovn-ovs system:
 $KUBECTL delete --ignore-not-found clusterrolebinding ovn ovn ovn-ovs kube-ovn-cni kube-ovn-app
 
 $KUBECTL delete --ignore-not-found -n kube-system lease kube-ovn-controller
+$KUBECTL delete --ignore-not-found -n kube-system secret ovn-ipsec-ca
 
 # Remove annotations in all pods of all namespaces
 for ns in $($KUBECTL get ns -o name | awk -F/ '{print $2}'); do

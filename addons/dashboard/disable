@@ -8,11 +8,6 @@ source $CURRENT_DIR/../common/utils.sh
 
 echo "Disabling Dashboard"
 
-ARCH=$(arch)
-TAG="0.25.1"
-EXTRA_ARGS="- --publish-status-address=127.0.0.1"
-
-
 KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
 # Clean up old ingress controller resources in the default namespace, in case these are still lurking around.  
 $KUBECTL delete service -n kube-system monitoring-grafana  > /dev/null 2>&1 || true
@@ -26,6 +21,7 @@ $KUBECTL delete configmap -n kube-system heapster-config  > /dev/null 2>&1 || tr
 $KUBECTL delete configmap -n kube-system eventer-config  > /dev/null 2>&1 || true
 $KUBECTL delete serviceaccount -n kube-system heapster  > /dev/null 2>&1 || true 
 
-use_addon_manifest dashboard/dashboard delete 
+HELM="$SNAP/microk8s-helm3.wrapper"
+$HELM uninstall -n kubernetes-dashboard kubernetes-dashboard
 
 echo "Dashboard is disabled"

@@ -6,10 +6,54 @@ source $SNAP/actions/common/utils.sh
 CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 source $CURRENT_DIR/../common/utils.sh
 
-echo "Enabling Kubernetes Dashboard"
-"$SNAP/microk8s-enable.wrapper" metrics-server
+REPO="https://kubernetes.github.io/dashboard/"
+VERSION="7.11.1"
+
+function usage {
+  echo "Usage: microk8s enable dashboard [OPTIONS]"
+  echo ""
+  echo "Enable the dashboard addon."
+  echo ""
+  echo "   -h             Print this help message"
+  echo "   -r REPOSITORY  dashboard Helm chart repository (default: ${REPO})"
+  echo "   -V VERSION     dashboard Helm chart version (default: ${VERSION})"
+}
+
+while getopts ":hr:V:" arg; do
+  case "${arg}" in
+    V) VERSION="${OPTARG}" ;;
+    r) REPO="${OPTARG}" ;;
+    h)
+      usage
+      exit 0
+      ;;
+    :)
+      echo "Missing argument for option -${OPTARG}"
+      usage
+      exit 1
+      ;;
+    ?)
+      echo "Invalid option -${OPTARG}"
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+ENABLE="$SNAP/microk8s-enable.wrapper"
+
+echo "Enabling metrics-server"
+$ENABLE metrics-server
+$ENABLE helm3
+
+HELM="$SNAP/microk8s-helm3.wrapper"
+
+echo "Enabling Kubernetes dashboard"
+$HELM upgrade --install kubernetes-dashboard kubernetes-dashboard \
+  --repo "${REPO}" --version "${VERSION}" \
+  --create-namespace --namespace "kubernetes-dashboard"
+
 echo "Applying manifest"
-use_addon_manifest dashboard/dashboard apply
 use_addon_manifest dashboard/token-creation apply
 
 echo "

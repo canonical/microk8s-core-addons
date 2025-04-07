@@ -1,10 +1,14 @@
-#!/bin/bash
+#!/bin/bash -e
 
 DIR=`realpath $(dirname $0)`
+HELM="$SNAP/microk8s-helm3.wrapper"
 KUBECTL="$SNAP/microk8s-kubectl.wrapper"
 
 echo "Deleting cert-manager"
 
-$KUBECTL delete -f $DIR/cert-manager.yaml
+$HELM uninstall -n cert-manager cert-manager
+
+echo "Deleting cert-manager CRDs"
+$KUBECTL get crd | grep "\.cert-manager\.io " | cut -d' ' -f1 | xargs $KUBECTL delete crd
 
 echo "Deleted cert-manager"

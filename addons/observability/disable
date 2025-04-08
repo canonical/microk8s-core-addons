@@ -17,3 +17,6 @@ $KUBECTL delete service kube-prom-stack-kube-prome-kubelet -n kube-system
 $HELM uninstall loki -n $NAMESPACE > /dev/null 2>&1
 $HELM uninstall tempo -n $NAMESPACE > /dev/null 2>&1
 $KUBECTL delete namespace $NAMESPACE
+
+# cleanup installed CRDs.
+$KUBECTL get crd | grep "\.monitoring\.coreos\.com " | cut -d' ' -f1 | xargs $KUBECTL delete crd

@@ -172,7 +172,7 @@ def wait_for_namespace_termination(namespace, timeout_insec=360):
         time.sleep(10)
 
 
-def microk8s_enable(addon, timeout_insec=300):
+def microk8s_enable(addon, timeout_insec=300, force=False):
     """
     Disable an addon
 
@@ -192,6 +192,8 @@ def microk8s_enable(addon, timeout_insec=300):
             raise CalledProcessError(1, "Nothing to do for gpu")
 
     cmd = "/snap/bin/microk8s.enable {}".format(addon)
+    if force:
+        cmd = "{} --force".format(cmd)
     return run_until_success(cmd, timeout_insec)
 
 

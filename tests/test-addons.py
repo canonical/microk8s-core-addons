@@ -18,6 +18,7 @@ from validators import (
     validate_metrics_server,
     validate_rbac,
     validate_metallb_config,
+    validate_networking,
     validate_observability,
     validate_coredns_config,
     validate_mayastor,
@@ -232,6 +233,27 @@ class TestAddons(object):
         validate_gpu()
         print("Disable gpu")
         microk8s_disable("gpu")
+
+    @pytest.mark.skipif(
+        os.environ.get("STRICT") == "yes",
+        reason="Skipping kube-ovn tests in strict confinement as they are expected to fail",
+    )
+    def test_kube_ovn(self):
+        """
+        Test kube-ovn.
+        """
+
+        print("Enabling kube-ovn")
+        microk8s_enable("kube-ovn", force=True)
+
+        print("Validating kube-ovn")
+        validate_networking()
+
+        print("Disabling kube-ovn")
+        microk8s_disable("kube-ovn")
+
+        print("Validating default CNI networking")
+        validate_networking()
 
     @pytest.mark.skipif(
         platform.machine() != "x86_64",

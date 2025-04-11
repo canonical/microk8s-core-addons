@@ -12,6 +12,7 @@ set -euo pipefail
 # - template variable __REPLICAS__ for the ovn db replicas
 # - (2022-10-12) remove PodSecurityPolicy
 # - (2022-10-12) remove ovn-config ConfigMap
+# - (2025-04-09) add configurable POD_CIDR, POD_GATEWAY, SVC_CIDR, and JOIN_CIDR
 
 KUBECTL="$SNAP/microk8s-kubectl.wrapper"
 
@@ -60,33 +61,33 @@ KUBELET_DIR="/var/snap/microk8s/current/var/lib/kubelet"
 LOG_DIR="/var/snap/microk8s/common/var/log"
 ORIGIN_DIR="/var/snap/microk8s/current/etc/origin"
 
-CNI_CONF_DIR="/var/snap/microk8s/current/etc/cni/net.d"
+CNI_CONF_DIR="/var/snap/microk8s/current/args/cni-network"
 CNI_BIN_DIR="/var/snap/microk8s/current/opt/cni/bin"
 
 REGISTRY="docker.io/kubeovn"
 VPC_NAT_IMAGE="vpc-nat-gateway"
 VERSION="v1.12.21"
 IMAGE_PULL_POLICY="IfNotPresent"
-POD_CIDR="10.1.0.0/16" # Do NOT overlap with NODE/SVC/JOIN CIDR
-POD_GATEWAY="10.1.0.1"
-SVC_CIDR="10.152.183.0/24"             # Do NOT overlap with NODE/POD/JOIN CIDR
-JOIN_CIDR="100.64.0.0/16"              # Do NOT overlap with NODE/POD/SVC CIDR
+POD_CIDR="${POD_CIDR:-10.1.0.0/16}"     # Do NOT overlap with NODE/SVC/JOIN CIDR
+POD_GATEWAY="${POD_GATEWAY:-10.1.0.1}"
+SVC_CIDR="${SVC_CIDR:-10.152.183.0/24}" # Do NOT overlap with NODE/POD/JOIN CIDR
+JOIN_CIDR="${JOIN_CIDR:-100.64.0.0/16}" # Do NOT overlap with NODE/POD/SVC CIDR
 PINGER_EXTERNAL_ADDRESS="1.1.1.1"      # Pinger check external ip probe
 PINGER_EXTERNAL_DOMAIN="canonical.com" # Pinger check external domain probe
 SVC_YAML_IPFAMILYPOLICY=""
 if [ "$IPV6" = "true" ]; then
-  POD_CIDR="fd00:10:16::/112" # Do NOT overlap with NODE/SVC/JOIN CIDR
-  POD_GATEWAY="fd00:10:16::1"
-  SVC_CIDR="fd00:10:96::/112"   # Do NOT overlap with NODE/POD/JOIN CIDR
-  JOIN_CIDR="fd00:100:64::/112" # Do NOT overlap with NODE/POD/SVC CIDR
+  POD_CIDR="${POD_CIDR:-fd00:10:16::/112}"    # Do NOT overlap with NODE/SVC/JOIN CIDR
+  POD_GATEWAY="${POD_GATEWAY:-fd00:10:16::1}"
+  SVC_CIDR="${SVC_CIDR:-fd00:10:96::/112}"    # Do NOT overlap with NODE/POD/JOIN CIDR
+  JOIN_CIDR="${JOIN_CIDR:-fd00:100:64::/112}" # Do NOT overlap with NODE/POD/SVC CIDR
   PINGER_EXTERNAL_ADDRESS="2400:3200::1"
   PINGER_EXTERNAL_DOMAIN="google.com."
 fi
 if [ "$DUAL_STACK" = "true" ]; then
-  POD_CIDR="10.1.0.0/16,fd00:10:16::/112" # Do NOT overlap with NODE/SVC/JOIN CIDR
-  POD_GATEWAY="10.1.0.1,fd00:10:16::1"
-  SVC_CIDR="10.152.183.0/24,fd00:10:96::/112" # Do NOT overlap with NODE/POD/JOIN CIDR
-  JOIN_CIDR="100.64.0.0/16,fd00:100:64::/112" # Do NOT overlap with NODE/POD/SVC CIDR
+  POD_CIDR="${POD_CIDR:-10.1.0.0/16,fd00:10:16::/112}"      # Do NOT overlap with NODE/SVC/JOIN CIDR
+  POD_GATEWAY="${POD_GATEWAY:-10.1.0.1,fd00:10:16::1}"
+  SVC_CIDR="${SVC_CIDR:-10.152.183.0/24,fd00:10:96::/112}"  # Do NOT overlap with NODE/POD/JOIN CIDR
+  JOIN_CIDR="${JOIN_CIDR:-100.64.0.0/16,fd00:100:64::/112}" # Do NOT overlap with NODE/POD/SVC CIDR
   PINGER_EXTERNAL_ADDRESS="114.114.114.114,2400:3200::1"
   PINGER_EXTERNAL_DOMAIN="google.com."
   SVC_YAML_IPFAMILYPOLICY="ipFamilyPolicy: PreferDualStack"

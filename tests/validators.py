@@ -540,6 +540,12 @@ def validate_rook_ceph_integration():
 
             subprocess.check_call(f"microceph disk add --wipe /dev/sdi{l}".split())
 
+        # When connecting to an external Ceph and no monitoring endpoint is given,
+        # .rook-create-external-cluster-resources.py will try to detect it automatically.
+        # If none is found, an Exception is raised.
+        # We need to enable Prometheus for microceph.
+        subprocess.check_call("microceph.ceph mgr module enable prometheus".split())
+
         subprocess.check_call("ceph fs volume create fs0".split())
         subprocess.check_call("microk8s connect-external-ceph".split())
 

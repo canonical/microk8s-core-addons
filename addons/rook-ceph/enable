@@ -25,7 +25,7 @@ ROOK_PLUGINS = [
 
 
 @click.command()
-@click.option("--rook-version", default="v1.11.9")
+@click.option("--rook-version", default="v1.16.6")
 @click.option("--rook-repository", default="https://charts.rook.io/release")
 @click.option("--set", "helm_set", multiple=True)
 @click.option("-f", "--values", "helm_values", multiple=True, type=click.Path(exists=True))

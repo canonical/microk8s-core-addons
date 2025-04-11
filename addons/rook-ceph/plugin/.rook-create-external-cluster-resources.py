@@ -14,11 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-# Originally https://github.com/rook/rook/blob/v1.11.9/deploy/examples/create-external-cluster-resources.py  # noqa
-#
-# Changes:
-# - (https://github.com/rook/rook/pull/12502) add '--keyring' argument to use custom Ceph keyring
-# - Format with black
+# Originally https://github.com/rook/rook/blob/v1.16.6/deploy/examples/create-external-cluster-resources.py  # noqa
 
 import errno
 import sys
@@ -27,18 +23,19 @@ import argparse
 import re
 import subprocess
 import hmac
+import configparser
 from hashlib import sha1 as sha
 from os import linesep as LINESEP
 from os import path
 from email.utils import formatdate
 import requests
 from requests.auth import AuthBase
-
-py3k = False
-if sys.version_info.major >= 3:
-    py3k = True
-    import urllib.parse
-    from ipaddress import ip_address, IPv4Address
+from io import StringIO
+from urllib.parse import urlparse
+from urllib.parse import urlencode as urlencode
+from ipaddress import ip_address
+from ipaddress import IPv4Address
+from base64 import encodebytes as encodestring
 
 ModuleNotFoundError = ImportError
 
@@ -53,25 +50,6 @@ try:
 except ModuleNotFoundError as noModErr:
     print(f"Error: {noModErr}\nExiting the script...")
     sys.exit(1)
-
-try:
-    # for 2.7.x
-    from StringIO import StringIO
-except ModuleNotFoundError:
-    # for 3.x
-    from io import StringIO
-
-try:
-    # for 2.7.x
-    from urlparse import urlparse
-except ModuleNotFoundError:
-    # for 3.x
-    from urllib.parse import urlparse
-
-try:
-    from base64 import encodestring
-except:
-    from base64 import encodebytes as encodestring
 
 
 class ExecutionFailureException(Exception):
@@ -120,8 +98,8 @@ class DummyRados(object):
             """{"dashboard":"https://ceph-dashboard:8443/","prometheus":"http://ceph-dashboard-db:9283/"}"""
         )
         self.cmd_output_map[
-            """{"caps": ["mon", "allow r, allow command quorum_status", "osd", "allow rwx pool=default.rgw.meta, allow r pool=.rgw.root, allow rw pool=default.rgw.control, allow x pool=default.rgw.buckets.index"], "entity": "client.healthchecker", "format": "json", "prefix": "auth get-or-create"}"""
-        ] = """[{"entity":"client.healthchecker","key":"AQDFkbNeft5bFRAATndLNUSEKruozxiZi3lrdA==","caps":{"mon":"allow r, allow command quorum_status","osd":"allow rwx pool=default.rgw.meta, allow r pool=.rgw.root, allow rw pool=default.rgw.control, allow x pool=default.rgw.buckets.index"}}]"""
+            """{"caps": ["mon", "allow r, allow command quorum_status", "osd", "profile rbd-read-only, allow rwx pool=default.rgw.meta, allow r pool=.rgw.root, allow rw pool=default.rgw.control, allow x pool=default.rgw.buckets.index", "mds", "allow *"], "entity": "client.healthchecker", "format": "json", "prefix": "auth get-or-create"}"""
+        ] = """[{"entity":"client.healthchecker","key":"AQDFkbNeft5bFRAATndLNUSEKruozxiZi3lrdA==","caps":{"mon":"allow r, allow command quorum_status","osd":"profile rbd-read-only, allow rwx pool=default.rgw.meta, allow r pool=.rgw.root, allow rw pool=default.rgw.control, allow x pool=default.rgw.buckets.index","mds":"allow *"}}]"""
         self.cmd_output_map[
             """{"caps": ["mon", "profile rbd, allow command 'osd blocklist'", "osd", "profile rbd"], "entity": "client.csi-rbd-node", "format": "json", "prefix": "auth get-or-create"}"""
         ] = """[{"entity":"client.csi-rbd-node","key":"AQBOgrNeHbK1AxAAubYBeV8S1U/GPzq5SVeq6g==","caps":{"mon":"profile rbd, allow command 'osd blocklist'","osd":"profile rbd"}}]"""
@@ -132,17 +110,20 @@ class DummyRados(object):
             """{"caps": ["mon", "allow r, allow command 'osd blocklist'", "mgr", "allow rw", "osd", "allow rw tag cephfs *=*", "mds", "allow rw"], "entity": "client.csi-cephfs-node", "format": "json", "prefix": "auth get-or-create"}"""
         ] = """[{"entity":"client.csi-cephfs-node","key":"AQBOgrNeENunKxAAPCmgE7R6G8DcXnaJ1F32qg==","caps":{"mds":"allow rw","mgr":"allow rw","mon":"allow r, allow command 'osd blocklist'","osd":"allow rw tag cephfs *=*"}}]"""
         self.cmd_output_map[
-            """{"caps": ["mon", "allow r, allow command 'osd blocklist'", "mgr", "allow rw", "osd", "allow rw tag cephfs metadata=*"], "entity": "client.csi-cephfs-provisioner", "format": "json", "prefix": "auth get-or-create"}"""
-        ] = """[{"entity":"client.csi-cephfs-provisioner","key":"AQBOgrNeAFgcGBAAvGqKOAD0D3xxmVY0R912dg==","caps":{"mgr":"allow rw","mon":"allow r, allow command 'osd blocklist'","osd":"allow rw tag cephfs metadata=*"}}]"""
+            """{"caps": ["mon", "allow r, allow command 'osd blocklist'", "mgr", "allow rw", "osd", "allow rw tag cephfs metadata=*", "mds", "allow *"], "entity": "client.csi-cephfs-provisioner", "format": "json", "prefix": "auth get-or-create"}"""
+        ] = """[{"entity":"client.csi-cephfs-provisioner","key":"AQBOgrNeAFgcGBAAvGqKOAD0D3xxmVY0R912dg==","caps":{"mgr":"allow rw","mon":"allow r, allow command 'osd blocklist'","osd":"allow rw tag cephfs metadata=*","mds":"allow *"}}]"""
         self.cmd_output_map[
-            """{"caps": ["mon", "allow r, allow command 'osd blocklist'", "mgr", "allow rw", "osd", "allow rw tag cephfs metadata=*"], "entity": "client.csi-cephfs-provisioner-openshift-storage", "format": "json", "prefix": "auth get-or-create"}"""
-        ] = """[{"entity":"client.csi-cephfs-provisioner-openshift-storage","key":"BQBOgrNeAFgcGBAAvGqKOAD0D3xxmVY0R912dg==","caps":{"mgr":"allow rw","mon":"allow r, allow command 'osd blocklist'","osd":"allow rw tag cephfs metadata=*"}}]"""
+            """{"caps": ["mon", "allow r, allow command 'osd blocklist'", "mgr", "allow rw", "osd", "allow rw tag cephfs metadata=*", "mds", "allow *"], "entity": "client.csi-cephfs-provisioner-openshift-storage", "format": "json", "prefix": "auth get-or-create"}"""
+        ] = """[{"entity":"client.csi-cephfs-provisioner-openshift-storage","key":"BQBOgrNeAFgcGBAAvGqKOAD0D3xxmVY0R912dg==","caps":{"mgr":"allow rw","mon":"allow r, allow command 'osd blocklist'","osd":"allow rw tag cephfs metadata=*", "mds":"allow *"}}]"""
         self.cmd_output_map[
-            """{"caps": ["mon", "allow r, allow command 'osd blocklist'", "mgr", "allow rw", "osd", "allow rw tag cephfs metadata=myfs"], "entity": "client.csi-cephfs-provisioner-openshift-storage-myfs", "format": "json", "prefix": "auth get-or-create"}"""
-        ] = """[{"entity":"client.csi-cephfs-provisioner-openshift-storage-myfs","key":"CQBOgrNeAFgcGBAAvGqKOAD0D3xxmVY0R912dg==","caps":{"mgr":"allow rw","mon":"allow r, allow command 'osd blocklist'","osd":"allow rw tag cephfs metadata=myfs"}}]"""
+            """{"caps": ["mon", "allow r, allow command 'osd blocklist'", "mgr", "allow rw", "osd", "allow rw tag cephfs metadata=myfs", "mds", "allow *"], "entity": "client.csi-cephfs-provisioner-openshift-storage-myfs", "format": "json", "prefix": "auth get-or-create"}"""
+        ] = """[{"entity":"client.csi-cephfs-provisioner-openshift-storage-myfs","key":"CQBOgrNeAFgcGBAAvGqKOAD0D3xxmVY0R912dg==","caps":{"mgr":"allow rw","mon":"allow r, allow command 'osd blocklist'","osd":"allow rw tag cephfs metadata=myfs","mds":"allow *"}}]"""
         self.cmd_output_map[
-            """{"caps": ["mon", "allow r, allow command quorum_status, allow command version", "mgr", "allow command config", "osd", "allow rwx pool=default.rgw.meta, allow r pool=.rgw.root, allow rw pool=default.rgw.control, allow rx pool=default.rgw.log, allow x pool=default.rgw.buckets.index"], "entity": "client.healthchecker", "format": "json", "prefix": "auth get-or-create"}"""
-        ] = """[{"entity":"client.healthchecker","key":"AQDFkbNeft5bFRAATndLNUSEKruozxiZi3lrdA==","caps":{"mon": "allow r, allow command quorum_status, allow command version", "mgr": "allow command config", "osd": "allow rwx pool=default.rgw.meta, allow r pool=.rgw.root, allow rw pool=default.rgw.control, allow rx pool=default.rgw.log, allow x pool=default.rgw.buckets.index"}}]"""
+            """{"caps": ["mon", "allow r, allow command quorum_status, allow command version", "mgr", "allow command config", "osd", "profile rbd-read-only, allow rwx pool=default.rgw.meta, allow r pool=.rgw.root, allow rw pool=default.rgw.control, allow rx pool=default.rgw.log, allow x pool=default.rgw.buckets.index", "mds", "allow *"], "entity": "client.healthchecker", "format": "json", "prefix": "auth get-or-create"}"""
+        ] = """[{"entity":"client.healthchecker","key":"AQDFkbNeft5bFRAATndLNUSEKruozxiZi3lrdA==","caps":{"mon": "allow r, allow command quorum_status, allow command version", "mgr": "allow command config", "osd": "profile rbd-read-only, allow rwx pool=default.rgw.meta, allow r pool=.rgw.root, allow rw pool=default.rgw.control, allow rx pool=default.rgw.log, allow x pool=default.rgw.buckets.index","mds":"allow *"}}]"""
+        self.cmd_output_map[
+            """{"caps": ["mon", "allow r, allow command quorum_status, allow command version", "mgr", "allow command config", "osd", "profile rbd-read-only, allow rwx pool=default.rgw.meta, allow r pool=.rgw.root, allow rw pool=default.rgw.control, allow rx pool=default.rgw.log, allow x pool=default.rgw.buckets.index", "mds", "allow *"], "entity": "client.healthchecker", "format": "json", "prefix": "auth caps"}"""
+        ] = """[{"entity":"client.healthchecker","key":"AQDFkbNeft5bFRAATndLNUSRKruozxiZi3lrdA==","caps":{"mon": "allow r, allow command quorum_status, allow command version", "mgr": "allow command config", "osd": "profile rbd-read-only, allow rwx pool=default.rgw.meta, allow r pool=.rgw.root, allow rw pool=default.rgw.control, allow rx pool=default.rgw.log, allow x pool=default.rgw.buckets.index","mds":"allow *"}}]"""
         self.cmd_output_map["""{"format": "json", "prefix": "mgr services"}"""] = (
             """{"dashboard": "http://rook-ceph-mgr-a-57cf9f84bc-f4jnl:7000/", "prometheus": "http://rook-ceph-mgr-a-57cf9f84bc-f4jnl:9283/"}"""
         )
@@ -151,7 +132,7 @@ class DummyRados(object):
         ] = """{"dashboard": "http://rook-ceph-mgr-a-57cf9f84bc-f4jnl:7000/", "prometheus": "http://rook-ceph-mgr-a-57cf9f84bc-f4jnl:9283/"}"""
         self.cmd_output_map[
             """{"entity": "client.healthchecker", "format": "json", "prefix": "auth get"}"""
-        ] = """[{"entity":"client.healthchecker","key":"AQDFkbNeft5bFRAATndLNUSEKruozxiZi3lrdA==","caps":{"mon": "allow r, allow command quorum_status, allow command version", "mgr": "allow command config", "osd": "allow rwx pool=default.rgw.meta, allow r pool=.rgw.root, allow rw pool=default.rgw.control, allow rx pool=default.rgw.log, allow x pool=default.rgw.buckets.index"}}]"""
+        ] = """[{"entity":"client.healthchecker","key":"AQDFkbNeft5bFRAATndLNUSEKruozxiZi3lrdA==","caps":{"mon": "allow r, allow command quorum_status, allow command version", "mgr": "allow command config", "osd": "profile rbd-read-only, allow rwx pool=default.rgw.meta, allow r pool=.rgw.root, allow rw pool=default.rgw.control, allow rx pool=default.rgw.log, allow x pool=default.rgw.buckets.index","mds":"allow *"}}]"""
         self.cmd_output_map[
             """{"entity": "client.csi-cephfs-node", "format": "json", "prefix": "auth get"}"""
         ] = """[]"""
@@ -172,10 +153,10 @@ class DummyRados(object):
         ] = """[]"""
         self.cmd_output_map[
             """{"entity": "client.csi-cephfs-provisioner", "format": "json", "prefix": "auth get"}"""
-        ] = """[{"entity":"client.csi-cephfs-provisioner","key":"AQDFkbNeft5bFRAATndLNUSEKruozxiZi3lrdA==","caps":{"mon":"allow r", "mgr":"allow rw", "osd":"allow rw tag cephfs metadata=*"}}]"""
+        ] = """[{"entity":"client.csi-cephfs-provisioner","key":"AQDFkbNeft5bFRAATndLNUSEKruozxiZi3lrdA==","caps":{"mon":"allow r", "mgr":"allow rw", "osd":"allow rw tag cephfs metadata=*","mds":"allow *"}}]"""
         self.cmd_output_map[
-            """{"caps": ["mon", "allow r, allow command 'osd blocklist'", "mgr", "allow rw", "osd", "allow rw tag cephfs metadata=*"], "entity": "client.csi-cephfs-provisioner", "format": "json", "prefix": "auth caps"}"""
-        ] = """[{"entity":"client.csi-cephfs-provisioner","key":"AQDFkbNeft5bFRAATndLNUSEKruozxiZi3lrdA==","caps":{"mon":"allow r,  allow command 'osd blocklist'", "mgr":"allow rw", "osd":"allow rw tag cephfs metadata=*"}}]"""
+            """{"caps": ["mon", "allow r, allow command 'osd blocklist'", "mgr", "allow rw", "osd", "allow rw tag cephfs metadata=*", "mds", "allow *"], "entity": "client.csi-cephfs-provisioner", "format": "json", "prefix": "auth caps"}"""
+        ] = """[{"entity":"client.csi-cephfs-provisioner","key":"AQDFkbNeft5bFRAATndLNUSEKruozxiZi3lrdA==","caps":{"mon":"allow r,  allow command 'osd blocklist'", "mgr":"allow rw", "osd":"allow rw tag cephfs metadata=*","mds":"allow *"}}]"""
         self.cmd_output_map['{"format": "json", "prefix": "status"}'] = ceph_status_str
 
     def shutdown(self):
@@ -234,19 +215,14 @@ class S3Auth(AuthBase):
         if "date" not in r.headers and "x-amz-date" not in r.headers:
             r.headers["date"] = formatdate(timeval=None, localtime=False, usegmt=True)
         signature = self.get_signature(r)
-        if py3k:
-            signature = signature.decode("utf-8")
+        signature = signature.decode("utf-8")
         r.headers["Authorization"] = f"AWS {self.access_key}:{signature}"
         return r
 
     def get_signature(self, r):
         canonical_string = self.get_canonical_string(r.url, r.headers, r.method)
-        if py3k:
-            key = self.secret_key.encode("utf-8")
-            msg = canonical_string.encode("utf-8")
-        else:
-            key = self.secret_key
-            msg = canonical_string
+        key = self.secret_key.encode("utf-8")
+        msg = canonical_string.encode("utf-8")
         h = hmac.new(key, msg, digestmod=sha)
         return encodestring(h.digest()).strip()
 
@@ -272,12 +248,8 @@ class S3Auth(AuthBase):
                 interesting_headers[lk] = headers[key].strip()
 
         # If x-amz-date is used it supersedes the date header.
-        if not py3k:
-            if "x-amz-date" in interesting_headers:
-                interesting_headers["date"] = ""
-        else:
-            if "x-amz-date" in interesting_headers:
-                interesting_headers["date"] = ""
+        if "x-amz-date" in interesting_headers:
+            interesting_headers["date"] = ""
 
         buf = f"{method}\n"
         for key in sorted(interesting_headers.keys()):
@@ -311,10 +283,10 @@ class RadosJSON:
         common_group = argP.add_argument_group("common")
         common_group.add_argument("--verbose", "-v", action="store_true", default=False)
         common_group.add_argument(
-            "--ceph-conf", "-c", help="Provide a ceph conf file.", type=str
+            "--ceph-conf", "-c", help="Provide a ceph conf file.", type=str, default=""
         )
         common_group.add_argument(
-            "--keyring", "-k", help="Path to ceph keyring file.", type=str
+            "--keyring", "-k", help="Path to ceph keyring file.", type=str, default=""
         )
         common_group.add_argument(
             "--run-as-user",
@@ -324,10 +296,17 @@ class RadosJSON:
             help="Provides a user name to check the cluster's health status, must be prefixed by 'client.'",
         )
         common_group.add_argument(
-            "--cluster-name", default="", help="Ceph cluster name"
+            "--cluster-name",
+            default="",
+            help="Kubernetes cluster name(legacy flag), Note: Either use this or --k8s-cluster-name",
         )
         common_group.add_argument(
-            "--namespace", default="", help="Namespace where CephCluster is running"
+            "--k8s-cluster-name", default="", help="Kubernetes cluster name"
+        )
+        common_group.add_argument(
+            "--namespace",
+            default="",
+            help="Namespace where CephCluster is running",
         )
         common_group.add_argument(
             "--rgw-pool-prefix", default="", help="RGW Pool prefix"
@@ -336,11 +315,17 @@ class RadosJSON:
             "--restricted-auth-permission",
             default=False,
             help="Restrict cephCSIKeyrings auth permissions to specific pools, cluster."
-            + "Mandatory flags that need to be set are --rbd-data-pool-name, and --cluster-name."
+            + "Mandatory flags that need to be set are --rbd-data-pool-name, and --k8s-cluster-name."
             + "--cephfs-filesystem-name flag can also be passed in case of cephfs user restriction, so it can restrict user to particular cephfs filesystem"
-            + "sample run: `python3 /etc/ceph/create-external-cluster-resources.py --cephfs-filesystem-name myfs --rbd-data-pool-name replicapool --cluster-name rookstorage --restricted-auth-permission true`"
+            + "sample run: `python3 /etc/ceph/create-external-cluster-resources.py --cephfs-filesystem-name myfs --rbd-data-pool-name replicapool --k8s-cluster-name rookstorage --restricted-auth-permission true`"
             + "Note: Restricting the csi-users per pool, and per cluster will require creating new csi-users and new secrets for that csi-users."
             + "So apply these secrets only to new `Consumer cluster` deployment while using the same `Source cluster`.",
+        )
+        common_group.add_argument(
+            "--v2-port-enable",
+            action="store_true",
+            default=False,
+            help="Enable v2 mon port(3300) for mons",
         )
 
         output_group = argP.add_argument_group("output")
@@ -394,7 +379,7 @@ class RadosJSON:
             "--rgw-tls-cert-path",
             default="",
             required=False,
-            help="RADOS Gateway endpoint TLS certificate",
+            help="RADOS Gateway endpoint TLS certificate (or intermediate signing certificate)",
         )
         output_group.add_argument(
             "--rgw-skip-tls",
@@ -436,7 +421,7 @@ class RadosJSON:
             "--rados-namespace",
             default="",
             required=False,
-            help="divides a pool into separate logical namespaces",
+            help="Divides a pool into separate logical namespaces, used for creating RBD PVC in a CephBlockPoolRadosNamespace (should be lower case)",
         )
         output_group.add_argument(
             "--subvolume-group",
@@ -462,20 +447,48 @@ class RadosJSON:
             required=False,
             help="provides the name of the rgw-zonegroup",
         )
+        output_group.add_argument(
+            "--topology-pools",
+            default="",
+            required=False,
+            help="comma-separated list of topology-constrained rbd pools",
+        )
+        output_group.add_argument(
+            "--topology-failure-domain-label",
+            default="",
+            required=False,
+            help="k8s cluster failure domain label (example: zone, rack, or host) for the topology-pools that match the ceph domain",
+        )
+        output_group.add_argument(
+            "--topology-failure-domain-values",
+            default="",
+            required=False,
+            help="comma-separated list of the k8s cluster failure domain values corresponding to each of the pools in the `topology-pools` list",
+        )
 
         upgrade_group = argP.add_argument_group("upgrade")
         upgrade_group.add_argument(
             "--upgrade",
             action="store_true",
             default=False,
-            help="Upgrades the cephCSIKeyrings(For example: client.csi-cephfs-provisioner) with new permissions needed for the new cluster version and older permission will still be applied."
+            help="Upgrades the cephCSIKeyrings(For example: client.csi-cephfs-provisioner) and client.healthchecker ceph users with new permissions needed for the new cluster version and older permission will still be applied."
             + "Sample run: `python3 /etc/ceph/create-external-cluster-resources.py --upgrade`, this will upgrade all the default csi users(non-restricted)"
             + "For restricted users(For example: client.csi-cephfs-provisioner-openshift-storage-myfs), users created using --restricted-auth-permission flag need to pass mandatory flags"
-            + "mandatory flags: '--rbd-data-pool-name, --cluster-name and --run-as-user' flags while upgrading"
+            + "mandatory flags: '--rbd-data-pool-name, --k8s-cluster-name and --run-as-user' flags while upgrading"
             + "in case of cephfs users if you have passed --cephfs-filesystem-name flag while creating user then while upgrading it will be mandatory too"
-            + "Sample run: `python3 /etc/ceph/create-external-cluster-resources.py --upgrade --rbd-data-pool-name replicapool --cluster-name rookstorage  --run-as-user client.csi-rbd-node-rookstorage-replicapool`"
+            + "Sample run: `python3 /etc/ceph/create-external-cluster-resources.py --upgrade --rbd-data-pool-name replicapool --k8s-cluster-name rookstorage  --run-as-user client.csi-rbd-node-rookstorage-replicapool`"
             + "PS: An existing non-restricted user cannot be converted to a restricted user by upgrading."
             + "Upgrade flag should only be used to append new permissions to users, it shouldn't be used for changing user already applied permission, for example you shouldn't change in which pool user has access",
+        )
+
+        # Add command-line arguments
+        config_group = argP.add_argument_group("config")
+        config_group.add_argument(
+            "--config-file",
+            type=str,
+            help="Path to the configuration file, Priority: command-line-args > config.ini file values > default values",
+            required=False,
+            default="",
         )
 
         if args_to_parse:
@@ -542,14 +555,8 @@ class RadosJSON:
                 contents = f.read()
                 return contents.rstrip()
 
-    def _check_conflicting_options(self):
-        if not self._arg_parser.upgrade and not self._arg_parser.rbd_data_pool_name:
-            raise ExecutionFailureException(
-                "Either '--upgrade' or '--rbd-data-pool-name <pool_name>' should be specified"
-            )
-
     def _invalid_endpoint(self, endpoint_str):
-        # seprating port, by getting last split of `:` delimiter
+        # extract the port by getting the last split on `:` delimiter
         try:
             endpoint_str_ip, port = endpoint_str.rsplit(":", 1)
         except ValueError:
@@ -617,24 +624,33 @@ class RadosJSON:
             ("-1"),
         )
 
+    def parse_config_file(self, config_file):
+        config = configparser.ConfigParser()
+        config.read(config_file)
+        for arg in list(vars(self._arg_parser)):
+            # python treats flag-name as flag_name internally, so converting back to flag-name,
+            # so we can get those values from config file
+            argument = arg.replace("_", "-")
+            argumentValue = str(getattr(self._arg_parser, arg))
+            config_value = config.get("Configurations", argument, fallback=None)
+            # give priority to command line argument, if command line argument is not present use config.ini value,
+            if (str(sys.argv).find(argument) == -1) and (
+                (config_value != None) and (config_value != "")
+            ):
+                self._arg_parser.__setattr__(arg, config_value)
+
+        return config
+
     def __init__(self, arg_list=None):
         self.out_map = {}
         self._excluded_keys = set()
         self._arg_parser = self.gen_arg_parser(args_to_parse=arg_list)
-        self._check_conflicting_options()
+        if self._arg_parser.config_file:
+            self.config = self.parse_config_file(self._arg_parser.config_file)
         self.run_as_user = self._arg_parser.run_as_user
         self.output_file = self._arg_parser.output
         self.ceph_conf = self._arg_parser.ceph_conf
         self.ceph_keyring = self._arg_parser.keyring
-        self.MIN_USER_CAP_PERMISSIONS = {
-            "mgr": "allow command config",
-            "mon": "allow r, allow command quorum_status, allow command version",
-            "osd": "allow rwx pool={0}.rgw.meta, "
-            + "allow r pool=.rgw.root, "
-            + "allow rw pool={0}.rgw.control, "
-            + "allow rx pool={0}.rgw.log, "
-            + "allow x pool={0}.rgw.buckets.index",
-        }
         # if user not provided, give a default user
         if not self.run_as_user and not self._arg_parser.upgrade:
             self.run_as_user = self.EXTERNAL_USER_NAME
@@ -696,16 +712,19 @@ class RadosJSON:
         q_leader_details = q_leader_matching_list[0]
         # get the address vector of the quorum-leader
         q_leader_addrvec = q_leader_details.get("public_addrs", {}).get("addrvec", [])
-        # if the quorum-leader has only one address in the address-vector
-        # and it is of type 'v2' (ie; with <IP>:3300),
-        # raise an exception to make user aware that
-        # they have to enable 'v1' (ie; with <IP>:6789) type as well
-        if len(q_leader_addrvec) == 1 and q_leader_addrvec[0]["type"] == "v2":
-            raise ExecutionFailureException(
-                "Only 'v2' address type is enabled, user should also enable 'v1' type as well"
-            )
-        ip_port = str(q_leader_details["public_addr"].split("/")[0])
-        return f"{str(q_leader_name)}={ip_port}"
+        ip_addr = str(q_leader_details["public_addr"].split("/")[0])
+
+        if self._arg_parser.v2_port_enable:
+            if q_leader_addrvec[0]["type"] == "v2":
+                ip_addr = q_leader_addrvec[0]["addr"]
+            elif len(q_leader_addrvec) > 1 and q_leader_addrvec[1]["type"] == "v2":
+                ip_addr = q_leader_addrvec[1]["addr"]
+            else:
+                sys.stderr.write(
+                    "'v2' address type not present, and 'v2-port-enable' flag is provided"
+                )
+
+        return f"{str(q_leader_name)}={ip_addr}"
 
     def _convert_hostname_to_ip(self, host_name, port, ip_type):
         # if 'cluster' instance is a dummy type,
@@ -731,6 +750,7 @@ class RadosJSON:
             host_ip_type = self._invalid_endpoint(host_addr + ":80")
             import socket
 
+            ip = []
             # example output [(<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('93.184.216.34', 80)), ...]
             # we need to get 93.184.216.34 so it would be ip[0][4][0]
             if host_ip_type == "IPv6":
@@ -764,7 +784,10 @@ class RadosJSON:
                 json_out.get("mgrmap", {}).get("services", {}).get("prometheus", "")
             )
             if not monitoring_endpoint:
-                return "", ""
+                raise ExecutionFailureException(
+                    "can't find monitoring_endpoint, prometheus module might not be enabled, "
+                    "enable the module by running 'ceph mgr module enable prometheus'"
+                )
             # now check the stand-by mgr-s
             standby_arr = json_out.get("mgrmap", {}).get("standbys", [])
             for each_standby in standby_arr:
@@ -840,18 +863,19 @@ class RadosJSON:
             "mon": "allow r, allow command 'osd blocklist'",
             "mgr": "allow rw",
             "osd": "allow rw tag cephfs metadata=*",
+            "mds": "allow *",
         }
         if self._arg_parser.restricted_auth_permission:
-            cluster_name = self._arg_parser.cluster_name
-            if cluster_name == "":
+            k8s_cluster_name = self._arg_parser.k8s_cluster_name
+            if k8s_cluster_name == "":
                 raise ExecutionFailureException(
-                    "cluster_name not found, please set the '--cluster-name' flag"
+                    "k8s_cluster_name not found, please set the '--k8s-cluster-name' flag"
                 )
             cephfs_filesystem = self._arg_parser.cephfs_filesystem_name
             if cephfs_filesystem == "":
-                entity = f"{entity}-{cluster_name}"
+                entity = f"{entity}-{k8s_cluster_name}"
             else:
-                entity = f"{entity}-{cluster_name}-{cephfs_filesystem}"
+                entity = f"{entity}-{k8s_cluster_name}-{cephfs_filesystem}"
                 caps["osd"] = f"allow rw tag cephfs metadata={cephfs_filesystem}"
 
         return caps, entity
@@ -865,21 +889,28 @@ class RadosJSON:
             "mds": "allow rw",
         }
         if self._arg_parser.restricted_auth_permission:
-            cluster_name = self._arg_parser.cluster_name
-            if cluster_name == "":
+            k8s_cluster_name = self._arg_parser.k8s_cluster_name
+            if k8s_cluster_name == "":
                 raise ExecutionFailureException(
-                    "cluster_name not found, please set the '--cluster-name' flag"
+                    "k8s_cluster_name not found, please set the '--k8s-cluster-name' flag"
                 )
             cephfs_filesystem = self._arg_parser.cephfs_filesystem_name
             if cephfs_filesystem == "":
-                entity = f"{entity}-{cluster_name}"
+                entity = f"{entity}-{k8s_cluster_name}"
             else:
-                entity = f"{entity}-{cluster_name}-{cephfs_filesystem}"
+                entity = f"{entity}-{k8s_cluster_name}-{cephfs_filesystem}"
                 caps["osd"] = f"allow rw tag cephfs *={cephfs_filesystem}"
 
         return caps, entity
 
-    def get_entity(self, entity, rbd_pool_name, alias_rbd_pool_name, cluster_name):
+    def get_entity(
+        self,
+        entity,
+        rbd_pool_name,
+        alias_rbd_pool_name,
+        k8s_cluster_name,
+        rados_namespace,
+    ):
         if (
             rbd_pool_name.count(".") != 0
             or rbd_pool_name.count("_") != 0
@@ -897,10 +928,12 @@ class RadosJSON:
                 raise ExecutionFailureException(
                     "'--alias-rbd-data-pool-name' flag value should not contain '.' or '_'"
                 )
-            entity = f"{entity}-{cluster_name}-{alias_rbd_pool_name}"
+            entity = f"{entity}-{k8s_cluster_name}-{alias_rbd_pool_name}"
         else:
-            entity = f"{entity}-{cluster_name}-{rbd_pool_name}"
+            entity = f"{entity}-{k8s_cluster_name}-{rbd_pool_name}"
 
+        if rados_namespace:
+            entity = f"{entity}-{rados_namespace}"
         return entity
 
     def get_rbd_provisioner_caps_and_entity(self):
@@ -913,19 +946,29 @@ class RadosJSON:
         if self._arg_parser.restricted_auth_permission:
             rbd_pool_name = self._arg_parser.rbd_data_pool_name
             alias_rbd_pool_name = self._arg_parser.alias_rbd_data_pool_name
-            cluster_name = self._arg_parser.cluster_name
+            k8s_cluster_name = self._arg_parser.k8s_cluster_name
+            rados_namespace = self._arg_parser.rados_namespace
             if rbd_pool_name == "":
                 raise ExecutionFailureException(
                     "mandatory flag not found, please set the '--rbd-data-pool-name' flag"
                 )
-            if cluster_name == "":
+            if k8s_cluster_name == "":
                 raise ExecutionFailureException(
-                    "mandatory flag not found, please set the '--cluster-name' flag"
+                    "mandatory flag not found, please set the '--k8s-cluster-name' flag"
                 )
             entity = self.get_entity(
-                entity, rbd_pool_name, alias_rbd_pool_name, cluster_name
+                entity,
+                rbd_pool_name,
+                alias_rbd_pool_name,
+                k8s_cluster_name,
+                rados_namespace,
             )
-            caps["osd"] = f"profile rbd pool={rbd_pool_name}"
+            if rados_namespace != "":
+                caps["osd"] = (
+                    f"profile rbd pool={rbd_pool_name} namespace={rados_namespace}"
+                )
+            else:
+                caps["osd"] = f"profile rbd pool={rbd_pool_name}"
 
         return caps, entity
 
@@ -938,19 +981,40 @@ class RadosJSON:
         if self._arg_parser.restricted_auth_permission:
             rbd_pool_name = self._arg_parser.rbd_data_pool_name
             alias_rbd_pool_name = self._arg_parser.alias_rbd_data_pool_name
-            cluster_name = self._arg_parser.cluster_name
+            k8s_cluster_name = self._arg_parser.k8s_cluster_name
+            rados_namespace = self._arg_parser.rados_namespace
             if rbd_pool_name == "":
                 raise ExecutionFailureException(
                     "mandatory flag not found, please set the '--rbd-data-pool-name' flag"
                 )
-            if cluster_name == "":
+            if k8s_cluster_name == "":
                 raise ExecutionFailureException(
-                    "mandatory flag not found, please set the '--cluster-name' flag"
+                    "mandatory flag not found, please set the '--k8s-cluster-name' flag"
                 )
             entity = self.get_entity(
-                entity, rbd_pool_name, alias_rbd_pool_name, cluster_name
+                entity,
+                rbd_pool_name,
+                alias_rbd_pool_name,
+                k8s_cluster_name,
+                rados_namespace,
             )
-            caps["osd"] = f"profile rbd pool={rbd_pool_name}"
+            if rados_namespace != "":
+                caps["osd"] = (
+                    f"profile rbd pool={rbd_pool_name} namespace={rados_namespace}"
+                )
+            else:
+                caps["osd"] = f"profile rbd pool={rbd_pool_name}"
+
+        return caps, entity
+
+    def get_defaultUser_caps_and_entity(self):
+        entity = self.run_as_user
+        caps = {
+            "mon": "allow r, allow command quorum_status, allow command version",
+            "mgr": "allow command config",
+            "osd": f"profile rbd-read-only, allow rwx pool={self._arg_parser.rgw_pool_prefix}.rgw.meta, allow r pool=.rgw.root, allow rw pool={self._arg_parser.rgw_pool_prefix}.rgw.control, allow rx pool={self._arg_parser.rgw_pool_prefix}.rgw.log, allow x pool={self._arg_parser.rgw_pool_prefix}.rgw.buckets.index",
+            "mds": "allow *",
+        }
 
         return caps, entity
 
@@ -971,6 +1035,10 @@ class RadosJSON:
             if "client.csi-rbd-node" != user_name:
                 self._arg_parser.restricted_auth_permission = True
             return self.get_rbd_node_caps_and_entity()
+        if "client.healthchecker" in user_name:
+            if "client.healthchecker" != user_name:
+                self._arg_parser.restricted_auth_permission = True
+            return self.get_defaultUser_caps_and_entity()
 
         raise ExecutionFailureException(
             f"no user found with user_name: {user_name}, "
@@ -1116,22 +1184,15 @@ class RadosJSON:
                     f"Using the data-pool: '{self._arg_parser.cephfs_data_pool_name}'\n"
                 )
 
-    def create_checkerKey(self):
+    def create_checkerKey(self, user):
+        caps, entity = self.get_caps_and_entity(user)
         cmd_json = {
             "prefix": "auth get-or-create",
-            "entity": self.run_as_user,
-            "caps": [
-                "mon",
-                self.MIN_USER_CAP_PERMISSIONS["mon"],
-                "mgr",
-                self.MIN_USER_CAP_PERMISSIONS["mgr"],
-                "osd",
-                self.MIN_USER_CAP_PERMISSIONS["osd"].format(
-                    self._arg_parser.rgw_pool_prefix
-                ),
-            ],
+            "entity": entity,
+            "caps": [cap for cap_list in list(caps.items()) for cap in cap_list],
             "format": "json",
         }
+
         if self._arg_parser.dry_run:
             return self.dry_run(
                 "ceph "
@@ -1141,6 +1202,11 @@ class RadosJSON:
                 + " "
                 + " ".join(cmd_json["caps"])
             )
+        # check if user already exist
+        user_key = self.check_user_exist(entity)
+        if user_key != "":
+            return user_key
+
         ret_val, json_out, err_msg = self._common_cmd_json_gen(cmd_json)
         # if there is an unsuccessful attempt,
         if ret_val != 0 or len(json_out) == 0:
@@ -1217,16 +1283,6 @@ class RadosJSON:
                 sys.stderr.write(err_msg)
                 return None, None, False, "-1"
 
-        # if it is python2, don't check for ceph version for adding `info=read` cap(rgw_validation)
-        if sys.version_info.major < 3:
-            jsonoutput = json.loads(output)
-            return (
-                jsonoutput["keys"][0]["access_key"],
-                jsonoutput["keys"][0]["secret_key"],
-                False,
-                "",
-            )
-
         # separately add info=read caps for rgw-endpoint ip validation
         info_cap_supported = True
         cmd = [
@@ -1270,17 +1326,31 @@ class RadosJSON:
             "",
         )
 
-    def validate_rbd_pool(self):
-        if not self.cluster.pool_exists(self._arg_parser.rbd_data_pool_name):
+    def validate_rbd_pool(self, pool_name):
+        if not self.cluster.pool_exists(pool_name):
             raise ExecutionFailureException(
-                f"The provided pool, '{self._arg_parser.rbd_data_pool_name}', does not exist"
+                f"The provided pool, '{pool_name}', does not exist"
             )
+
+    def init_rbd_pool(self, rbd_pool_name):
+        if isinstance(self.cluster, DummyRados):
+            return
+        ioctx = self.cluster.open_ioctx(rbd_pool_name)
+        rbd_inst = rbd.RBD()
+        rbd_inst.pool_init(ioctx, True)
 
     def validate_rados_namespace(self):
         rbd_pool_name = self._arg_parser.rbd_data_pool_name
+        if self._arg_parser.rbd_metadata_ec_pool_name:
+            rbd_pool_name = self._arg_parser.rbd_metadata_ec_pool_name
         rados_namespace = self._arg_parser.rados_namespace
         if rados_namespace == "":
             return
+        if rados_namespace.islower() == False:
+            raise ExecutionFailureException(
+                f"The provided rados Namespace, '{rados_namespace}', "
+                f"contains upper case"
+            )
         rbd_inst = rbd.RBD()
         ioctx = self.cluster.open_ioctx(rbd_pool_name)
         if rbd_inst.namespace_exists(ioctx, rados_namespace) is False:
@@ -1289,16 +1359,7 @@ class RadosJSON:
                 f"is not found in the pool '{rbd_pool_name}'"
             )
 
-    def validate_subvolume_group(self):
-        cephfs_filesystem_name = self._arg_parser.cephfs_filesystem_name
-        subvolume_group = self._arg_parser.subvolume_group
-        if subvolume_group == "":
-            return
-        if cephfs_filesystem_name == "":
-            raise ExecutionFailureException(
-                "if subvolume group is passed cephfs filesystem name is mandatory to pass"
-            )
-
+    def get_or_create_subvolume_group(self, subvolume_group, cephfs_filesystem_name):
         cmd = [
             "ceph",
             "fs",
@@ -1309,9 +1370,40 @@ class RadosJSON:
         ]
         try:
             _ = subprocess.check_output(cmd, stderr=subprocess.PIPE)
-        except subprocess.CalledProcessError as execErr:
+        except subprocess.CalledProcessError:
+            cmd = [
+                "ceph",
+                "fs",
+                "subvolumegroup",
+                "create",
+                cephfs_filesystem_name,
+                subvolume_group,
+            ]
+            try:
+                _ = subprocess.check_output(cmd, stderr=subprocess.PIPE)
+            except subprocess.CalledProcessError:
+                raise ExecutionFailureException(
+                    f"subvolume group {subvolume_group} is not able to get created"
+                )
+
+    def pin_subvolume(
+        self, subvolume_group, cephfs_filesystem_name, pin_type, pin_setting
+    ):
+        cmd = [
+            "ceph",
+            "fs",
+            "subvolumegroup",
+            "pin",
+            cephfs_filesystem_name,
+            subvolume_group,
+            pin_type,
+            pin_setting,
+        ]
+        try:
+            _ = subprocess.check_output(cmd, stderr=subprocess.PIPE)
+        except subprocess.CalledProcessError:
             raise ExecutionFailureException(
-                f"subvolume group {subvolume_group} passed doesn't exist"
+                f"subvolume group {subvolume_group} is not able to get pinned"
             )
 
     def get_rgw_fsid(self, base_url, verify):
@@ -1320,7 +1412,7 @@ class RadosJSON:
         rgw_endpoint = self._arg_parser.rgw_endpoint
         base_url = base_url + "://" + rgw_endpoint + "/admin/info?"
         params = {"format": "json"}
-        request_url = base_url + urllib.parse.urlencode(params)
+        request_url = base_url + urlencode(params)
 
         try:
             r = requests.get(
@@ -1415,23 +1507,97 @@ class RadosJSON:
                 return "-1"
         return ""
 
+    def convert_comma_separated_to_array(self, value):
+        return value.split(",")
+
+    def raise_exception_if_any_topology_flag_is_missing(self):
+        if (
+            (
+                self._arg_parser.topology_pools != ""
+                and (
+                    self._arg_parser.topology_failure_domain_label == ""
+                    or self._arg_parser.topology_failure_domain_values == ""
+                )
+            )
+            or (
+                self._arg_parser.topology_failure_domain_label != ""
+                and (
+                    self._arg_parser.topology_pools == ""
+                    or self._arg_parser.topology_failure_domain_values == ""
+                )
+            )
+            or (
+                self._arg_parser.topology_failure_domain_values != ""
+                and (
+                    self._arg_parser.topology_pools == ""
+                    or self._arg_parser.topology_failure_domain_label == ""
+                )
+            )
+        ):
+            raise ExecutionFailureException(
+                "provide all the topology flags --topology-pools, --topology-failure-domain-label, --topology-failure-domain-values"
+            )
+
+    def validate_topology_values(self, topology_pools, topology_fd):
+        if len(topology_pools) != len(topology_fd):
+            raise ExecutionFailureException(
+                f"The provided topology pools, '{topology_pools}', and "
+                f"topology failure domain, '{topology_fd}',"
+                f"are of different length, '{len(topology_pools)}' and '{len(topology_fd)}' respctively"
+            )
+        return
+
+    def validate_topology_rbd_pools(self, topology_rbd_pools):
+        for pool in topology_rbd_pools:
+            self.validate_rbd_pool(pool)
+
+    def init_topology_rbd_pools(self, topology_rbd_pools):
+        for pool in topology_rbd_pools:
+            self.init_rbd_pool(pool)
+
+    # this will return the final args that script uses to process
+    # the priority to set a particular value is,
+    # command-line-args > config.ini file values > default values
+    def getFinalUsedArgs(self):
+        argument = f"[Configurations]\n"
+        for arg in vars(self._arg_parser):
+            if str(getattr(self._arg_parser, arg)):
+                # python treats flag-name as flag_name internally, so converting back to flag-name,
+                # so we can get those values from config file
+                argValue = arg.replace("_", "-")
+                # do not add the config-file flag and also not add the boolean flags which are set to False
+                # because config.ini file treats boolean flags as True always
+                if (
+                    argValue != "config-file"
+                    and getattr(self._arg_parser, arg) != False
+                ):
+                    argument += f"{argValue} = {str(getattr(self._arg_parser, arg))}\n"
+        return argument
+
     def _gen_output_map(self):
         if self.out_map:
             return
-        self._arg_parser.cluster_name = (
-            self._arg_parser.cluster_name.lower()
+        # support legacy flag with upgrades
+        if self._arg_parser.cluster_name:
+            self._arg_parser.k8s_cluster_name = self._arg_parser.cluster_name
+        self._arg_parser.k8s_cluster_name = (
+            self._arg_parser.k8s_cluster_name.lower()
         )  # always convert cluster name to lowercase characters
-        self.validate_rbd_pool()
+        self.validate_rbd_pool(self._arg_parser.rbd_data_pool_name)
+        self.init_rbd_pool(self._arg_parser.rbd_data_pool_name)
         self.validate_rados_namespace()
-        self.validate_subvolume_group()
-        self._excluded_keys.add("CLUSTER_NAME")
+        self._excluded_keys.add("K8S_CLUSTER_NAME")
         self.get_cephfs_data_pool_details()
+        # double string needed for upstream exports of flags
+        self.out_map["ARGS"] = f'"{self.getFinalUsedArgs()}"'
         self.out_map["NAMESPACE"] = self._arg_parser.namespace
-        self.out_map["CLUSTER_NAME"] = self._arg_parser.cluster_name
+        self.out_map["K8S_CLUSTER_NAME"] = self._arg_parser.k8s_cluster_name
         self.out_map["ROOK_EXTERNAL_FSID"] = self.get_fsid()
         self.out_map["ROOK_EXTERNAL_USERNAME"] = self.run_as_user
         self.out_map["ROOK_EXTERNAL_CEPH_MON_DATA"] = self.get_ceph_external_mon_data()
-        self.out_map["ROOK_EXTERNAL_USER_SECRET"] = self.create_checkerKey()
+        self.out_map["ROOK_EXTERNAL_USER_SECRET"] = self.create_checkerKey(
+            "client.healthchecker"
+        )
         self.out_map["ROOK_EXTERNAL_DASHBOARD_LINK"] = self.get_ceph_dashboard_link()
         (
             self.out_map["CSI_RBD_NODE_SECRET"],
@@ -1463,6 +1629,25 @@ class RadosJSON:
                 self.out_map["CSI_CEPHFS_PROVISIONER_SECRET"],
                 self.out_map["CSI_CEPHFS_PROVISIONER_SECRET_NAME"],
             ) = self.create_cephCSIKeyring_user("client.csi-cephfs-provisioner")
+            # create the default "csi" subvolumegroup
+            self.get_or_create_subvolume_group(
+                "csi", self._arg_parser.cephfs_filesystem_name
+            )
+            # pin the default "csi" subvolumegroup
+            self.pin_subvolume(
+                "csi", self._arg_parser.cephfs_filesystem_name, "distributed", "1"
+            )
+            if self.out_map["SUBVOLUME_GROUP"]:
+                self.get_or_create_subvolume_group(
+                    self._arg_parser.subvolume_group,
+                    self._arg_parser.cephfs_filesystem_name,
+                )
+                self.pin_subvolume(
+                    self._arg_parser.subvolume_group,
+                    self._arg_parser.cephfs_filesystem_name,
+                    "distributed",
+                    "1",
+                )
         self.out_map["RGW_TLS_CERT"] = ""
         self.out_map["MONITORING_ENDPOINT"] = ""
         self.out_map["MONITORING_ENDPOINT_PORT"] = ""
@@ -1475,6 +1660,33 @@ class RadosJSON:
         self.out_map["RBD_METADATA_EC_POOL_NAME"] = (
             self.validate_rbd_metadata_ec_pool_name()
         )
+        self.out_map["TOPOLOGY_POOLS"] = self._arg_parser.topology_pools
+        self.out_map["TOPOLOGY_FAILURE_DOMAIN_LABEL"] = (
+            self._arg_parser.topology_failure_domain_label
+        )
+        self.out_map["TOPOLOGY_FAILURE_DOMAIN_VALUES"] = (
+            self._arg_parser.topology_failure_domain_values
+        )
+        if (
+            self._arg_parser.topology_pools != ""
+            and self._arg_parser.topology_failure_domain_label != ""
+            and self._arg_parser.topology_failure_domain_values != ""
+        ):
+            self.validate_topology_values(
+                self.convert_comma_separated_to_array(self.out_map["TOPOLOGY_POOLS"]),
+                self.convert_comma_separated_to_array(
+                    self.out_map["TOPOLOGY_FAILURE_DOMAIN_VALUES"]
+                ),
+            )
+            self.validate_topology_rbd_pools(
+                self.convert_comma_separated_to_array(self.out_map["TOPOLOGY_POOLS"])
+            )
+            self.init_topology_rbd_pools(
+                self.convert_comma_separated_to_array(self.out_map["TOPOLOGY_POOLS"])
+            )
+        else:
+            self.raise_exception_if_any_topology_flag_is_missing()
+
         self.out_map["RGW_POOL_PREFIX"] = self._arg_parser.rgw_pool_prefix
         self.out_map["RGW_ENDPOINT"] = ""
         if self._arg_parser.rgw_endpoint:
@@ -1538,6 +1750,13 @@ class RadosJSON:
         if self._arg_parser.dry_run:
             return ""
         json_out = [
+            {
+                "name": "external-cluster-user-command",
+                "kind": "ConfigMap",
+                "data": {
+                    "args": self.out_map["ARGS"],
+                },
+            },
             {
                 "name": "rook-ceph-mon-endpoints",
                 "kind": "ConfigMap",
@@ -1654,24 +1873,25 @@ class RadosJSON:
                     },
                 }
             )
-        if self.out_map["RBD_METADATA_EC_POOL_NAME"]:
+        # if 'RADOS_NAMESPACE' exists, then only add the "RADOS_NAMESPACE" namespace
+        if (
+            self.out_map["RADOS_NAMESPACE"]
+            and self.out_map["RESTRICTED_AUTH_PERMISSION"]
+            and not self.out_map["RBD_METADATA_EC_POOL_NAME"]
+        ):
             json_out.append(
                 {
-                    "name": "ceph-rbd",
-                    "kind": "StorageClass",
+                    "name": "rados-namespace",
+                    "kind": "CephBlockPoolRadosNamespace",
                     "data": {
-                        "dataPool": self.out_map["RBD_POOL_NAME"],
-                        "pool": self.out_map["RBD_METADATA_EC_POOL_NAME"],
-                        "csi.storage.k8s.io/provisioner-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
-                        "csi.storage.k8s.io/controller-expand-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
-                        "csi.storage.k8s.io/node-stage-secret-name": f"rook-{self.out_map['CSI_RBD_NODE_SECRET_NAME']}",
+                        "radosNamespaceName": self.out_map["RADOS_NAMESPACE"],
+                        "pool": self.out_map["RBD_POOL_NAME"],
                     },
                 }
             )
-        else:
             json_out.append(
                 {
-                    "name": "ceph-rbd",
+                    "name": f"ceph-rbd-rados-namespace-{self.out_map['RADOS_NAMESPACE']}",
                     "kind": "StorageClass",
                     "data": {
                         "pool": self.out_map["RBD_POOL_NAME"],
@@ -1681,6 +1901,61 @@ class RadosJSON:
                     },
                 }
             )
+        else:
+            if self.out_map["RBD_METADATA_EC_POOL_NAME"]:
+                json_out.append(
+                    {
+                        "name": "ceph-rbd",
+                        "kind": "StorageClass",
+                        "data": {
+                            "dataPool": self.out_map["RBD_POOL_NAME"],
+                            "pool": self.out_map["RBD_METADATA_EC_POOL_NAME"],
+                            "csi.storage.k8s.io/provisioner-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
+                            "csi.storage.k8s.io/controller-expand-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
+                            "csi.storage.k8s.io/node-stage-secret-name": f"rook-{self.out_map['CSI_RBD_NODE_SECRET_NAME']}",
+                        },
+                    }
+                )
+            else:
+                json_out.append(
+                    {
+                        "name": "ceph-rbd",
+                        "kind": "StorageClass",
+                        "data": {
+                            "pool": self.out_map["RBD_POOL_NAME"],
+                            "csi.storage.k8s.io/provisioner-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
+                            "csi.storage.k8s.io/controller-expand-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
+                            "csi.storage.k8s.io/node-stage-secret-name": f"rook-{self.out_map['CSI_RBD_NODE_SECRET_NAME']}",
+                        },
+                    }
+                )
+
+        # if 'TOPOLOGY_POOLS', 'TOPOLOGY_FAILURE_DOMAIN_LABEL', 'TOPOLOGY_FAILURE_DOMAIN_VALUES'  exists,
+        # then only add 'topology' StorageClass
+        if (
+            self.out_map["TOPOLOGY_POOLS"]
+            and self.out_map["TOPOLOGY_FAILURE_DOMAIN_LABEL"]
+            and self.out_map["TOPOLOGY_FAILURE_DOMAIN_VALUES"]
+        ):
+            json_out.append(
+                {
+                    "name": "ceph-rbd-topology",
+                    "kind": "StorageClass",
+                    "data": {
+                        "topologyFailureDomainLabel": self.out_map[
+                            "TOPOLOGY_FAILURE_DOMAIN_LABEL"
+                        ],
+                        "topologyFailureDomainValues": self.out_map[
+                            "TOPOLOGY_FAILURE_DOMAIN_VALUES"
+                        ],
+                        "topologyPools": self.out_map["TOPOLOGY_POOLS"],
+                        "csi.storage.k8s.io/provisioner-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
+                        "csi.storage.k8s.io/controller-expand-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
+                        "csi.storage.k8s.io/node-stage-secret-name": f"rook-{self.out_map['CSI_RBD_NODE_SECRET_NAME']}",
+                    },
+                }
+            )
+
         # if 'CEPHFS_FS_NAME' exists, then only add 'cephfs' StorageClass
         if self.out_map["CEPHFS_FS_NAME"]:
             json_out.append(
@@ -1738,11 +2013,27 @@ class RadosJSON:
             "client.csi-cephfs-provisioner",
             "client.csi-rbd-node",
             "client.csi-rbd-provisioner",
+            "client.healthchecker",
         ]
         if self.run_as_user != "" and self.run_as_user not in users:
             users.append(self.run_as_user)
         for user in users:
             self.upgrade_user_permissions(user)
+
+    def get_rgw_pool_name_during_upgrade(self, user, caps):
+        if user == "client.healthchecker":
+            # when admin has not provided rgw pool name during upgrade,
+            # get the rgw pool name from client.healthchecker user which was used during connection
+            if not self._arg_parser.rgw_pool_prefix:
+                # To get value 'default' which is rgw pool name from 'allow rwx pool=default.rgw.meta'
+                pattern = r"pool=(.*?)\.rgw\.meta"
+                match = re.search(pattern, caps)
+                if match:
+                    self._arg_parser.rgw_pool_prefix = match.group(1)
+                else:
+                    raise ExecutionFailureException(
+                        "failed to get rgw pool name for upgrade"
+                    )
 
     def upgrade_user_permissions(self, user):
         # check whether the given user exists or not
@@ -1752,6 +2043,7 @@ class RadosJSON:
             print(f"user {user} not found for upgrading.")
             return
         existing_caps = json_out[0]["caps"]
+        self.get_rgw_pool_name_during_upgrade(user, str(existing_caps))
         new_cap, _ = self.get_caps_and_entity(user)
         cap_keys = ["mon", "mgr", "osd", "mds"]
         caps = []

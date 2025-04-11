@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Sourced from https://raw.githubusercontent.com/kubeovn/kube-ovn/v1.12.21/dist/images/install.sh
+# Sourced from https://raw.githubusercontent.com/kubeovn/kube-ovn/v1.13.8/dist/images/install.sh
 # Changelog:
 # - change cni config directory to $SNAP_DATA/args/cni-network
 # - change cni bin directory to $SNAP_DATA/opt/cni/bin
@@ -12,6 +12,7 @@ set -euo pipefail
 # - template variable __REPLICAS__ for the ovn db replicas
 # - (2022-10-12) remove PodSecurityPolicy
 # - (2022-10-12) remove ovn-config ConfigMap
+# - (2025-04-09) add configurable POD_CIDR, POD_GATEWAY, SVC_CIDR, and JOIN_CIDR
 
 KUBECTL="$SNAP/microk8s-kubectl.wrapper"
 
@@ -36,8 +37,10 @@ ENABLE_LB_SVC=${ENABLE_LB_SVC:-false}
 ENABLE_NAT_GW=${ENABLE_NAT_GW:-true}
 ENABLE_KEEP_VM_IP=${ENABLE_KEEP_VM_IP:-true}
 ENABLE_ARP_DETECT_IP_CONFLICT=${ENABLE_ARP_DETECT_IP_CONFLICT:-true}
+ENABLE_METRICS=${ENABLE_METRICS:-true}
+# comma-separated string of nodelocal DNS ip addresses
 NODE_LOCAL_DNS_IP=${NODE_LOCAL_DNS_IP:-}
-ENABLE_IC=${ENABLE_IC:-$($KUBECTL get node --show-labels | grep -q "ovn.kubernetes.io/ic-gw" && echo true || echo false)}
+ENABLE_IC=${ENABLE_IC:-$($KUBECTL get node --show-labels | grep -qw "ovn.kubernetes.io/ic-gw" && echo true || echo false)}
 # exchange link names of OVS bridge and the provider nic
 # in the default provider-network
 EXCHANGE_LINK_NAME=${EXCHANGE_LINK_NAME:-false}
@@ -52,41 +55,56 @@ ENABLE_TPROXY=${ENABLE_TPROXY:-false}
 OVS_VSCTL_CONCURRENCY=${OVS_VSCTL_CONCURRENCY:-100}
 ENABLE_COMPACT=${ENABLE_COMPACT:-false}
 SECURE_SERVING=${SECURE_SERVING:-false}
+ENABLE_OVN_IPSEC=${ENABLE_OVN_IPSEC:-false}
+ENABLE_ANP=${ENABLE_ANP:-false}
+SET_VXLAN_TX_OFF=${SET_VXLAN_TX_OFF:-false}
+OVSDB_CON_TIMEOUT=${OVSDB_CON_TIMEOUT:-3}
+OVSDB_INACTIVITY_TIMEOUT=${OVSDB_INACTIVITY_TIMEOUT:-10}
+ENABLE_LIVE_MIGRATION_OPTIMIZE=${ENABLE_LIVE_MIGRATION_OPTIMIZE:-true}
+
+PROBE_HTTP_SCHEME="HTTP"
+if [ "$SECURE_SERVING" = "true" ]; then
+  PROBE_HTTP_SCHEME="HTTPS"
+fi
 
 # debug
 DEBUG_WRAPPER=${DEBUG_WRAPPER:-}
+RUN_AS_USER=65534 # run as nobody
+if [ "$ENABLE_OVN_IPSEC" = "true" -o -n "$DEBUG_WRAPPER" ]; then
+  RUN_AS_USER=0
+fi
 
 KUBELET_DIR="/var/snap/microk8s/current/var/lib/kubelet"
 LOG_DIR="/var/snap/microk8s/common/var/log"
 ORIGIN_DIR="/var/snap/microk8s/current/etc/origin"
 
-CNI_CONF_DIR="/var/snap/microk8s/current/etc/cni/net.d"
+CNI_CONF_DIR="/var/snap/microk8s/current/args/cni-network"
 CNI_BIN_DIR="/var/snap/microk8s/current/opt/cni/bin"
 
 REGISTRY="docker.io/kubeovn"
 VPC_NAT_IMAGE="vpc-nat-gateway"
-VERSION="v1.12.21"
+VERSION="v1.13.8"
 IMAGE_PULL_POLICY="IfNotPresent"
-POD_CIDR="10.1.0.0/16" # Do NOT overlap with NODE/SVC/JOIN CIDR
-POD_GATEWAY="10.1.0.1"
-SVC_CIDR="10.152.183.0/24"             # Do NOT overlap with NODE/POD/JOIN CIDR
-JOIN_CIDR="100.64.0.0/16"              # Do NOT overlap with NODE/POD/SVC CIDR
+POD_CIDR="${POD_CIDR:-10.1.0.0/16}"     # Do NOT overlap with NODE/SVC/JOIN CIDR
+POD_GATEWAY="${POD_GATEWAY:-10.1.0.1}"
+SVC_CIDR="${SVC_CIDR:-10.152.183.0/24}" # Do NOT overlap with NODE/POD/JOIN CIDR
+JOIN_CIDR="${JOIN_CIDR:-100.64.0.0/16}" # Do NOT overlap with NODE/POD/SVC CIDR
 PINGER_EXTERNAL_ADDRESS="1.1.1.1"      # Pinger check external ip probe
 PINGER_EXTERNAL_DOMAIN="canonical.com" # Pinger check external domain probe
 SVC_YAML_IPFAMILYPOLICY=""
 if [ "$IPV6" = "true" ]; then
-  POD_CIDR="fd00:10:16::/112" # Do NOT overlap with NODE/SVC/JOIN CIDR
-  POD_GATEWAY="fd00:10:16::1"
-  SVC_CIDR="fd00:10:96::/112"   # Do NOT overlap with NODE/POD/JOIN CIDR
-  JOIN_CIDR="fd00:100:64::/112" # Do NOT overlap with NODE/POD/SVC CIDR
+  POD_CIDR="${POD_CIDR:-fd00:10:16::/112}"    # Do NOT overlap with NODE/SVC/JOIN CIDR
+  POD_GATEWAY="${POD_GATEWAY:-fd00:10:16::1}"
+  SVC_CIDR="${SVC_CIDR:-fd00:10:96::/112}"    # Do NOT overlap with NODE/POD/JOIN CIDR
+  JOIN_CIDR="${JOIN_CIDR:-fd00:100:64::/112}" # Do NOT overlap with NODE/POD/SVC CIDR
   PINGER_EXTERNAL_ADDRESS="2400:3200::1"
   PINGER_EXTERNAL_DOMAIN="google.com."
 fi
 if [ "$DUAL_STACK" = "true" ]; then
-  POD_CIDR="10.1.0.0/16,fd00:10:16::/112" # Do NOT overlap with NODE/SVC/JOIN CIDR
-  POD_GATEWAY="10.1.0.1,fd00:10:16::1"
-  SVC_CIDR="10.152.183.0/24,fd00:10:96::/112" # Do NOT overlap with NODE/POD/JOIN CIDR
-  JOIN_CIDR="100.64.0.0/16,fd00:100:64::/112" # Do NOT overlap with NODE/POD/SVC CIDR
+  POD_CIDR="${POD_CIDR:-10.1.0.0/16,fd00:10:16::/112}"      # Do NOT overlap with NODE/SVC/JOIN CIDR
+  POD_GATEWAY="${POD_GATEWAY:-10.1.0.1,fd00:10:16::1}"
+  SVC_CIDR="${SVC_CIDR:-10.152.183.0/24,fd00:10:96::/112}"  # Do NOT overlap with NODE/POD/JOIN CIDR
+  JOIN_CIDR="${JOIN_CIDR:-100.64.0.0/16,fd00:100:64::/112}" # Do NOT overlap with NODE/POD/SVC CIDR
   PINGER_EXTERNAL_ADDRESS="114.114.114.114,2400:3200::1"
   PINGER_EXTERNAL_DOMAIN="google.com."
   SVC_YAML_IPFAMILYPOLICY="ipFamilyPolicy: PreferDualStack"
@@ -105,6 +123,8 @@ VLAN_ID="100"
 
 if [ "$ENABLE_VLAN" = "true" ]; then
   NETWORK_TYPE="vlan"
+  # ENABLE_EIP_SNAT is only supported when you use vpc, vlan not support
+  ENABLE_EIP_SNAT=${ENABLE_EIP_SNAT:-false}
   if [ "$VLAN_NIC" != "" ]; then
     VLAN_INTERFACE_NAME="$VLAN_NIC"
   fi
@@ -121,8 +141,6 @@ DPDK_CPU="1000m"  # Default CPU configuration for if --dpdk-cpu flag is not incl
 DPDK_MEMORY="2Gi" # Default Memory configuration for it --dpdk-memory flag is not included
 
 # performance
-MODULES="kube_ovn_fastpath.ko"
-RPMS="openvswitch-kmod"
 GC_INTERVAL=360
 INSPECT_INTERVAL=20
 
@@ -205,7 +223,15 @@ if [[ $ENABLE_SSL = "true" ]]; then
   echo "[Step 0/6] Generate SSL key and cert"
   exist=$($KUBECTL get secret -n kube-system kube-ovn-tls --ignore-not-found)
   if [[ $exist == "" ]]; then
-    docker run --rm -v "$PWD":/etc/ovn $REGISTRY/kube-ovn:$VERSION bash generate-ssl.sh
+    if command -v docker &> /dev/null; then
+      docker run --rm -v "$PWD":/etc/ovn $REGISTRY/kube-ovn:$VERSION bash generate-ssl.sh
+    elif command -v ctr &> /dev/null; then
+      ctr image pull $REGISTRY/kube-ovn:$VERSION
+      ctr run --rm --mount type=bind,src="$PWD",dst=/etc/ovn,options=rbind:rw $REGISTRY/kube-ovn:$VERSION 0 bash generate-ssl.sh
+    else
+      echo "ERROR: No docker or ctr found"
+      exit 1
+    fi
     $KUBECTL create secret generic -n kube-system kube-ovn-tls --from-file=cacert=cacert.pem --from-file=cert=ovn-cert.pem --from-file=key=ovn-privkey.pem
     rm -rf cacert.pem ovn-cert.pem ovn-privkey.pem ovn-req.pem
   fi
@@ -238,7 +264,7 @@ addresses=$($KUBECTL get no -lkube-ovn/role=master --no-headers -o wide | awk '{
 count=$($KUBECTL get no -lkube-ovn/role=master --no-headers | wc -l)
 echo "Install OVN DB in $addresses"
 
-cat <<EOF >kube-ovn-crd.yaml
+cat <<EOF > kube-ovn-crd.yaml
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -744,6 +770,31 @@ spec:
                     type: string
                 qosPolicy:
                   type: string
+                bgpSpeaker:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                    asn:
+                      type: integer
+                    remoteAsn:
+                      type: integer
+                    neighbors:
+                      type: array
+                      items:
+                        type: string
+                    holdTime:
+                      type: string
+                    routerId:
+                      type: string
+                    password:
+                      type: string
+                    enableGracefulRestart:
+                      type: boolean
+                    extraArgs:
+                      type: array
+                      items:
+                        type: string
                 tolerations:
                   type: array
                   items:
@@ -1432,6 +1483,9 @@ spec:
       - jsonPath: .status.ready
         name: Ready
         type: boolean
+      - jsonPath: .spec.externalSubnet
+        name: ExternalSubnet
+        type: string
       schema:
         openAPIV3Schema:
           type: object
@@ -1509,8 +1563,14 @@ spec:
       - jsonPath: .status.v4Eip
         name: V4Eip
         type: string
+      - jsonPath: .status.v6Eip
+        name: V6Eip
+        type: string
       - jsonPath: .status.v4Ip
         name: V4Ip
+        type: string
+      - jsonPath: .status.v6Ip
+        name: V6Ip
         type: string
       - jsonPath: .status.ready
         name: Ready
@@ -1532,7 +1592,11 @@ spec:
                   type: boolean
                 v4Eip:
                   type: string
+                v6Eip:
+                  type: string
                 v4Ip:
+                  type: string
+                v6Ip:
                   type: string
                 vpc:
                   type: string
@@ -1566,6 +1630,8 @@ spec:
                   type: string
                 v4Ip:
                   type: string
+                v6Ip:
+                  type: string
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -1594,8 +1660,14 @@ spec:
       - jsonPath: .status.v4Eip
         name: V4Eip
         type: string
+      - jsonPath: .status.v6Eip
+        name: V6Eip
+        type: string
       - jsonPath: .status.v4IpCidr
         name: V4IpCidr
+        type: string
+      - jsonPath: .status.v6IpCidr
+        name: V6IpCidr
         type: string
       - jsonPath: .status.ready
         name: Ready
@@ -1611,7 +1683,11 @@ spec:
                   type: boolean
                 v4Eip:
                   type: string
+                v6Eip:
+                  type: string
                 v4IpCidr:
+                  type: string
+                v6IpCidr:
                   type: string
                 vpc:
                   type: string
@@ -1644,6 +1720,8 @@ spec:
                 vpc:
                   type: string
                 v4IpCidr:
+                  type: string
+                v6IpCidr:
                   type: string
 ---
 apiVersion: apiextensions.k8s.io/v1
@@ -1679,8 +1757,14 @@ spec:
         - jsonPath: .status.v4Eip
           name: V4Eip
           type: string
+        - jsonPath: .status.v6Eip
+          name: V6Eip
+          type: string
         - jsonPath: .status.v4Ip
           name: V4Ip
+          type: string
+        - jsonPath: .status.v6Ip
+          name: V6Ip
           type: string
         - jsonPath: .status.internalPort
           name: InternalPort
@@ -1695,64 +1779,70 @@ spec:
           name: Ready
           type: boolean
       schema:
-          openAPIV3Schema:
-            type: object
-            properties:
-              status:
-                type: object
-                properties:
-                  ready:
-                    type: boolean
-                  v4Eip:
-                    type: string
-                  v4Ip:
-                    type: string
-                  vpc:
-                    type: string
-                  externalPort:
-                    type: string
-                  internalPort:
-                    type: string
-                  protocol:
-                    type: string
-                  ipName:
-                    type: string
-                  conditions:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        type:
-                          type: string
-                        status:
-                          type: string
-                        reason:
-                          type: string
-                        message:
-                          type: string
-                        lastUpdateTime:
-                          type: string
-                        lastTransitionTime:
-                          type: string
-              spec:
-                type: object
-                properties:
-                  ovnEip:
-                    type: string
-                  ipType:
-                    type: string
-                  ipName:
-                    type: string
-                  externalPort:
-                    type: string
-                  internalPort:
-                    type: string
-                  protocol:
-                    type: string
-                  vpc:
-                    type: string
-                  v4Ip:
-                    type: string
+        openAPIV3Schema:
+          type: object
+          properties:
+            status:
+              type: object
+              properties:
+                ready:
+                  type: boolean
+                v4Eip:
+                  type: string
+                v6Eip:
+                  type: string
+                v4Ip:
+                  type: string
+                v6Ip:
+                  type: string
+                vpc:
+                  type: string
+                externalPort:
+                  type: string
+                internalPort:
+                  type: string
+                protocol:
+                  type: string
+                ipName:
+                  type: string
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      reason:
+                        type: string
+                      message:
+                        type: string
+                      lastUpdateTime:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+            spec:
+              type: object
+              properties:
+                ovnEip:
+                  type: string
+                ipType:
+                  type: string
+                ipName:
+                  type: string
+                externalPort:
+                  type: string
+                internalPort:
+                  type: string
+                protocol:
+                  type: string
+                vpc:
+                  type: string
+                v4Ip:
+                  type: string
+                v6Ip:
+                  type: string
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -1780,12 +1870,17 @@ spec:
         - jsonPath: .spec.namespaces
           name: Namespaces
           type: string
+        - jsonPath: .status.defaultLogicalSwitch
+          name: DefaultSubnet
+          type: string
       name: v1
       schema:
         openAPIV3Schema:
           properties:
             spec:
               properties:
+                defaultSubnet:
+                  type: string
                 enableExternal:
                   type: boolean
                 enableBfd:
@@ -2044,6 +2139,10 @@ spec:
                   type: string
                 pmac:
                   type: string
+                selector:
+                  type: array
+                  items:
+                    type: string
                 conditions:
                   type: array
                   items:
@@ -2086,6 +2185,10 @@ spec:
                   type: string
                 parentV6ip:
                   type: string
+                selector:
+                  type: array
+                  items:
+                    type: string
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -2106,6 +2209,9 @@ spec:
       - name: Vpc
         type: string
         jsonPath: .spec.vpc
+      - name: Vlan
+        type: string
+        jsonPath: .spec.vlan
       - name: Protocol
         type: string
         jsonPath: .spec.protocol
@@ -2171,7 +2277,13 @@ spec:
                   type: string
                 u2oInterconnectionIP:
                   type: string
+                u2oInterconnectionMAC:
+                  type: string
                 u2oInterconnectionVPC:
+                  type: string
+                mcastQuerierIP:
+                  type: string
+                mcastQuerierMAC:
                   type: string
                 v4usingIPrange:
                   type: string
@@ -2298,6 +2410,8 @@ spec:
                   type: boolean
                 ipv6RAConfigs:
                   type: string
+                allowEWTraffic:
+                  type: boolean
                 acls:
                   type: array
                   items:
@@ -2351,6 +2465,28 @@ spec:
                   type: boolean
                 routeTable:
                   type: string
+                namespaceSelectors:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      matchLabels:
+                        type: object
+                        additionalProperties:
+                          type: string
+                      matchExpressions:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            key:
+                              type: string
+                            operator:
+                              type: string
+                            values:
+                              type: array
+                              items:
+                                type: string
   scope: Cluster
   names:
     plural: subnets
@@ -2828,7 +2964,7 @@ spec:
                   x-kubernetes-list-type: map
 EOF
 
-cat <<EOF >ovn-ovs-sa.yaml
+cat <<EOF > ovn-ovs-sa.yaml
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -2879,7 +3015,7 @@ subjects:
     namespace: kube-system
 EOF
 
-cat <<EOF >kube-ovn-sa.yaml
+cat <<EOF > kube-ovn-sa.yaml
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -2995,6 +3131,7 @@ rules:
       - get
       - list
       - update
+      - patch
       - create
       - delete
       - watch
@@ -3043,6 +3180,15 @@ rules:
       - get
       - list
   - apiGroups:
+      - "policy.networking.k8s.io"
+    resources:
+      - adminnetworkpolicies
+      - baselineadminnetworkpolicies
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
       - authentication.k8s.io
     resources:
       - tokenreviews
@@ -3054,6 +3200,51 @@ rules:
       - subjectaccessreviews
     verbs:
       - create
+  - apiGroups:
+      - "certificates.k8s.io"
+    resources:
+      - "certificatesigningrequests"
+    verbs:
+      - "get"
+      - "list"
+      - "watch"
+  - apiGroups:
+    - certificates.k8s.io
+    resources:
+    - certificatesigningrequests/status
+    - certificatesigningrequests/approval
+    verbs:
+    - update
+  - apiGroups:
+    - ""
+    resources:
+    - secrets
+    verbs:
+    - get
+    - create
+  - apiGroups:
+    - certificates.k8s.io
+    resourceNames:
+    - kubeovn.io/signer
+    resources:
+    - signers
+    verbs:
+    - approve
+    - sign
+  - apiGroups:
+      - kubevirt.io
+    resources:
+      - virtualmachineinstancemigrations
+    verbs:
+      - "list"
+      - "watch"
+      - "get"
+  - apiGroups:
+      - apiextensions.k8s.io
+    resources:
+      - customresourcedefinitions
+    verbs:
+      - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -3083,7 +3274,7 @@ subjects:
     namespace: kube-system
 EOF
 
-cat <<EOF >kube-ovn-cni-sa.yaml
+cat <<EOF > kube-ovn-cni-sa.yaml
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -3115,8 +3306,8 @@ rules:
       - ovn-eips
       - ovn-eips/status
       - nodes
+      - nodes/status
       - pods
-      - vlans
     verbs:
       - get
       - list
@@ -3157,6 +3348,22 @@ rules:
       - subjectaccessreviews
     verbs:
       - create
+  - apiGroups:
+      - "certificates.k8s.io"
+    resources:
+      - "certificatesigningrequests"
+    verbs:
+      - "create"
+      - "get"
+      - "list"
+      - "watch"
+      - "delete"
+  - apiGroups:
+      - ""
+    resources:
+      - "secrets"
+    verbs:
+      - "get"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -3186,7 +3393,7 @@ subjects:
     namespace: kube-system
 EOF
 
-cat <<EOF >kube-ovn-app-sa.yaml
+cat <<EOF > kube-ovn-app-sa.yaml
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -3262,7 +3469,7 @@ $KUBECTL apply -f kube-ovn-sa.yaml
 $KUBECTL apply -f kube-ovn-cni-sa.yaml
 $KUBECTL apply -f kube-ovn-app-sa.yaml
 
-cat <<EOF >ovn.yaml
+cat <<EOF > ovn.yaml
 ---
 kind: Service
 apiVersion: v1
@@ -3362,14 +3569,36 @@ spec:
       priorityClassName: system-cluster-critical
       serviceAccountName: ovn-ovs
       hostNetwork: true
+      initContainers:
+        - name: hostpath-init
+          image: "$REGISTRY/kube-ovn:$VERSION"
+          command:
+            - sh
+            - -c
+            - "chown -R nobody: /var/run/ovn /etc/ovn /var/log/ovn"
+          securityContext:
+            allowPrivilegeEscalation: true
+            capabilities:
+              drop:
+                - ALL
+            privileged: true
+            runAsUser: 0
+          volumeMounts:
+            - mountPath: /var/run/ovn
+              name: host-run-ovn
+            - mountPath: /etc/ovn
+              name: host-config-ovn
+            - mountPath: /var/log/ovn
+              name: host-log-ovn
       containers:
         - name: ovn-central
           image: "$REGISTRY/kube-ovn:$VERSION"
           imagePullPolicy: $IMAGE_PULL_POLICY
           command:
+          - bash
           - /kube-ovn/start-db.sh
           securityContext:
-            runAsUser: 0
+            runAsUser: ${RUN_AS_USER}
             privileged: false
             capabilities:
               add:
@@ -3415,22 +3644,13 @@ spec:
               cpu: 300m
               memory: 300Mi
             limits:
-              cpu: 3
+              cpu: 4
               memory: 4Gi
           volumeMounts:
-            - mountPath: /var/run/openvswitch
-              name: host-run-ovs
             - mountPath: /var/run/ovn
               name: host-run-ovn
-            - mountPath: /sys
-              name: host-sys
-              readOnly: true
-            - mountPath: /etc/openvswitch
-              name: host-config-openvswitch
             - mountPath: /etc/ovn
               name: host-config-ovn
-            - mountPath: /var/log/openvswitch
-              name: host-log-ovs
             - mountPath: /var/log/ovn
               name: host-log-ovn
             - mountPath: /etc/localtime
@@ -3458,24 +3678,12 @@ spec:
         kubernetes.io/os: "linux"
         kube-ovn/role: "master"
       volumes:
-        - name: host-run-ovs
-          hostPath:
-            path: /run/openvswitch
         - name: host-run-ovn
           hostPath:
             path: /run/ovn
-        - name: host-sys
-          hostPath:
-            path: /sys
-        - name: host-config-openvswitch
-          hostPath:
-            path: $ORIGIN_DIR/openvswitch
         - name: host-config-ovn
           hostPath:
             path: $ORIGIN_DIR/ovn
-        - name: host-log-ovs
-          hostPath:
-            path: $LOG_DIR/openvswitch
         - name: host-log-ovn
           hostPath:
             path: $LOG_DIR/ovn
@@ -3491,7 +3699,7 @@ EOF
 $KUBECTL apply -f ovn.yaml
 
 if $DPDK; then
-  cat <<EOF >ovs-ovn-ds.yaml
+  cat <<EOF > ovs-ovn-ds.yaml
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
@@ -3659,7 +3867,7 @@ spec:
 EOF
 
 else
-  cat <<EOF >ovs-ovn-ds.yaml
+  cat <<EOF > ovs-ovn-ds.yaml
 ---
 kind: DaemonSet
 apiVersion: apps/v1
@@ -3696,6 +3904,35 @@ spec:
       serviceAccountName: ovn-ovs
       hostNetwork: true
       hostPID: true
+      initContainers:
+        - name: hostpath-init
+          image: "$REGISTRY/kube-ovn:$VERSION"
+          command:
+            - sh
+            - -xec
+            - |
+              chown -R nobody: /var/run/ovn /var/log/ovn /etc/openvswitch /var/run/openvswitch /var/log/openvswitch
+              iptables -V
+          securityContext:
+            allowPrivilegeEscalation: true
+            capabilities:
+              drop:
+                - ALL
+            privileged: true
+            runAsUser: 0
+          volumeMounts:
+            - mountPath: /usr/local/sbin
+              name: usr-local-sbin
+            - mountPath: /var/log/ovn
+              name: host-log-ovn
+            - mountPath: /var/run/ovn
+              name: host-run-ovn
+            - mountPath: /etc/openvswitch
+              name: host-config-openvswitch
+            - mountPath: /var/run/openvswitch
+              name: host-run-ovs
+            - mountPath: /var/log/openvswitch
+              name: host-log-ovs
       containers:
         - name: openvswitch
           image: "$REGISTRY/kube-ovn:$VERSION"
@@ -3703,7 +3940,7 @@ spec:
           command:
           - /kube-ovn/start-ovs.sh
           securityContext:
-            runAsUser: 0
+            runAsUser: ${RUN_AS_USER}
             privileged: false
             capabilities:
               add:
@@ -3711,6 +3948,7 @@ spec:
                 - NET_BIND_SERVICE
                 - SYS_MODULE
                 - SYS_NICE
+                - SYS_ADMIN
           env:
             - name: ENABLE_SSL
               value: "$ENABLE_SSL"
@@ -3743,9 +3981,8 @@ spec:
             - name: OVN_REMOTE_OPENFLOW_INTERVAL
               value: "180"
           volumeMounts:
-            - mountPath: /var/run/netns
-              name: host-ns
-              mountPropagation: HostToContainer
+            - mountPath: /usr/local/sbin
+              name: usr-local-sbin
             - mountPath: /lib/modules
               name: host-modules
               readOnly: true
@@ -3753,13 +3990,8 @@ spec:
               name: host-run-ovs
             - mountPath: /var/run/ovn
               name: host-run-ovn
-            - mountPath: /sys
-              name: host-sys
-              readOnly: true
             - mountPath: /etc/openvswitch
               name: host-config-openvswitch
-            - mountPath: /etc/ovn
-              name: host-config-ovn
             - mountPath: /var/log/openvswitch
               name: host-log-ovs
             - mountPath: /var/log/ovn
@@ -3799,6 +4031,8 @@ spec:
       nodeSelector:
         kubernetes.io/os: "linux"
       volumes:
+        - name: usr-local-sbin
+          emptyDir: {}
         - name: host-modules
           hostPath:
             path: /lib/modules
@@ -3808,18 +4042,9 @@ spec:
         - name: host-run-ovn
           hostPath:
             path: /run/ovn
-        - name: host-sys
-          hostPath:
-            path: /sys
-        - name: host-ns
-          hostPath:
-            path: /var/run/netns
         - name: host-config-openvswitch
           hostPath:
             path: $ORIGIN_DIR/openvswitch
-        - name: host-config-ovn
-          hostPath:
-            path: $ORIGIN_DIR/ovn
         - name: host-log-ovs
           hostPath:
             path: $LOG_DIR/openvswitch
@@ -3843,7 +4068,7 @@ $KUBECTL apply -f ovs-ovn-ds.yaml
 
 if $HYBRID_DPDK; then
 
-  cat <<EOF >ovn-dpdk.yaml
+  cat <<EOF > ovn-dpdk.yaml
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
@@ -4013,7 +4238,7 @@ echo ""
 
 echo "[Step 3/6] Install Kube-OVN"
 
-cat <<EOF >kube-ovn.yaml
+cat <<EOF > kube-ovn.yaml
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -4083,6 +4308,23 @@ spec:
       priorityClassName: system-cluster-critical
       serviceAccountName: ovn
       hostNetwork: true
+      initContainers:
+        - name: hostpath-init
+          image: "$REGISTRY/kube-ovn:$VERSION"
+          command:
+            - sh
+            - -c
+            - "chown -R nobody: /var/log/kube-ovn"
+          securityContext:
+            allowPrivilegeEscalation: true
+            capabilities:
+              drop:
+                - ALL
+            privileged: true
+            runAsUser: 0
+          volumeMounts:
+            - name: kube-ovn-log
+              mountPath: /var/log/kube-ovn
       containers:
         - name: kube-ovn-controller
           image: "$REGISTRY/kube-ovn:$VERSION"
@@ -4116,14 +4358,20 @@ spec:
           - --log_file_max_size=200
           - --enable-lb-svc=$ENABLE_LB_SVC
           - --keep-vm-ip=$ENABLE_KEEP_VM_IP
+          - --enable-metrics=$ENABLE_METRICS
           - --node-local-dns-ip=$NODE_LOCAL_DNS_IP
+          - --enable-ovn-ipsec=$ENABLE_OVN_IPSEC
           - --secure-serving=${SECURE_SERVING}
+          - --enable-anp=$ENABLE_ANP
+          - --ovsdb-con-timeout=$OVSDB_CON_TIMEOUT
+          - --ovsdb-inactivity-timeout=$OVSDB_INACTIVITY_TIMEOUT
           securityContext:
-            runAsUser: 0
+            runAsUser: ${RUN_AS_USER}
             privileged: false
             capabilities:
               add:
                 - NET_BIND_SERVICE
+                - NET_RAW
           env:
             - name: ENABLE_SSL
               value: "$ENABLE_SSL"
@@ -4167,19 +4415,17 @@ spec:
             - mountPath: /var/run/tls
               name: kube-ovn-tls
           readinessProbe:
-            exec:
-              command:
-                - /kube-ovn/kube-ovn-healthcheck
-                - --port=10660
-                - --tls=${SECURE_SERVING}
+            httpGet:
+              port: 10660
+              path: /readyz
+              scheme: ${PROBE_HTTP_SCHEME}
             periodSeconds: 3
             timeoutSeconds: 5
           livenessProbe:
-            exec:
-              command:
-                - /kube-ovn/kube-ovn-healthcheck
-                - --port=10660
-                - --tls=${SECURE_SERVING}
+            httpGet:
+              port: 10660
+              path: /livez
+              scheme: ${PROBE_HTTP_SCHEME}
             initialDelaySeconds: 300
             periodSeconds: 7
             failureThreshold: 5
@@ -4241,6 +4487,30 @@ spec:
       hostNetwork: true
       hostPID: true
       initContainers:
+      - name: hostpath-init
+        image: "$REGISTRY/kube-ovn:$VERSION"
+        command:
+          - sh
+          - -xec
+          - iptables -V
+        securityContext:
+          allowPrivilegeEscalation: true
+          capabilities:
+            drop:
+              - ALL
+          privileged: true
+          runAsUser: 0
+        volumeMounts:
+          - name: usr-local-sbin
+            mountPath: /usr/local/sbin
+          - mountPath: /run/xtables.lock
+            name: xtables-lock
+            readOnly: false
+          - mountPath: /var/run/netns
+            name: host-ns
+            readOnly: false
+          - name: kube-ovn-log
+            mountPath: /var/log/kube-ovn
       - name: install-cni
         image: "$REGISTRY/kube-ovn:$VERSION"
         imagePullPolicy: $IMAGE_PULL_POLICY
@@ -4253,13 +4523,15 @@ spec:
           rm -fv /opt/cni/bin/portmap
           rm -fv /opt/cni/bin/loopback
           rm -fv /opt/cni/bin/macvlan
-          /kube-ovn/install-cni.sh
+          /kube-ovn/install-cni.sh --cni-conf-name=${CNI_CONFIG_PRIORITY}-kube-ovn.conflist
         securityContext:
           runAsUser: 0
           privileged: true
         volumeMounts:
           - mountPath: /opt/cni/bin
             name: cni-bin
+          - mountPath: /etc/cni/net.d
+            name: cni-conf
           - mountPath: /usr/local/bin
             name: local-bin
       containers:
@@ -4278,15 +4550,17 @@ spec:
           - --dpdk-tunnel-iface=${DPDK_TUNNEL_IFACE}
           - --network-type=$TUNNEL_TYPE
           - --default-interface-name=$VLAN_INTERFACE_NAME
-          - --cni-conf-name=${CNI_CONFIG_PRIORITY}-kube-ovn.conflist
           - --logtostderr=false
           - --alsologtostderr=true
           - --log_file=/var/log/kube-ovn/kube-ovn-cni.log
           - --log_file_max_size=200
+          - --enable-metrics=$ENABLE_METRICS
           - --kubelet-dir=$KUBELET_DIR
           - --enable-tproxy=$ENABLE_TPROXY
           - --ovs-vsctl-concurrency=$OVS_VSCTL_CONCURRENCY
           - --secure-serving=${SECURE_SERVING}
+          - --enable-ovn-ipsec=$ENABLE_OVN_IPSEC
+          - --set-vxlan-tx-off=$SET_VXLAN_TX_OFF
         securityContext:
           runAsUser: 0
           privileged: false
@@ -4296,6 +4570,9 @@ spec:
               - NET_BIND_SERVICE
               - NET_RAW
               - SYS_ADMIN
+              - SYS_MODULE
+              - SYS_NICE
+              - SYS_PTRACE
         env:
           - name: ENABLE_SSL
             value: "$ENABLE_SSL"
@@ -4307,10 +4584,6 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: spec.nodeName
-          - name: MODULES
-            value: $MODULES
-          - name: RPMS
-            value: $RPMS
           - name: POD_IPS
             valueFrom:
               fieldRef:
@@ -4328,16 +4601,21 @@ spec:
           - name: DBUS_SYSTEM_BUS_ADDRESS
             value: "unix:path=/host/var/run/dbus/system_bus_socket"
         volumeMounts:
+          - name: usr-local-sbin
+            mountPath: /usr/local/sbin
           - name: host-modules
             mountPath: /lib/modules
             readOnly: true
+          - mountPath: /run/xtables.lock
+            name: xtables-lock
+            readOnly: false
           - name: shared-dir
             mountPath: $KUBELET_DIR/pods
           - mountPath: /etc/openvswitch
             name: systemid
             readOnly: true
-          - mountPath: /etc/cni/net.d
-            name: cni-conf
+          - mountPath: /etc/ovs_ipsec_keys
+            name: ovs-ipsec-keys
           - mountPath: /run/openvswitch
             name: host-run-ovs
             mountPropagation: HostToContainer
@@ -4358,28 +4636,24 @@ spec:
           - mountPath: /etc/localtime
             name: localtime
             readOnly: true
-          - mountPath: /tmp
-            name: tmp
         livenessProbe:
           failureThreshold: 3
           initialDelaySeconds: 30
           periodSeconds: 7
           successThreshold: 1
-          exec:
-            command:
-              - /kube-ovn/kube-ovn-healthcheck
-              - --port=10665
-              - --tls=${SECURE_SERVING}
+          httpGet:
+            port: 10665
+            path: /livez
+            scheme: ${PROBE_HTTP_SCHEME}
           timeoutSeconds: 5
         readinessProbe:
           failureThreshold: 3
           periodSeconds: 7
           successThreshold: 1
-          exec:
-            command:
-              - /kube-ovn/kube-ovn-healthcheck
-              - --port=10665
-              - --tls=${SECURE_SERVING}
+          httpGet:
+            port: 10665
+            path: /readyz
+            scheme: ${PROBE_HTTP_SCHEME}
           timeoutSeconds: 5
         resources:
           requests:
@@ -4391,15 +4665,24 @@ spec:
       nodeSelector:
         kubernetes.io/os: "linux"
       volumes:
+        - name: usr-local-sbin
+          emptyDir: {}
         - name: host-modules
           hostPath:
             path: /lib/modules
+        - name: xtables-lock
+          hostPath:
+            path: /run/xtables.lock
+            type: FileOrCreate
         - name: shared-dir
           hostPath:
             path: $KUBELET_DIR/pods
         - name: systemid
           hostPath:
             path: $ORIGIN_DIR/openvswitch
+        - name: ovs-ipsec-keys
+          hostPath:
+            path: $ORIGIN_DIR/ovs_ipsec_keys
         - name: host-run-ovs
           hostPath:
             path: /run/openvswitch
@@ -4430,9 +4713,6 @@ spec:
         - name: localtime
           hostPath:
             path: /etc/localtime
-        - name: tmp
-          hostPath:
-            path: /tmp
         - name: local-bin
           hostPath:
             path: /usr/local/bin
@@ -4462,6 +4742,23 @@ spec:
       priorityClassName: system-node-critical
       serviceAccountName: kube-ovn-app
       hostPID: true
+      initContainers:
+        - name: hostpath-init
+          image: "$REGISTRY/kube-ovn:$VERSION"
+          command:
+            - sh
+            - -c
+            - "chown -R nobody: /var/log/kube-ovn"
+          securityContext:
+            allowPrivilegeEscalation: true
+            capabilities:
+              drop:
+                - ALL
+            privileged: true
+            runAsUser: 0
+          volumeMounts:
+            - name: kube-ovn-log
+              mountPath: /var/log/kube-ovn
       containers:
         - name: pinger
           image: "$REGISTRY/kube-ovn:$VERSION"
@@ -4474,10 +4771,15 @@ spec:
           - --alsologtostderr=true
           - --log_file=/var/log/kube-ovn/kube-ovn-pinger.log
           - --log_file_max_size=200
+          - --enable-metrics=$ENABLE_METRICS
           imagePullPolicy: $IMAGE_PULL_POLICY
           securityContext:
-            runAsUser: 0
+            runAsUser: ${RUN_AS_USER}
             privileged: false
+            capabilities:
+              add:
+                - NET_BIND_SERVICE
+                - NET_RAW
           env:
             - name: ENABLE_SSL
               value: "$ENABLE_SSL"
@@ -4593,6 +4895,23 @@ spec:
       priorityClassName: system-cluster-critical
       serviceAccountName: kube-ovn-app
       hostNetwork: true
+      initContainers:
+        - name: hostpath-init
+          image: "$REGISTRY/kube-ovn:$VERSION"
+          command:
+            - sh
+            - -c
+            - "chown -R nobody: /var/log/kube-ovn"
+          securityContext:
+            allowPrivilegeEscalation: true
+            capabilities:
+              drop:
+                - ALL
+            privileged: true
+            runAsUser: 0
+          volumeMounts:
+            - name: kube-ovn-log
+              mountPath: /var/log/kube-ovn
       containers:
         - name: kube-ovn-monitor
           image: "$REGISTRY/kube-ovn:$VERSION"
@@ -4604,9 +4923,13 @@ spec:
           - --logtostderr=false
           - --alsologtostderr=true
           - --log_file_max_size=200
+          - --enable-metrics=$ENABLE_METRICS
           securityContext:
-            runAsUser: 0
+            runAsUser: ${RUN_AS_USER}
             privileged: false
+            capabilities:
+              add:
+                - NET_BIND_SERVICE
           env:
             - name: ENABLE_SSL
               value: "$ENABLE_SSL"
@@ -4640,12 +4963,8 @@ spec:
               cpu: 200m
               memory: 200Mi
           volumeMounts:
-            - mountPath: /var/run/openvswitch
-              name: host-run-ovs
             - mountPath: /var/run/ovn
               name: host-run-ovn
-            - mountPath: /etc/openvswitch
-              name: host-config-openvswitch
             - mountPath: /etc/ovn
               name: host-config-ovn
             - mountPath: /var/log/ovn
@@ -4663,36 +4982,28 @@ spec:
             initialDelaySeconds: 30
             periodSeconds: 7
             successThreshold: 1
-            exec:
-              command:
-                - /kube-ovn/kube-ovn-healthcheck
-                - --port=10661
-                - --tls=${SECURE_SERVING}
+            httpGet:
+              port: 10661
+              path: /livez
+              scheme: ${PROBE_HTTP_SCHEME}
             timeoutSeconds: 5
           readinessProbe:
             failureThreshold: 3
             initialDelaySeconds: 30
             periodSeconds: 7
             successThreshold: 1
-            exec:
-              command:
-                - /kube-ovn/kube-ovn-healthcheck
-                - --port=10661
-                - --tls=${SECURE_SERVING}
+            httpGet:
+              port: 10661
+              path: /readyz
+              scheme: ${PROBE_HTTP_SCHEME}
             timeoutSeconds: 5
       nodeSelector:
         kubernetes.io/os: "linux"
         kube-ovn/role: "master"
       volumes:
-        - name: host-run-ovs
-          hostPath:
-            path: /run/openvswitch
         - name: host-run-ovn
           hostPath:
             path: /run/ovn
-        - name: host-config-openvswitch
-          hostPath:
-            path: $ORIGIN_DIR/openvswitch
         - name: host-config-ovn
           hostPath:
             path: $ORIGIN_DIR/ovn
@@ -4779,7 +5090,7 @@ $KUBECTL rollout status daemonset/kube-ovn-cni -n kube-system --timeout 300s
 
 if $ENABLE_IC; then
 
-  cat <<EOF >ovn-ic-controller.yaml
+  cat <<EOF > ovn-ic-controller.yaml
 kind: Deployment
 apiVersion: apps/v1
 metadata:
@@ -4833,8 +5144,12 @@ spec:
           - --logtostderr=false
           - --alsologtostderr=true
           securityContext:
+            runAsUser: ${RUN_AS_USER}
+            privileged: false
             capabilities:
-              add: ["SYS_NICE"]
+              add:
+                - NET_BIND_SERVICE
+                - SYS_NICE
           env:
             - name: ENABLE_SSL
               value: "$ENABLE_SSL"
@@ -4854,8 +5169,6 @@ spec:
           volumeMounts:
             - mountPath: /var/run/ovn
               name: host-run-ovn
-            - mountPath: /etc/ovn
-              name: host-config-ovn
             - mountPath: /var/log/ovn
               name: host-log-ovn
             - mountPath: /etc/localtime
@@ -4871,9 +5184,6 @@ spec:
         - name: host-run-ovn
           hostPath:
             path: /run/ovn
-        - name: host-config-ovn
-          hostPath:
-            path: $ORIGIN_DIR/ovn
         - name: host-log-ovn
           hostPath:
             path: $LOG_DIR/ovn
@@ -4889,6 +5199,7 @@ spec:
             secretName: kube-ovn-tls
 EOF
   $KUBECTL apply -f ovn-ic-controller.yaml
+  $KUBECTL rollout status deployment/ovn-ic-controller -n kube-system --timeout 60s
 fi
 
 echo "-------------------------------"
@@ -4911,6 +5222,7 @@ while true; do
   sleep 1
 done
 $KUBECTL rollout status daemonset/kube-ovn-pinger -n kube-system --timeout 120s
+sleep 1
 $KUBECTL wait pod --for=condition=Ready -l app=kube-ovn-pinger -n kube-system --timeout 120s
 echo "-------------------------------"
 echo ""
@@ -4925,8 +5237,10 @@ if ! sh -c "echo \":$PATH:\" | grep -q \":/usr/local/bin:\""; then
 fi
 
 echo "[Step 6/6] Run network diagnose"
-#$KUBECTL cp kube-system/"$($KUBECTL  -n kube-system get pods -o wide | grep cni | awk '{print $1}' | awk 'NR==1{print}')":/kube-ovn/$KUBECTL-ko /usr/local/bin/$KUBECTL-ko
-#chmod +x /usr/local/bin/$KUBECTL-ko
+#$KUBECTL cp kube-system/"$($KUBECTL -n kube-system get pods -o wide | grep cni | awk '{print $1}' | awk 'NR==1{print}')":/kube-ovn/kubectl-ko /usr/local/bin/kubectl-ko
+#chmod +x /usr/local/bin/kubectl-ko
+# show pod status in kube-system namespace before diagnose
+#$KUBECTL get pod -n kube-system -o wide
 #$KUBECTL ko diagnose all
 
 echo "-------------------------------"

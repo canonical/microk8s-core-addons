@@ -1,12 +1,17 @@
 #!/bin/bash
+set -eux
 
-# Sourced from: https://github.com/kubeovn/kube-ovn/blob/v1.12.21/dist/images/cleanup.sh
+# Sourced from: https://github.com/kubeovn/kube-ovn/blob/v1.13.8/dist/images/cleanup.sh
 # Changelog:
 # - use microk8s.$KUBECTL instead of $KUBECTL
+# - remove *-kube-ovn.conflist from $CNI_CONF_DIR
+# - restart the default CNI after disabling addon
+# - restart CodeDNS after disabling addon and reenabling default CNI
 
-set -eu
+source $SNAP/actions/common/utils.sh
 
 KUBECTL="$SNAP/microk8s-kubectl.wrapper"
+CNI_CONF_DIR="/var/snap/microk8s/current/args/cni-network"
 
 $KUBECTL delete --ignore-not-found -n kube-system ds kube-ovn-pinger
 # ensure kube-ovn-pinger has been deleted
@@ -128,7 +133,6 @@ $KUBECTL delete --ignore-not-found sa vpc-dns -n kube-system
 
 # delete CRD
 $KUBECTL delete --ignore-not-found crd \
-  htbqoses.kubeovn.io \
   security-groups.kubeovn.io \
   ippools.kubeovn.io \
   vpc-nat-gateways.kubeovn.io \
@@ -202,6 +206,7 @@ $KUBECTL delete --ignore-not-found clusterrole system:ovn system:ovn-ovs system:
 $KUBECTL delete --ignore-not-found clusterrolebinding ovn ovn ovn-ovs kube-ovn-cni kube-ovn-app
 
 $KUBECTL delete --ignore-not-found -n kube-system lease kube-ovn-controller
+$KUBECTL delete --ignore-not-found -n kube-system secret ovn-ipsec-ca
 
 # Remove annotations in all pods of all namespaces
 for ns in $($KUBECTL get ns -o name | awk -F/ '{print $2}'); do
@@ -218,3 +223,20 @@ for ns in $($KUBECTL get ns -o name | awk -F/ '{print $2}'); do
   $KUBECTL annotate pod --all -n $ns ovn.kubernetes.io/network_type-
   $KUBECTL annotate pod --all -n $ns ovn.kubernetes.io/provider_network-
 done
+
+echo "Removing file $CNI_CONF_DIR/*-kube-ovn.conflist"
+run_with_sudo rm $CNI_CONF_DIR/*-kube-ovn.conflist || true
+
+if [ -e "$SNAP_DATA/args/cni-network/cni.yaml.backup" ]; then
+  echo "Restarting default CNI"
+  run_with_sudo mv "$SNAP_DATA/args/cni-network/cni.yaml.backup" "$SNAP_DATA/args/cni-network/cni.yaml"
+  $KUBECTL apply -f "$SNAP_DATA/args/cni-network/cni.yaml"
+
+  $KUBECTL wait --for=condition=Available -n kube-system deployment.apps/calico-kube-controllers
+  $KUBECTL wait --for=condition=Ready -n kube-system pod -l "k8s-app=calico-node"
+
+  echo "Rollout CoreDNS deployment with default CNI"
+  $KUBECTL -n kube-system rollout restart deployment/coredns
+  $KUBECTL -n kube-system rollout status deployment/coredns --timeout 300s
+  echo "NOTE: Other pods may need to be recreated for their network connectivity to be restored (CNI changed)"
+fi

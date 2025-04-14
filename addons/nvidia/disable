@@ -9,6 +9,17 @@ import click
 
 SNAP = pathlib.Path(os.getenv("SNAP") or "/snap/microk8s/current")
 HELM = SNAP / "microk8s-helm3.wrapper"
+KUBECTL = SNAP / "microk8s-kubectl.wrapper"
+NVIDIA_CRDS = [
+    # gpu-operator CRDs.
+    "clusterpolicies.nvidia.com",
+    "nvidiadrivers.nvidia.com",
+    # network-operator CRDs.
+    "hostdevicenetworks.mellanox.com",
+    "ipoibnetworks.mellanox.com",
+    "macvlannetworks.mellanox.com",
+    "nicclusterpolicies.mellanox.com",
+]
 
 
 @click.command()
@@ -26,6 +37,9 @@ def main():
         if chart.get("name") in ["gpu-operator", "network-operator"]:
             namespace = chart.get("namespace") or "default"
             subprocess.run([HELM, "uninstall", name, "-n", namespace])
+
+    for crd in NVIDIA_CRDS:
+        subprocess.run([KUBECTL, "delete", "crd", crd])
 
     click.echo("NVIDIA support disabled")
 

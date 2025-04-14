@@ -305,6 +305,37 @@ def validate_forward():
     os.system("killall kubectl")
 
 
+def validate_networking():
+    """
+    Validate basic kubernetes networking
+    """
+    files = ["nginx-svc.yaml", "nginx-pod.yaml"]
+    for file in files:
+        manifest = TEMPLATES / file
+        kubectl("apply -f {}".format(manifest))
+
+    cluster_ip = kubectl("get svc/nginx -o jsonpath='{.spec.clusterIP}'")
+    cluster_ip = cluster_ip.strip("'")
+    wait_for_pod_state("", "default", "running", label="app=nginx")
+
+    attempt = 10
+    while attempt >= 0:
+        try:
+            resp = requests.get(f"http://{cluster_ip}")
+            if resp.status_code == 200:
+                break
+        except requests.RequestException:
+            pass
+        attempt -= 1
+        time.sleep(2)
+
+    assert resp.status_code == 200
+
+    for file in files:
+        manifest = TEMPLATES / file
+        kubectl("delete -f {}".format(manifest))
+
+
 def validate_metrics_server():
     """
     Validate the metrics server works

@@ -25,6 +25,37 @@ HOSTNAME = socket.gethostname()
 NO_AVX_CPU_TAG = "-no-avx512"
 
 
+def wait_for_resource_to_disappear(resource, name, label=None):
+    command = [KUBECTL, "get", resource, "-n", "kube-system", "--no-headers"]
+    if label:
+        command = command + ["-l", label]
+
+    timeout, elapsed = 120, 0
+    while True:
+        result = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+        lines = result.stdout.splitlines()
+        resources = [r for r in lines if name in r]
+
+        if not resources:
+            print(f"All {name} resource(s) have been cleaned up.")
+            break
+
+        print(
+            f"Still cleaning up {len(resources)} {name} resources(s)..."
+        )
+        if elapsed >= timeout:
+            print(
+                f"Failed to cleanup {len(resources)} remaining resource(s) in time, exiting."
+            )
+            return
+        time.sleep(5)
+        elapsed += 5
+
+
 @click.command(context_settings={"help_option_names": ["-h", "--help"]})
 @click.option("--hostname", default=HOSTNAME, help="Host(s) to use for ovn-db")
 @click.option("--force", is_flag=True, default=False)
@@ -71,34 +102,18 @@ Error: kube-ovn requires ha-cluster to be enabled. Please enable with:
     # 2. disable calico
     cni_yaml = SNAP_DATA / "args" / "cni-network" / "cni.yaml"
     if cni_yaml.exists():
+        click.echo("Remove Calico kube-controllers and calico-node")
+        subprocess.run([KUBECTL, "delete", "-n", "kube-system", "daemonset.apps/calico-node"])
+        subprocess.run([KUBECTL, "delete", "-n", "kube-system", "deployment.apps/calico-kube-controllers"])
+
+        wait_for_resource_to_disappear("pod", "calico-node", "k8s-app=calico-node")
+        wait_for_resource_to_disappear("pod", "calico-kube-controllers", "k8s-app=calico-kube-controllers")
+
         click.echo("Remove Calico CNI")
         subprocess.run([KUBECTL, "delete", "-f", cni_yaml])
         shutil.move(cni_yaml, SNAP_DATA / "args" / "cni-network" / "cni.yaml.backup")
         print("Cleaning up Calico resources...")
-        timeout, elapsed = 120, 0
-        while True:
-            result = subprocess.run(
-                [KUBECTL, "get", "all", "-A", "--no-headers"],
-                stdout=subprocess.PIPE,
-                text=True,
-            )
-            resources = result.stdout.splitlines()
-            calico_resources = [r for r in resources if "calico" in r]
-
-            if not calico_resources:
-                print("All Calico resource(s) have been cleaned up.")
-                break
-
-            print(
-                f"Still cleaning up {len(calico_resources)} Calico resources(s)..."
-            )
-            if elapsed >= timeout:
-                print(
-                    f"Failed to cleanup {len(calico_resources)} remaining resource(s) in time, exiting."
-                )
-                return
-            time.sleep(5)
-            elapsed += 5
+        wait_for_resource_to_disappear("all", "calico")
 
     # Run kube-ovn install script
     click.echo("Run kube-ovn install script")

@@ -3,7 +3,7 @@ microk8s-addons:
   addons:
     - name: "dns"
       description: "CoreDNS"
-      version: "1.12.0"
+      version: "1.12.1"
       check_status: "pod/coredns"
       supported_architectures:
         - amd64
@@ -23,7 +23,7 @@ microk8s-addons:
 
     - name: "dashboard"
       description: "The Kubernetes dashboard"
-      version: "2.6.0"
+      version: "7.11.1"
       check_status: "pod/kubernetes-dashboard"
       supported_architectures:
         - arm64
@@ -33,7 +33,7 @@ microk8s-addons:
 
     - name: "ingress"
       description: "Ingress controller for external access"
-      version: "1.12.0"
+      version: "1.12.1"
       check_status: "pod/nginx-ingress-microk8s-controller"
       supported_architectures:
         - arm64
@@ -81,7 +81,7 @@ microk8s-addons:
 
     - name: "nvidia"
       description: "NVIDIA hardware (GPU and network) support"
-      version: "gpu=22.9.1/network=23.7.0/microk8s-1"
+      version: "gpu=25.3.0/network=25.1.0/microk8s-1"
       check_status: "operator-node-feature-discovery"
       confinement: "classic"
       supported_architectures:
@@ -89,7 +89,7 @@ microk8s-addons:
 
     - name: "gpu"
       description: "Alias to nvidia add-on"
-      version: "22.9.1"
+      version: "25.3.0"
       check_status: "operator-node-feature-discovery"
       confinement: "classic"
       supported_architectures:
@@ -117,7 +117,7 @@ microk8s-addons:
 
     - name: "metallb"
       description: "Loadbalancer for your Kubernetes cluster"
-      version: "0.13.3"
+      version: "0.14.9"
       check_status: "pod/speaker"
       supported_architectures:
         - amd64
@@ -163,7 +163,7 @@ microk8s-addons:
 
     - name: "observability"
       description: "A lightweight observability stack for logs, traces and metrics"
-      version: "0.57.0"
+      version: "0.70.4"
       check_status: "statefulset.apps/prometheus-kube-prom-stack-kube-prome-prometheus"
       supported_architectures:
         - amd64
@@ -190,7 +190,7 @@ microk8s-addons:
 
     - name: "kube-ovn"
       description: "An advanced network fabric for Kubernetes"
-      version: "1.10.0-alpha1"
+      version: "1.13.8"
       check_status: "deployment.apps/kube-ovn-controller"
       confinement: "classic"
       supported_architectures:
@@ -216,7 +216,7 @@ microk8s-addons:
         - arm64
 
     - name: "rook-ceph"
-      version: "1.11.9"
+      version: "1.16.6"
       description: "Distributed Ceph storage using Rook"
       check_status: "deployment.apps/rook-ceph-operator"
       supported_architectures:

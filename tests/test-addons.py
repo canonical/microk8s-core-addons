@@ -238,6 +238,10 @@ class TestAddons(object):
         os.environ.get("STRICT") == "yes",
         reason="Skipping kube-ovn tests in strict confinement as they are expected to fail",
     )
+    @pytest.mark.skipif(
+        os.environ.get("TEST_KUBEOVN") != "True",
+        reason="Kube-ovn tests are skipped without TEST_KUBEOVN=True",
+    )
     def test_kube_ovn(self):
         """
         Test kube-ovn.

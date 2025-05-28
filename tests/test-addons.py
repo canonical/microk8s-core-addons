@@ -26,6 +26,7 @@ from validators import (
     validate_cis_hardening,
     validate_rook_ceph,
     validate_rook_ceph_integration,
+    validate_amd
 )
 from utils import (
     microk8s_enable,
@@ -412,3 +413,37 @@ class TestAddons(object):
         run_until_success(cmd, timeout_insec=300)
         print("Uninstall microceph")
         subprocess.check_call("snap remove microceph --purge".split())
+
+    @pytest.mark.skipif(
+        os.environ.get("STRICT") == "yes",
+        reason="Skipping AMD tests in strict confinement as they are expected to fail",
+    )
+    @pytest.mark.skipif(
+        os.environ.get("UNDER_TIME_PRESSURE") == "True",
+        reason="Skipping AMD tests as we are under time pressure",
+    )
+    @pytest.mark.skipif(
+        platform.machine() != "x86_64",
+        reason="AMD tests are only relevant in x86 architectures",
+    )
+    def test_amd(self):
+        """
+        Sets up amd gpu operator in a gpu capable system. Skip otherwise.
+
+        """
+        values_template = TEMPLATES / "amd-values.yaml"
+        try:
+            print("Enabling amd")
+            microk8s_enable("amd --gpu-operator-values {}".format(values_template))
+            print("Enabled")
+        except CalledProcessError:
+            print("Could not enable amd addon")
+            return
+        validate_amd()
+        try:
+            print("Disabling amd")
+            microk8s_disable("amd")
+            print("Disabled")
+        except CalledProcessError:
+            print("Could not disable amd addon")
+            return

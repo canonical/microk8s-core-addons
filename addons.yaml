@@ -222,3 +222,11 @@ microk8s-addons:
       supported_architectures:
         - amd64
         - arm64
+
+    - name: "amd"
+      version: "1.0.0"
+      description: "AMD hardware support"
+      check_status: "deployment.apps/amd-gpu-operator-gpu-operator-charts-controller-manager"
+      confinement: "classic"
+      supported_architectures:
+        - amd64

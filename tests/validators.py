@@ -560,3 +560,24 @@ def validate_rook_ceph_integration():
 
     finally:
         kubectl("delete -f {}".format(manifest))
+
+def validate_amd():
+    """
+    Validate AMD by checking deviceConfig.
+    """
+
+    if platform.machine() != "x86_64":
+        print("GPU tests are only relevant on x86 architectures")
+        return
+    
+    print("Checking deviceconfig")
+    namespace = "kube-amd-gpu"
+    device_config_string = kubectl(f"get deviceconfig default -n {namespace} -o yaml")
+    device_config_spec = yaml.safe_load(device_config_string)["spec"]
+
+    selector_passed = device_config_spec["selector"]["unit-test-check"] == "true"
+    test_runner_passed = device_config_spec["testRunner"]["enable"]
+    metrics_exporter_passed = not device_config_spec["metricsExporter"]["enable"]
+
+    assert selector_passed and test_runner_passed and metrics_exporter_passed
+    print("Check passed")

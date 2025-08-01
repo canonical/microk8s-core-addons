@@ -29,11 +29,11 @@ master:
       - "hypershift openshift-kube-apiserver"
       - "kubelite"
     confs:
+      - /var/snap/microk8s/current/args/kube-apiserver
       - /etc/kubernetes/manifests/kube-apiserver.yaml
       - /etc/kubernetes/manifests/kube-apiserver.yml
       - /etc/kubernetes/manifests/kube-apiserver.manifest
       - /var/snap/kube-apiserver/current/args
-      - /var/snap/microk8s/current/args/kube-apiserver
       - /etc/origin/master/master-config.yaml
       - /etc/kubernetes/manifests/talos-kube-apiserver.yaml
     defaultconf: /etc/kubernetes/manifests/kube-apiserver.yaml
@@ -47,20 +47,20 @@ master:
       - "openshift start master controllers"
       - "kubelite"
     confs:
+      - /var/snap/microk8s/current/args/kube-scheduler
       - /etc/kubernetes/manifests/kube-scheduler.yaml
       - /etc/kubernetes/manifests/kube-scheduler.yml
       - /etc/kubernetes/manifests/kube-scheduler.manifest
       - /var/snap/kube-scheduler/current/args
-      - /var/snap/microk8s/current/args/kube-scheduler
       - /etc/origin/master/scheduler.json
       - /etc/kubernetes/manifests/talos-kube-scheduler.yaml
     defaultconf: /etc/kubernetes/manifests/kube-scheduler.yaml
     kubeconfig:
+      - /var/snap/microk8s/current/credentials/scheduler.config
       - /etc/kubernetes/scheduler.conf
       - /var/lib/kube-scheduler/kubeconfig
       - /var/lib/kube-scheduler/config.yaml
       - /system/secrets/kubernetes/kube-scheduler/kubeconfig
-      - /var/snap/microk8s/current/credentials/scheduler.config
     defaultkubeconfig: /etc/kubernetes/scheduler.conf
 
   controllermanager:
@@ -74,18 +74,18 @@ master:
       - "hypershift openshift-controller-manager"
       - "kubelite"
     confs:
+      - /var/snap/microk8s/current/args/kube-controller-manager
       - /etc/kubernetes/manifests/kube-controller-manager.yaml
       - /etc/kubernetes/manifests/kube-controller-manager.yml
       - /etc/kubernetes/manifests/kube-controller-manager.manifest
       - /var/snap/kube-controller-manager/current/args
-      - /var/snap/microk8s/current/args/kube-controller-manager
       - /etc/kubernetes/manifests/talos-kube-controller-manager.yaml
     defaultconf: /etc/kubernetes/manifests/kube-controller-manager.yaml
     kubeconfig:
+      - /var/snap/microk8s/current/credentials/controller.config
       - /etc/kubernetes/controller-manager.conf
       - /var/lib/kube-controller-manager/kubeconfig
       - /system/secrets/kubernetes/kube-controller-manager/kubeconfig
-      - /var/snap/microk8s/current/credentials/controller.config
     defaultkubeconfig: /etc/kubernetes/controller-manager.conf
 
   etcd:
@@ -152,14 +152,15 @@ node:
       - "kubelet"
       - "kubelite"
     kubeconfig:
+      - "/var/snap/microk8s/current/credentials/kubelet.config"
       - "/etc/kubernetes/kubelet.conf"
       - "/etc/kubernetes/kubelet-kubeconfig.conf"
       - "/var/lib/kubelet/kubeconfig"
       - "/etc/kubernetes/kubelet-kubeconfig"
       - "/etc/kubernetes/kubelet/kubeconfig"
-      - "/var/snap/microk8s/current/credentials/kubelet.config"
       - "/etc/kubernetes/kubeconfig-kubelet"
     confs:
+      - "/var/snap/microk8s/current/args/kubelet"
       - "/etc/kubernetes/kubelet-config.yaml"
       - "/var/lib/kubelet/config.yaml"
       - "/var/lib/kubelet/config.yml"
@@ -171,7 +172,6 @@ node:
       - "/etc/default/kubelet"
       - "/var/lib/kubelet/kubeconfig"
       - "/var/snap/kubelet/current/args"
-      - "/var/snap/microk8s/current/args/kubelet"
       ## Due to the fact that the kubelet might be configured
       ## without a kubelet-config file, we use a work-around
       ## of pointing to the systemd service file (which can also
@@ -198,17 +198,17 @@ node:
       - "openshift start network"
       - "kubelite"
     confs:
+      - /var/snap/microk8s/current/args/kube-proxy
       - /etc/kubernetes/proxy
       - /etc/kubernetes/addons/kube-proxy-daemonset.yaml
       - /etc/kubernetes/addons/kube-proxy-daemonset.yml
       - /var/snap/kube-proxy/current/args
-      - /var/snap/microk8s/current/args/kube-proxy
     kubeconfig:
+      - "/var/snap/microk8s/current/credentials/proxy.config"
       - "/etc/kubernetes/kubelet-kubeconfig"
       - "/etc/kubernetes/kubelet-kubeconfig.conf"
       - "/etc/kubernetes/kubelet/config"
       - "/var/lib/kubelet/kubeconfig"
-      - "/var/snap/microk8s/current/credentials/proxy.config"
     svc:
       - "/lib/systemd/system/kube-proxy.service"
       - "/etc/systemd/system/snap.microk8s.daemon-kubelite.service"
@@ -242,11 +242,11 @@ controlplane:
       - "apiserver"
       - "kubelite"
     confs:
+      - /var/snap/microk8s/current/args/kube-apiserver
       - /etc/kubernetes/manifests/kube-apiserver.yaml
       - /etc/kubernetes/manifests/kube-apiserver.yml
       - /etc/kubernetes/manifests/kube-apiserver.manifest
       - /var/snap/kube-apiserver/current/args
-      - /var/snap/microk8s/current/args/kube-apiserver
       - /etc/origin/master/master-config.yaml
       - /etc/kubernetes/manifests/talos-kube-apiserver.yaml
     defaultconf: /etc/kubernetes/manifests/kube-apiserver.yaml

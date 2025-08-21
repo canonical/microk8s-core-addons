@@ -3,7 +3,7 @@ microk8s-addons:
   addons:
     - name: "dns"
       description: "CoreDNS"
-      version: "1.12.1"
+      version: "1.12.3"
       check_status: "pod/coredns"
       supported_architectures:
         - amd64
@@ -51,7 +51,7 @@ microk8s-addons:
 
     - name: "storage"
       description: "Alias to hostpath-storage add-on, deprecated"
-      version: "1.4.0"
+      version: "1.5.0"
       check_status: "deployment.apps/hostpath-provisioner"
       supported_architectures:
         - arm64
@@ -71,7 +71,7 @@ microk8s-addons:
 
     - name: "metrics-server"
       description: "K8s Metrics Server for API access to service metrics"
-      version: "0.7.2"
+      version: "0.8.0"
       check_status: "pod/metrics-server"
       supported_architectures:
         - arm64

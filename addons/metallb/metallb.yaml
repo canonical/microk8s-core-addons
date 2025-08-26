@@ -1,4 +1,4 @@
-# Sourced from: https://raw.githubusercontent.com/metallb/metallb/v0.14.9/config/manifests/metallb-native.yaml
+# Sourced from: https://raw.githubusercontent.com/metallb/metallb/v0.15.2/config/manifests/metallb-native.yaml
 # Contains only the non-CRD resources.
 apiVersion: v1
 kind: Namespace
@@ -84,6 +84,12 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - metallb.io
+  resources:
+  - ipaddresspools/status
+  verbs:
+  - update
 - apiGroups:
   - metallb.io
   resources:
@@ -188,6 +194,13 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - metallb.io
+  resources:
+  - servicebgpstatuses
+  - servicebgpstatuses/status
+  verbs:
+  - '*'
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -451,7 +464,7 @@ spec:
           value: memberlist
         - name: METALLB_DEPLOYMENT
           value: controller
-        image: quay.io/metallb/controller:v0.14.9
+        image: quay.io/metallb/controller:v0.15.2
         livenessProbe:
           failureThreshold: 3
           httpGet:
@@ -548,7 +561,7 @@ spec:
           value: app=metallb,component=speaker
         - name: METALLB_ML_SECRET_KEY_PATH
           value: /etc/ml_secret_key
-        image: quay.io/metallb/speaker:v0.14.9
+        image: quay.io/metallb/speaker:v0.15.2
         livenessProbe:
           failureThreshold: 3
           httpGet:

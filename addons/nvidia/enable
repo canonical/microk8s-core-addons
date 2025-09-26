@@ -81,13 +81,19 @@ def deploy_gpu_operator(
             "env": [
                 {"name": "CONTAINERD_CONFIG", "value": CONTAINERD_TOML.as_posix()},
                 {"name": "CONTAINERD_SOCKET", "value": CONTAINERD_SOCKET.as_posix()},
-                {
-                    "name": "CONTAINERD_SET_AS_DEFAULT",
-                    "value": "1" if set_as_default_runtime else "0",
-                },
             ],
         },
     }
+
+    # We only set the default runtime if if is explicitly requested, otherwise
+    # the GPU operator is allowed to determine the correct valus based on its
+    # other settings.
+    if set_as_default_runtime is not None:
+        helm_config["toolkit"]["env"].append({
+            "name": "CONTAINERD_SET_AS_DEFAULT",
+            "value": "1" if set_as_default_runtime else "0",
+        })
+
     if toolkit_version is not None:
         helm_config["toolkit"]["version"] = toolkit_version
 
@@ -120,7 +126,7 @@ def deploy_gpu_operator(
 @click.option("--toolkit-version", default=None, hidden=True)
 @click.option("--gpu-operator-toolkit-version", default=None)
 @click.option("--set-as-default-runtime/--no-set-as-default-runtime", is_flag=True, hidden=True, default=None)
-@click.option("--gpu-operator-set-as-default-runtime/--gpu-operator-no-set-as-default-runtime", is_flag=True, default=True)
+@click.option("--gpu-operator-set-as-default-runtime/--gpu-operator-no-set-as-default-runtime", is_flag=True, default=None)
 @click.option("--network-operator/--no-network-operator", is_flag=True, default=False)
 @click.option("--network-operator-version", default="25.1.0")
 @click.option("--network-operator-set", multiple=True)

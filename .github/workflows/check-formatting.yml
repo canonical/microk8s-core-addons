@@ -2,9 +2,7 @@ name: Lint Code
 
 on:
   pull_request:
-    branches: [main]
-  push:
-    branches: [main]
+    branches: [1.34]
 
 jobs:
   check-formatting:

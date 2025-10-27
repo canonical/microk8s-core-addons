@@ -2,9 +2,7 @@ name: Run tests
 
 on:
   pull_request:
-    branches: [main]
-  push:
-    branches: [main]
+    branches: [1.34]
 
 jobs:
   run-tests:
@@ -12,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        channel: [latest/edge, latest/edge/strict]
+        channel: [1.34/edge, 1.34-strict/edge]
 
     steps:
       - name: Check out code
@@ -37,7 +35,7 @@ jobs:
           export POD_CIDR="10.200.0.0/16"
           export POD_GATEWAY="10.200.0.1"
           export UNDER_TIME_PRESSURE="True"
-          if [[ "${{ matrix.channel }}" == "latest/edge/strict" ]]
+          if [[ "${{ matrix.channel }}" == "1.34-strict/edge" ]]
           then
             export STRICT="yes"
           fi

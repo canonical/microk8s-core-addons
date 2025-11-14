@@ -19,6 +19,7 @@ HELM = SNAP / "microk8s-helm3.wrapper"
 MICROK8S_ENABLE = SNAP / "microk8s-enable.wrapper"
 CONTAINERD_SOCKET = SNAP_COMMON / "run" / "containerd.sock"
 CONTAINERD_TOML = SNAP_CURRENT / "args" / "containerd-template.toml"
+RUNTIME_CONFIG_SOURCE = SNAP_CURRENT / "args" / "containerd.toml"
 
 
 def deploy_network_operator(version: str, helm_set: list, helm_values: list):
@@ -85,6 +86,7 @@ def deploy_gpu_operator(
                     "name": "CONTAINERD_SET_AS_DEFAULT",
                     "value": "1" if set_as_default_runtime else "0",
                 },
+                {"name": "RUNTIME_CONFIG_SOURCE", "value": f"file={RUNTIME_CONFIG_SOURCE.as_posix()}"}
             ],
         },
     }
@@ -213,7 +215,7 @@ def main(
 
     # set default values
     if not gpu_operator_version:
-        gpu_operator_version = "v25.3.2"
+        gpu_operator_version = "v25.10.0"
 
     # add helm repository for nvidia gpu-operator and network-operator
     subprocess.run([HELM, "repo", "add", "nvidia", "https://helm.ngc.nvidia.com/nvidia"])

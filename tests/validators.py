@@ -450,8 +450,8 @@ def validate_cert_manager():
     wait_for_pod_state(
         "", "cert-manager", "running", label="app.kubernetes.io/name=cert-manager"
     )
-
     wait_for_pod_state("", "ingress", "running", label="app=nginx-ingress-microk8s")
+    
     manifest = TEMPLATES / "cert-manager-aio-test.yaml"
     kubectl("apply -f {}".format(manifest))
     kubectl("wait cert/mock-ingress-tls --for=condition=ready=true")

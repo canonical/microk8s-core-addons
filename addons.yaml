@@ -181,7 +181,7 @@ microk8s-addons:
 
     - name: "cert-manager"
       description: "Cloud native certificate management"
-      version: "1.18.2"
+      version: "1.19.1"
       check_status: "deployment.apps/cert-manager"
       supported_architectures:
         - arm64

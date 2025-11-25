@@ -124,7 +124,7 @@ def deploy_gpu_operator(
 @click.option("--set-as-default-runtime/--no-set-as-default-runtime", is_flag=True, hidden=True, default=None)
 @click.option("--gpu-operator-set-as-default-runtime/--gpu-operator-no-set-as-default-runtime", is_flag=True, default=True)
 @click.option("--network-operator/--no-network-operator", is_flag=True, default=False)
-@click.option("--network-operator-version", default="25.1.0")
+@click.option("--network-operator-version", default="25.7.0")
 @click.option("--network-operator-set", multiple=True)
 @click.option("--network-operator-values", multiple=True, type=click.Path(exists=True))
 def main(

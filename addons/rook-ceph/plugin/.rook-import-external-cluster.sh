@@ -14,11 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Originally https://github.com/rook/rook/blob/v1.18.0/deploy/examples/import-external-cluster.sh  # noqa
+# Originally https://github.com/rook/rook/blob/v1.18.7/deploy/examples/import-external-cluster.sh  # noqa
 # Changes:
 #   - Add original LICENSE text in the header
 #   - Enable setting a custom $KUBECTL binary
 
+#!/usr/bin/env -S bash
 set -e
 
 ##############
@@ -147,13 +148,13 @@ eof
 function importClusterID() {
   if [ -n "$RADOS_NAMESPACE" ]; then
     createRadosNamespaceCR
-    timeout 20 sh -c "until [ $($KUBECTL -n "$NAMESPACE" get CephBlockPoolRadosNamespace/"$RADOS_NAMESPACE" -o jsonpath='{.status.phase}' | grep -c "Ready") -eq 1 ]; do echo "waiting for radosNamespace to get created" && sleep 1; done"
+    timeout 20 sh -c "until [ \$($KUBECTL -n \"$NAMESPACE\" get CephBlockPoolRadosNamespace/$RADOS_NAMESPACE -o jsonpath='{.status.phase}' | grep -c 'Ready') -eq 1 ]; do echo 'waiting for radosNamespace to get created' && sleep 1; done"
     CLUSTER_ID_RBD=$($KUBECTL -n "$NAMESPACE" get cephblockpoolradosnamespace.ceph.rook.io/"$RADOS_NAMESPACE" -o jsonpath='{.status.info.clusterID}')
     RBD_STORAGE_CLASS_NAME=ceph-rbd-$RADOS_NAMESPACE
   fi
   if [ -n "$SUBVOLUME_GROUP" ]; then
     createSubvolumeGroupCR
-    timeout 20 sh -c "until [ $($KUBECTL -n "$NAMESPACE" get CephFilesystemSubVolumeGroup/"$SUBVOLUME_GROUP" -o jsonpath='{.status.phase}' | grep -c "Ready") -eq 1 ]; do echo "waiting for radosNamespace to get created" && sleep 1; done"
+    timeout 20 sh -c "until [ \$($KUBECTL -n \"$NAMESPACE\" get CephFilesystemSubVolumeGroup/$SUBVOLUME_GROUP -o jsonpath='{.status.phase}' | grep -c 'Ready') -eq 1 ]; do echo 'waiting for subVolumeGroup to get created' && sleep 1; done"
     CLUSTER_ID_CEPHFS=$($KUBECTL -n "$NAMESPACE" get cephfilesystemsubvolumegroup.ceph.rook.io/"$SUBVOLUME_GROUP" -o jsonpath='{.status.info.clusterID}')
     CEPHFS_STORAGE_CLASS_NAME=cephfs-$SUBVOLUME_GROUP
   fi
@@ -242,7 +243,7 @@ function importCsiRBDNodeSecret() {
       patch \
       secret \
       "rook-$CSI_RBD_NODE_SECRET_NAME" \
-      -p "{\"stringData\":{\"userID\":\"$userID\",\"userKey\":\"$CSI_CEPHFS_NODE_SECRET\"}}"
+      -p "{\"stringData\":{\"userID\":\"$userID\",\"userKey\":\"$CSI_RBD_NODE_SECRET\"}}"
   fi
 }
 
@@ -263,7 +264,7 @@ function importCsiRBDProvisionerSecret() {
       patch \
       secret \
       "rook-$CSI_RBD_PROVISIONER_SECRET_NAME" \
-      -p "{\"stringData\":{\"userID\":\"$userID\",\"userKey\":\"$CSI_CEPHFS_NODE_SECRET\"}}"
+      -p "{\"stringData\":{\"userID\":\"$userID\",\"userKey\":\"$CSI_RBD_PROVISIONER_SECRET\"}}"
   fi
 }
 
@@ -305,7 +306,7 @@ function importCsiCephFSProvisionerSecret() {
       patch \
       secret \
       "rook-$CSI_CEPHFS_PROVISIONER_SECRET_NAME" \
-      -p "{\"stringData\":{\"userID\":\"$userID\",\"userKey\":\"$CSI_CEPHFS_NODE_SECRET\"}}"
+      -p "{\"stringData\":{\"userID\":\"$userID\",\"userKey\":\"$CSI_CEPHFS_PROVISIONER_SECRET\"}}"
   fi
 }
 

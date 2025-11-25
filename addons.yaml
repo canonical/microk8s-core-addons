@@ -216,7 +216,7 @@ microk8s-addons:
         - arm64
 
     - name: "rook-ceph"
-      version: "1.18.0"
+      version: "1.18.7"
       description: "Distributed Ceph storage using Rook"
       check_status: "deployment.apps/rook-ceph-operator"
       supported_architectures:

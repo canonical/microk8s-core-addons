@@ -7,7 +7,7 @@ ENABLE="$SNAP/microk8s-enable.wrapper"
 KUBECTL="$SNAP/microk8s-kubectl.wrapper"
 
 REPO="https://charts.jetstack.io"
-VERSION="v1.18.2"
+VERSION="v1.19.1"
 
 function usage {
   echo "Usage: microk8s enable cert-manager [OPTIONS]"

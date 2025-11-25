@@ -9,7 +9,7 @@ source $CURRENT_DIR/../common/utils.sh
 echo "Disabling Ingress"
 
 ARCH=$(arch)
-TAG="v1.0.0-alpha.2"
+TAG="v1.14.0"
 DEFAULT_CERT="- ' '" # This default value is always fine when deleting resources.
 EXTRA_ARGS="- --publish-status-address=127.0.0.1"
 

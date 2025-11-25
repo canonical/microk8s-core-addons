@@ -7,7 +7,7 @@ CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 source $CURRENT_DIR/../common/utils.sh
 
 REPO="https://kubernetes.github.io/dashboard/"
-VERSION="7.13.0"
+VERSION="7.14.0"
 
 function usage {
   echo "Usage: microk8s enable dashboard [OPTIONS]"

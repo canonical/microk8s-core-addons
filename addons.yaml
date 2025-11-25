@@ -81,7 +81,7 @@ microk8s-addons:
 
     - name: "nvidia"
       description: "NVIDIA hardware (GPU and network) support"
-      version: "gpu=25.3.2/network=25.1.0/microk8s-1"
+      version: "gpu=25.10.0/network=25.7.0/microk8s-1"
       check_status: "operator-node-feature-discovery"
       confinement: "classic"
       supported_architectures:
@@ -89,7 +89,7 @@ microk8s-addons:
 
     - name: "gpu"
       description: "Alias to nvidia add-on"
-      version: "25.3.2"
+      version: "25.10.0"
       check_status: "operator-node-feature-discovery"
       confinement: "classic"
       supported_architectures:

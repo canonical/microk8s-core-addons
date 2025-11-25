@@ -198,7 +198,7 @@ microk8s-addons:
         - amd64
 
     - name: "minio"
-      version: "v6.0.4"
+      version: "v7.1.1"
       check_status: "deployment.apps/minio-operator"
       description: "MinIO object storage"
       supported_architectures:

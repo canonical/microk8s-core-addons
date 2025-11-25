@@ -163,7 +163,7 @@ microk8s-addons:
 
     - name: "observability"
       description: "A lightweight observability stack for logs, traces and metrics"
-      version: "76.4.1"
+      version: "77.6.2"
       check_status: "statefulset.apps/prometheus-kube-prom-stack-kube-prome-prometheus"
       supported_architectures:
         - amd64

@@ -109,7 +109,7 @@ spec:
           - key: pebble-config.json
             path: pebble-config.json
       containers:
-      - image: letsencrypt/pebble:v2.3.1
+      - image: ghcr.io/letsencrypt/pebble:2.8
         imagePullPolicy: Always
         name: pebble
         ports:

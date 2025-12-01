@@ -6,38 +6,20 @@ source $SNAP/actions/common/utils.sh
 CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 source $CURRENT_DIR/../common/utils.sh
 
-read -ra ARGUMENTS <<<"$1"
+REPO="https://traefik.github.io/charts"
+CHART_VERSION="37.4.0" # contains v3.6.2
+GW_VERSION="v1.4.0"
 
-read -r key value <<<$(echo "${ARGUMENTS[@]}" | gawk -F "=" '{print $1 ,$2}')
-read -ra CERT_SECRET <<< "$value"
+ENABLE="$SNAP/microk8s-enable.wrapper"
+HELM="$SNAP/microk8s-helm3.wrapper"
+KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"
 
-KEY_NAME="default-ssl-certificate"
+$HELM repo add traefik $REPO
+$HELM repo update
 
-if [ ! -z "$key" ] && [ "$key" != $KEY_NAME ]
-then
-  echo "Unknown argument '$key'."
-  echo "You can use '$KEY_NAME' to load the default TLS certificate from a secret, eg"
-  echo "   microk8s enable ingress:$KEY_NAME=namespace/secret_name"
-  exit 1
-fi
+$HELM install traefik traefik/traefik --version $CHART_VERSION -f values.yaml --wait
 
-echo "Enabling Ingress"
+$KUBECTL apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$GW_VERSION/standard-install.yaml
 
-ARCH=$(arch)
-TAG="v1.14.0"
-EXTRA_ARGS="- --publish-status-address=${PUBLISH_STATUS_ADDRESS:-127.0.0.1}"
-DEFAULT_CERT="- ' '"
 
-if [ ! -z "$CERT_SECRET" ]
-then
-  DEFAULT_CERT="- --default-ssl-certificate=${CERT_SECRET}"
-  echo "Setting ${CERT_SECRET} as default ingress certificate"
-fi
-
-declare -A map
-map[\$TAG]="$TAG"
-map[\$DEFAULT_CERT]="$DEFAULT_CERT"
-map[\$EXTRA_ARGS]="$EXTRA_ARGS"
-use_addon_manifest ingress/ingress apply "$(declare -p map)"
-
-echo "Ingress is enabled"
+echo "Ingress is enabled and Gateway API is applied"

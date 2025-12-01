@@ -1,0 +1,28 @@
+# Comes from
+# - https://doc.traefik.io/traefik/reference/install-configuration/providers/kubernetes/kubernetes-ingress-nginx/
+# - https://doc.traefik.io/traefik/getting-started/kubernetes/
+
+ingressRoute:
+  dashboard:
+    enabled: true
+    matchRule: Host(`dashboard.localhost`)
+    entryPoints:
+      - web
+gateway:
+  listeners:
+    web:
+      namespacePolicy:
+        from: All
+providers:
+  kubernetesIngressNGINX:
+    # Namespace discovery
+    watchNamespace: "default"
+
+    # IngressClass configuration
+    ingressClass: "nginx"
+    controllerClass: "k8s.io/ingress-nginx"
+    watchIngressWithoutClass: false
+    ingressClassByName: false
+
+    # Security
+    disableSvcExternalName: false

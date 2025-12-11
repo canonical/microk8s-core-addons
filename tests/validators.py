@@ -188,18 +188,15 @@ def common_ingress():
 
 def validate_ingress():
     """
-    Validate ingress by creating a ingress rule.
+    Validate ingress by creating an ingress rule.
+    Traefik is deployed as a DaemonSet in the 'ingress' namespace.
     """
-    daemonset = kubectl("get ds")
-    if "nginx-ingress-microk8s-controller" in daemonset:
-        wait_for_pod_state("", "default", "running", label="app=default-http-backend")
-        wait_for_pod_state(
-            "", "default", "running", label="name=nginx-ingress-microk8s"
-        )
-    else:
-        wait_for_pod_state(
-            "", "ingress", "running", label="name=nginx-ingress-microk8s"
-        )
+    if platform.machine() == "s390x":
+        print("Ingress tests are not available on s390x")
+        return
+
+    # Wait for Traefik pods to be ready
+    wait_for_pod_state("", "ingress", "running", label="app.kubernetes.io/name=traefik")
 
     manifest = TEMPLATES / "ingress.yaml"
     update_yaml_with_arch(manifest)
@@ -450,7 +447,7 @@ def validate_cert_manager():
     wait_for_pod_state(
         "", "cert-manager", "running", label="app.kubernetes.io/name=cert-manager"
     )
-    wait_for_pod_state("", "ingress", "running", label="name=nginx-ingress-microk8s")
+    wait_for_pod_state("", "ingress", "running", label="app.kubernetes.io/name=traefik")
 
     manifest = TEMPLATES / "cert-manager-aio-test.yaml"
     kubectl("apply -f {}".format(manifest))

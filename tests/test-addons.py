@@ -88,7 +88,7 @@ class TestAddons(object):
     )
     def test_basic_s390x(self):
         """
-        Sets up and tests dashboard, dns, storage, registry, ingress, metrics server.
+        Sets up and tests dashboard, dns, storage, registry, metrics server.
 
         """
         ip_ranges = "8.8.8.8,1.1.1.1"

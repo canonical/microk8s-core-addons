@@ -1,0 +1,78 @@
+# Traefik Helm chart values for MicroK8s ingress addon
+# Reference: https://github.com/traefik/traefik-helm-chart/blob/master/traefik/VALUES.md
+
+# Deploy as DaemonSet to run on all nodes (matching previous nginx behavior)
+deployment:
+  kind: DaemonSet
+
+# Expose ports on host (matching previous nginx behavior)
+ports:
+  web:
+    port: 8000
+    exposedPort: 80
+    hostPort: 80
+    protocol: TCP
+  websecure:
+    port: 8443
+    exposedPort: 443
+    hostPort: 443
+    protocol: TCP
+
+# Enable Traefik dashboard
+ingressRoute:
+  dashboard:
+    enabled: true
+    matchRule: Host(`dashboard.localhost`)
+    entryPoints:
+      - web
+
+# Gateway API support
+gateway:
+  listeners:
+    web:
+      namespacePolicy:
+        from: All
+
+# Kubernetes providers configuration
+providers:
+  # Standard Kubernetes Ingress provider
+  kubernetesIngress:
+    enabled: true
+    allowEmptyServices: true
+    publishedService:
+      enabled: true
+
+  # Gateway API provider
+  kubernetesGateway:
+    enabled: true
+
+  # NGINX compatibility provider - allows existing Ingress resources with
+  # ingressClassName: nginx or nginx-specific annotations to work seamlessly
+  # Reference: https://doc.traefik.io/traefik/reference/install-configuration/providers/kubernetes/kubernetes-ingress-nginx/
+  kubernetesIngressNginx:
+    enabled: true
+
+# Create IngressClass 'traefik'
+ingressClass:
+  enabled: true
+  isDefaultClass: false
+  name: traefik
+
+# Create additional IngressClass resources for backward compatibility
+extraObjects:
+  # IngressClass 'public' - default class (backward compatible with previous nginx setup)
+  - apiVersion: networking.k8s.io/v1
+    kind: IngressClass
+    metadata:
+      name: public
+      annotations:
+        ingressclass.kubernetes.io/is-default-class: "true"
+    spec:
+      controller: traefik.io/ingress-controller
+  # IngressClass 'nginx' - for users with existing nginx ingress resources
+  - apiVersion: networking.k8s.io/v1
+    kind: IngressClass
+    metadata:
+      name: nginx
+    spec:
+      controller: traefik.io/ingress-controller

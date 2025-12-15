@@ -2,42 +2,145 @@
 
 set -e
 
-source $SNAP/actions/common/utils.sh
 CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
-source $CURRENT_DIR/../common/utils.sh
 
-read -ra ARGUMENTS <<<"$1"
+REPO="https://traefik.github.io/charts"
+CHART_VERSION="37.4.0"  # contains Traefik v3.6.2
+GW_VERSION="v1.4.0"
+NAMESPACE="ingress"
+DEFAULT_SSL_CERTIFICATE=""
 
-read -r key value <<<$(echo "${ARGUMENTS[@]}" | gawk -F "=" '{print $1 ,$2}')
-read -ra CERT_SECRET <<< "$value"
+function usage {
+    echo "Usage: microk8s enable ingress [OPTIONS]"
+    echo ""
+    echo "Enable the Traefik ingress controller addon."
+    echo ""
+    echo "   -h               Print this help message"
+    echo "   -r REPOSITORY    Traefik Helm chart repository (default: ${REPO})"
+    echo "   -V VERSION       Traefik Helm chart version (default: ${CHART_VERSION})"
+    echo "   -g GW_VERSION    Gateway API CRD version (default: ${GW_VERSION})"
+    echo "   --default-ssl-certificate NAMESPACE/NAME"
+    echo "                    Kubernetes TLS Secret to use as Traefik's default TLS certificate"
+}
 
-KEY_NAME="default-ssl-certificate"
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -V)
+            if [[ -z "${2:-}" || "$2" == -* ]]; then
+                echo "Missing argument for option -V"
+                usage
+                exit 1
+            fi
+            CHART_VERSION="$2"
+            shift 2
+            ;;
+        -r)
+            if [[ -z "${2:-}" || "$2" == -* ]]; then
+                echo "Missing argument for option -r"
+                usage
+                exit 1
+            fi
+            REPO="$2"
+            shift 2
+            ;;
+        -g)
+            if [[ -z "${2:-}" || "$2" == -* ]]; then
+                echo "Missing argument for option -g"
+                usage
+                exit 1
+            fi
+            GW_VERSION="$2"
+            shift 2
+            ;;
+        --default-ssl-certificate)
+            if [[ -z "${2:-}" || "$2" == -* ]]; then
+                echo "Missing argument for option --default-ssl-certificate"
+                usage
+                exit 1
+            fi
+            DEFAULT_SSL_CERTIFICATE="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*)
+            echo "Invalid option $1"
+            usage
+            exit 1
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
 
-if [ ! -z "$key" ] && [ "$key" != $KEY_NAME ]
-then
-  echo "Unknown argument '$key'."
-  echo "You can use '$KEY_NAME' to load the default TLS certificate from a secret, eg"
-  echo "   microk8s enable ingress:$KEY_NAME=namespace/secret_name"
-  exit 1
+if [[ -n "${DEFAULT_SSL_CERTIFICATE}" ]]; then
+    if [[ "${DEFAULT_SSL_CERTIFICATE}" != */* ]]; then
+        echo "Invalid value for --default-ssl-certificate; expected NAMESPACE/NAME"
+        exit 1
+    fi
+    DEFAULT_SSL_CERT_NAMESPACE="${DEFAULT_SSL_CERTIFICATE%%/*}"
+    DEFAULT_SSL_CERT_NAME="${DEFAULT_SSL_CERTIFICATE#*/}"
+    if [[ -z "${DEFAULT_SSL_CERT_NAMESPACE}" || -z "${DEFAULT_SSL_CERT_NAME}" || "${DEFAULT_SSL_CERT_NAME}" == */* ]]; then
+        echo "Invalid value for --default-ssl-certificate; expected NAMESPACE/NAME"
+        exit 1
+    fi
 fi
 
-echo "Enabling Ingress"
+HELM="$SNAP/microk8s-helm3.wrapper"
+KUBECTL="$SNAP/microk8s-kubectl.wrapper"
 
-ARCH=$(arch)
-TAG="v1.14.0"
-EXTRA_ARGS="- --publish-status-address=${PUBLISH_STATUS_ADDRESS:-127.0.0.1}"
-DEFAULT_CERT="- ' '"
+echo "Adding Traefik Helm repository"
+$HELM repo add traefik "$REPO"
+$HELM repo update traefik
 
-if [ ! -z "$CERT_SECRET" ]
-then
-  DEFAULT_CERT="- --default-ssl-certificate=${CERT_SECRET}"
-  echo "Setting ${CERT_SECRET} as default ingress certificate"
+echo "Installing Traefik ingress controller"
+$HELM upgrade --install traefik traefik/traefik \
+    --version "${CHART_VERSION}" \
+    --create-namespace \
+    --namespace "${NAMESPACE}" \
+    --values "${CURRENT_DIR}/values.yaml"
+
+echo "Installing Gateway API CRDs"
+$KUBECTL apply -f "https://github.com/kubernetes-sigs/gateway-api/releases/download/${GW_VERSION}/standard-install.yaml"
+
+if [[ -n "${DEFAULT_SSL_CERTIFICATE}" ]]; then
+    echo "Configuring Traefik default TLS certificate (${DEFAULT_SSL_CERTIFICATE})"
+    sed \
+        -e "s/{ NAMESPACE }/${DEFAULT_SSL_CERT_NAMESPACE}/g" \
+        -e "s/{ SECRET_NAME }/${DEFAULT_SSL_CERT_NAME}/g" \
+        "${CURRENT_DIR}/tlsstore.tmpl.yaml" | $KUBECTL apply -f -
 fi
 
-declare -A map
-map[\$TAG]="$TAG"
-map[\$DEFAULT_CERT]="$DEFAULT_CERT"
-map[\$EXTRA_ARGS]="$EXTRA_ARGS"
-use_addon_manifest ingress/ingress apply "$(declare -p map)"
-
-echo "Ingress is enabled"
+echo "Traefik ingress controller is enabled"
+echo ""
+echo "============================="
+echo ""
+echo "Traefik Dashboard is available at: http://dashboard.localhost/dashboard/"
+echo ""
+echo "To create an Ingress, use the default IngressClass 'public' or 'traefik':"
+echo ""
+echo "  apiVersion: networking.k8s.io/v1"
+echo "  kind: Ingress"
+echo "  metadata:"
+echo "    name: my-ingress"
+echo "  spec:"
+echo "    rules:"
+echo "    - host: my-app.example.com"
+echo "      http:"
+echo "        paths:"
+echo "        - path: /"
+echo "          pathType: Prefix"
+echo "          backend:"
+echo "            service:"
+echo "              name: my-service"
+echo "              port:"
+echo "                number: 80"
+echo ""
+echo "Gateway API is also available. Create HTTPRoute resources for modern routing."

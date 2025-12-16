@@ -200,7 +200,7 @@ microk8s-addons:
     - name: "minio"
       version: "v7.1.1"
       check_status: "deployment.apps/minio-operator"
-      description: "MinIO object storage"
+      description: "MinIO object storage (DEPRECATED). This addon is deprecated and will be completely removed in the upcoming versions"
       supported_architectures:
         - arm64
         - amd64

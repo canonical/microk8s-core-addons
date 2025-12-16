@@ -13,7 +13,7 @@ spec:
     solvers:
     - http01:
         ingress:
-          class: public
+          ingressClassName: public
 ---
 apiVersion: apps/v1
 kind: Deployment

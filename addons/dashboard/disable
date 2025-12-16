@@ -22,6 +22,9 @@ $KUBECTL delete configmap -n kube-system eventer-config  > /dev/null 2>&1 || tru
 $KUBECTL delete serviceaccount -n kube-system heapster  > /dev/null 2>&1 || true 
 
 HELM="$SNAP/microk8s-helm3.wrapper"
-$HELM uninstall -n kubernetes-dashboard kubernetes-dashboard
+echo "Removing kubernetes-dashboard from kube-system namespace"
+$HELM uninstall -n kube-system kubernetes-dashboard || true
+echo "Removing kubernetes-dashboard from kubernetes-dashboard namespace (backwards compatibility)"
+$HELM uninstall -n kubernetes-dashboard kubernetes-dashboard || true
 
 echo "Dashboard is disabled"

@@ -51,7 +51,7 @@ HELM="$SNAP/microk8s-helm3.wrapper"
 echo "Enabling Kubernetes dashboard"
 $HELM upgrade --install kubernetes-dashboard kubernetes-dashboard \
   --repo "${REPO}" --version "${VERSION}" \
-  --create-namespace --namespace "kubernetes-dashboard"
+  --namespace "kube-system"
 
 echo "Applying manifest"
 use_addon_manifest dashboard/token-creation apply

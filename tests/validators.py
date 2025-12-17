@@ -28,7 +28,7 @@ def validate_dns_dashboard():
     Validate the dashboard addon by trying to access the kubernetes dashboard.
     The dashboard will return an HTML indicating that it is up and running.
     """
-    ns = "kube-system"
+    ns = "kubernetes-dashboard"
     components = ["api", "auth", "metrics-scraper", "web"]
     app_names = [f"kubernetes-dashboard-{app}" for app in components]
     app_names.append("kong")

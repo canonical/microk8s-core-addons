@@ -42,6 +42,7 @@ $KUBECTL delete rolebinding -n default nginx-ingress-microk8s 2>/dev/null || tru
 $KUBECTL delete configmap -n default nginx-load-balancer-microk8s-conf 2>/dev/null || true
 $KUBECTL delete daemonset -n default nginx-ingress-microk8s-controller 2>/dev/null || true
 $KUBECTL delete daemonset -n ingress nginx-ingress-microk8s-controller 2>/dev/null || true
+$KUBECTL delete ingressclass nginx public 2>/dev/null || true
 
 # Uninstall Traefik
 echo "Uninstalling Traefik..."

@@ -49,10 +49,17 @@ $ENABLE helm3
 HELM="$SNAP/microk8s-helm3.wrapper"
 
 echo "Enabling cert-manager"
-$HELM upgrade --install cert-manager cert-manager \
-  --repo "${REPO}" --version "${VERSION}" \
-  --set crds.enabled=true \
-  --create-namespace --namespace "cert-manager"
+if [[ "${REPO}" =~ ^oci:// ]]; then
+  $HELM upgrade --install cert-manager "${REPO}" \
+    --version "${VERSION}" \
+    --set crds.enabled=true \
+    --create-namespace --namespace "cert-manager"
+else
+  $HELM upgrade --install cert-manager cert-manager \
+    --repo "${REPO}" --version "${VERSION}" \
+    --set crds.enabled=true \
+    --create-namespace --namespace "cert-manager"
+fi
 
 echo "Waiting for cert-manager to be ready."
 while ! $KUBECTL apply -f $DIR/cert-tester.yaml > /dev/null 2>&1

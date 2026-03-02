@@ -10,6 +10,8 @@ GW_VERSION="v1.4.0"
 NAMESPACE="ingress"
 DEFAULT_SSL_CERTIFICATE=""
 
+DEFAULT_GW_VERSION="$GW_VERSION"
+
 function usage {
     echo "Usage: microk8s enable ingress [OPTIONS]"
     echo ""
@@ -96,19 +98,32 @@ fi
 HELM="$SNAP/microk8s-helm3.wrapper"
 KUBECTL="$SNAP/microk8s-kubectl.wrapper"
 
-echo "Adding Traefik Helm repository"
-$HELM repo add traefik "$REPO"
-$HELM repo update traefik
+if [[ "${REPO}" =~ ^oci:// ]]; then
+    echo "Installing Traefik ingress controller"
+	$HELM upgrade --install traefik "${REPO}" \
+        --version "${CHART_VERSION}" \
+        --create-namespace \
+        --namespace "${NAMESPACE}" \
+        --values "${CURRENT_DIR}/values.yaml"
+else
+    echo "Adding Traefik Helm repository"
+    $HELM repo add traefik "$REPO"
+    $HELM repo update traefik
 
-echo "Installing Traefik ingress controller"
-$HELM upgrade --install traefik traefik/traefik \
-    --version "${CHART_VERSION}" \
-    --create-namespace \
-    --namespace "${NAMESPACE}" \
-    --values "${CURRENT_DIR}/values.yaml"
+    echo "Installing Traefik ingress controller"
+    $HELM upgrade --install traefik traefik/traefik \
+        --version "${CHART_VERSION}" \
+        --create-namespace \
+        --namespace "${NAMESPACE}" \
+        --values "${CURRENT_DIR}/values.yaml"
+fi
 
 echo "Installing Gateway API CRDs"
-$KUBECTL apply -f "https://github.com/kubernetes-sigs/gateway-api/releases/download/${GW_VERSION}/standard-install.yaml"
+if [[ "${GW_VERSION}" == "${DEFAULT_GW_VERSION}" ]]; then
+	$KUBECTL apply -f "${CURRENT_DIR}/standard-install.yaml"
+else
+    $KUBECTL apply -f "https://github.com/kubernetes-sigs/gateway-api/releases/download/${GW_VERSION}/standard-install.yaml"
+fi
 
 if [[ -n "${DEFAULT_SSL_CERTIFICATE}" ]]; then
     echo "Configuring Traefik default TLS certificate (${DEFAULT_SSL_CERTIFICATE})"

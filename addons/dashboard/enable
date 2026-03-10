@@ -6,7 +6,7 @@ source $SNAP/actions/common/utils.sh
 CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 source $CURRENT_DIR/../common/utils.sh
 
-REPO="https://kubernetes.github.io/dashboard/"
+REPO="https://kubernetes-retired.github.io/dashboard/"
 VERSION="7.11.1"
 
 function usage {

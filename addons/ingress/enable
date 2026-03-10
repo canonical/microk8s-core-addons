@@ -24,7 +24,8 @@ fi
 echo "Enabling Ingress"
 
 ARCH=$(arch)
-TAG="v1.12.1"
+TAG="v1.13.8"
+IMAGE="registry.k8s.io/ingress-nginx/controller"
 EXTRA_ARGS="- --publish-status-address=${PUBLISH_STATUS_ADDRESS:-127.0.0.1}"
 DEFAULT_CERT="- ' '"
 
@@ -36,6 +37,7 @@ fi
 
 declare -A map
 map[\$TAG]="$TAG"
+map[\$IMAGE]="$IMAGE"
 map[\$DEFAULT_CERT]="$DEFAULT_CERT"
 map[\$EXTRA_ARGS]="$EXTRA_ARGS"
 use_addon_manifest ingress/ingress apply "$(declare -p map)"

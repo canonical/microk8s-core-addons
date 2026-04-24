@@ -375,7 +375,7 @@ find /var/snap/microk8s/current/args/cni-network/10-calico.conflist -type f 2> /
 Expected output:
 
 ```
-root:toot
+root:root
 ```
 
 ### Check 1.1.11
@@ -443,7 +443,7 @@ stat -c %U:%G /var/snap/microk8s/current/var/kubernetes/backend/
 Expected output:
 
 ```
-root:toot
+root:root
 ```
 
 ### Check 1.1.13

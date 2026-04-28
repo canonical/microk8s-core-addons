@@ -100,15 +100,16 @@ echo "Adding Traefik Helm repository"
 $HELM repo add traefik "$REPO"
 $HELM repo update traefik
 
+echo "Installing Gateway API CRDs"
+$KUBECTL apply -f "https://github.com/kubernetes-sigs/gateway-api/releases/download/${GW_VERSION}/standard-install.yaml"
+
 echo "Installing Traefik ingress controller"
 $HELM upgrade --install traefik traefik/traefik \
     --version "${CHART_VERSION}" \
     --create-namespace \
     --namespace "${NAMESPACE}" \
+    --skip-crds \
     --values "${CURRENT_DIR}/values.yaml"
-
-echo "Installing Gateway API CRDs"
-$KUBECTL apply -f "https://github.com/kubernetes-sigs/gateway-api/releases/download/${GW_VERSION}/standard-install.yaml"
 
 if [[ -n "${DEFAULT_SSL_CERTIFICATE}" ]]; then
     echo "Configuring Traefik default TLS certificate (${DEFAULT_SSL_CERTIFICATE})"

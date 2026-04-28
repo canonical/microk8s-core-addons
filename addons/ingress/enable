@@ -5,8 +5,8 @@ set -e
 CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 
 REPO="https://traefik.github.io/charts"
-CHART_VERSION="37.4.0"  # contains Traefik v3.6.2
-GW_VERSION="v1.4.0"
+CHART_VERSION="39.0.8"  # contains Traefik v3.6.13
+GW_VERSION="v1.5.1"
 NAMESPACE="ingress"
 DEFAULT_SSL_CERTIFICATE=""
 

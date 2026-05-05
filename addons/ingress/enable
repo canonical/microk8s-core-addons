@@ -103,6 +103,14 @@ $HELM repo update traefik
 echo "Installing Gateway API CRDs"
 $KUBECTL apply -f "https://github.com/kubernetes-sigs/gateway-api/releases/download/${GW_VERSION}/standard-install.yaml"
 
+echo "Installing Traefik CRDs"
+TRAEFIK_CRD_DIR=$(mktemp -d)
+$HELM pull traefik/traefik --version "${CHART_VERSION}" --untar --untardir "${TRAEFIK_CRD_DIR}"
+for crd in "${TRAEFIK_CRD_DIR}"/traefik/crds/traefik.io_*.yaml; do
+    $KUBECTL apply --server-side -f "${crd}"
+done
+rm -rf "${TRAEFIK_CRD_DIR}"
+
 echo "Installing Traefik ingress controller"
 $HELM upgrade --install traefik traefik/traefik \
     --version "${CHART_VERSION}" \

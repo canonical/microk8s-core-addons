@@ -22,7 +22,7 @@ microk8s-addons:
         - ppc64le
 
     - name: "dashboard"
-      description: "The Kubernetes dashboard (DEPRECATED). This addon is deprecated and will be completely removed in the upcoming versions"
+      description: "The Kubernetes dashboard (REMOVED). This addon has been removed and can only be disabled"
       version: "7.14.0"
       check_status: "pod/kubernetes-dashboard"
       supported_architectures:

@@ -21,6 +21,16 @@ microk8s-addons:
         - s390x
         - ppc64le
 
+    - name: "dashboard"
+      description: "The Kubernetes dashboard (DEPRECATED). This addon is deprecated and will be completely removed in the upcoming versions"
+      version: "7.14.0"
+      check_status: "pod/kubernetes-dashboard"
+      supported_architectures:
+        - arm64
+        - amd64
+        - s390x
+        - ppc64le
+
     - name: "ingress"
       description: "Ingress controller for external access"
       version: "3.6.2"

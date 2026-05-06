@@ -6,6 +6,9 @@ source $SNAP/actions/common/utils.sh
 CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 source $CURRENT_DIR/../common/utils.sh
 
+echo "DEPRECATION WARNING: 'dashboard' is deprecated and will be removed in 1.36."
+echo ""
+
 echo "Disabling Dashboard"
 
 KUBECTL="$SNAP/kubectl --kubeconfig=${SNAP_DATA}/credentials/client.config"

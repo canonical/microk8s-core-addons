@@ -87,8 +87,8 @@ def deploy_gpu_operator(
         },
     }
 
-    # We only set the default runtime if if is explicitly requested, otherwise
-    # the GPU operator is allowed to determine the correct valus based on its
+    # We only set the default runtime if it is explicitly requested, otherwise
+    # the GPU operator is allowed to determine the correct value based on its
     # other settings.
     if set_as_default_runtime is not None:
         helm_config["toolkit"]["env"].append({

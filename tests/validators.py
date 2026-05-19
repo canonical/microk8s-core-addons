@@ -203,6 +203,12 @@ def validate_ingress():
     kubectl("apply -f {}".format(manifest))
     wait_for_pod_state("", "default", "running", label="app=microbot")
 
+    # Verify there is a IngressClass with name "nginx" and the correct controller
+    # see https://github.com/canonical/microk8s-core-addons/issues/381
+    nginxIngressClass = kubectl_get("ingressclass nginx")
+    assert nginxIngressClass is not None
+    assert nginxIngressClass["spec"]["controller"] == "k8s.io/ingress-nginx"
+
     common_ingress()
 
     kubectl("delete -f {}".format(manifest))

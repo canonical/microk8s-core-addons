@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-
-echo "The dashboard addon has been removed and is no longer available."
-echo "If dashboard is currently enabled, you can disable it with: microk8s disable dashboard"
-exit 1

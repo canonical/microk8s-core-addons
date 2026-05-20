@@ -278,15 +278,6 @@ class TestAddons(object):
         print("Disabling RBAC")
         microk8s_disable("rbac")
 
-    def test_dashboard_disable(self):
-        """
-        Test that the dashboard disable script runs cleanly.
-        The addon has been removed but the disable script is kept for
-        backwards compatibility so users with dashboard enabled can disable it.
-        """
-        print("Disabling dashboard")
-        microk8s_disable("dashboard")
-
     @pytest.mark.skipif(
         platform.machine() != "x86_64",
         reason="Metallb tests are only relevant in x86 architectures",

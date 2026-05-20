@@ -5,8 +5,8 @@ set -e
 CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 
 REPO="https://traefik.github.io/charts"
-CHART_VERSION="37.4.0"  # contains Traefik v3.6.2
-GW_VERSION="v1.4.0"
+CHART_VERSION="39.0.8"  # contains Traefik v3.6.13
+GW_VERSION="v1.5.1"
 NAMESPACE="ingress"
 DEFAULT_SSL_CERTIFICATE=""
 
@@ -100,15 +100,24 @@ echo "Adding Traefik Helm repository"
 $HELM repo add traefik "$REPO"
 $HELM repo update traefik
 
+echo "Installing Gateway API CRDs"
+$KUBECTL apply -f "https://github.com/kubernetes-sigs/gateway-api/releases/download/${GW_VERSION}/standard-install.yaml"
+
+echo "Installing Traefik CRDs"
+TRAEFIK_CRD_DIR=$(mktemp -d)
+$HELM pull traefik/traefik --version "${CHART_VERSION}" --untar --untardir "${TRAEFIK_CRD_DIR}"
+for crd in "${TRAEFIK_CRD_DIR}"/traefik/crds/traefik.io_*.yaml; do
+    $KUBECTL apply --server-side -f "${crd}"
+done
+rm -rf "${TRAEFIK_CRD_DIR}"
+
 echo "Installing Traefik ingress controller"
 $HELM upgrade --install traefik traefik/traefik \
     --version "${CHART_VERSION}" \
     --create-namespace \
     --namespace "${NAMESPACE}" \
+    --skip-crds \
     --values "${CURRENT_DIR}/values.yaml"
-
-echo "Installing Gateway API CRDs"
-$KUBECTL apply -f "https://github.com/kubernetes-sigs/gateway-api/releases/download/${GW_VERSION}/standard-install.yaml"
 
 if [[ -n "${DEFAULT_SSL_CERTIFICATE}" ]]; then
     echo "Configuring Traefik default TLS certificate (${DEFAULT_SSL_CERTIFICATE})"

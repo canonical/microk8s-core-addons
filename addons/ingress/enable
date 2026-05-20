@@ -103,6 +103,12 @@ $HELM repo update traefik
 echo "Installing Gateway API CRDs"
 $KUBECTL apply -f "https://github.com/kubernetes-sigs/gateway-api/releases/download/${GW_VERSION}/standard-install.yaml"
 
+# Remove the ValidatingAdmissionPolicy that blocks other addons from installing
+# older gateway-api CRDs bundled in their Helm charts (e.g. STUNner).
+# See: https://gateway-api.sigs.k8s.io/guides/#safe-upgrades
+$KUBECTL delete validatingadmissionpolicybinding safe-upgrades.gateway.networking.k8s.io --ignore-not-found
+$KUBECTL delete validatingadmissionpolicy safe-upgrades.gateway.networking.k8s.io --ignore-not-found
+
 echo "Installing Traefik CRDs"
 TRAEFIK_CRD_DIR=$(mktemp -d)
 $HELM pull traefik/traefik --version "${CHART_VERSION}" --untar --untardir "${TRAEFIK_CRD_DIR}"

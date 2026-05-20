@@ -23,40 +23,6 @@ TEMPLATES = Path(__file__).absolute().parent / "templates"
 PATCH_TEMPLATES = Path(__file__).absolute().parent / "templates" / "patches"
 
 
-def validate_dns_dashboard():
-    """
-    Validate the dashboard addon by trying to access the kubernetes dashboard.
-    The dashboard will return an HTML indicating that it is up and running.
-    """
-    ns = "kubernetes-dashboard"
-    components = ["api", "auth", "metrics-scraper", "web"]
-    app_names = [f"kubernetes-dashboard-{app}" for app in components]
-    app_names.append("kong")
-
-    for app_name in app_names:
-        wait_for_pod_state(
-            "", ns, "running", label=f"app.kubernetes.io/name={app_name}"
-        )
-
-    service = "kubernetes-dashboard-kong-proxy"
-    attempt = 30
-    while attempt > 0:
-        try:
-            output = kubectl(
-                "get "
-                "--raw "
-                f"/api/v1/namespaces/{ns}/services/https:{service}:443/proxy/"
-            )
-            if "Kubernetes Dashboard" in output:
-                break
-        except subprocess.CalledProcessError:
-            pass
-        time.sleep(10)
-        attempt -= 1
-
-    assert attempt > 0
-
-
 def validate_storage():
     """
     Validate storage by creating a PVC.

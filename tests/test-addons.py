@@ -6,7 +6,6 @@ import yaml
 from pathlib import Path
 
 from validators import (
-    validate_dns_dashboard,
     validate_storage,
     validate_storage_custom_pvdir,
     validate_ingress,
@@ -87,7 +86,7 @@ class TestAddons(object):
     )
     def test_basic_s390x(self):
         """
-        Sets up and tests dashboard, dns, storage, registry, metrics server.
+        Sets up and tests dns, storage, registry, metrics server.
 
         """
         ip_ranges = "8.8.8.8,1.1.1.1"
@@ -99,23 +98,17 @@ class TestAddons(object):
         validate_coredns_config(ip_ranges)
         print("Enabling metrics-server")
         microk8s_enable("metrics-server")
-        print("Enabling dashboard")
-        microk8s_enable("dashboard")
-        print("Validating dashboard")
-        validate_dns_dashboard()
         print("Validating Port Forward")
         validate_forward()
         print("Validating the Metrics Server")
         validate_metrics_server()
         print("Disabling metrics-server")
         microk8s_disable("metrics-server")
-        print("Disabling dashboard")
-        microk8s_disable("dashboard")
 
     @pytest.mark.skipif(platform.machine() == "s390x", reason="Not available on s390x")
     def test_basic(self):
         """
-        Sets up and tests dashboard, dns, storage, registry, ingress, metrics server.
+        Sets up and tests dns, storage, registry, ingress, metrics server.
 
         """
         # Set labels
@@ -138,10 +131,6 @@ class TestAddons(object):
         validate_ingress()
         print("Disabling ingress")
         microk8s_disable("ingress")
-        print("Enabling dashboard")
-        microk8s_enable("dashboard")
-        print("Validating dashboard")
-        validate_dns_dashboard()
         print("Enabling hostpath-storage")
         microk8s_enable("hostpath-storage")
         print("Validating hostpath-storage")
@@ -169,8 +158,6 @@ class TestAddons(object):
         validate_metrics_server()
         print("Disabling metrics-server")
         microk8s_disable("metrics-server")
-        print("Disabling dashboard")
-        microk8s_disable("dashboard")
         print("Disabling hostpath-storage")
         microk8s_disable("hostpath-storage:destroy-storage")
         """

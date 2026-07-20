@@ -7,6 +7,7 @@ CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 REPO="https://traefik.github.io/charts"
 CHART_VERSION="39.0.8"  # contains Traefik v3.6.13
 GW_VERSION="v1.5.1"
+GW_CRDS_URL=""
 NAMESPACE="ingress"
 DEFAULT_SSL_CERTIFICATE=""
 
@@ -19,6 +20,8 @@ function usage {
     echo "   -r REPOSITORY    Traefik Helm chart repository (default: ${REPO})"
     echo "   -V VERSION       Traefik Helm chart version (default: ${CHART_VERSION})"
     echo "   -g GW_VERSION    Gateway API CRD version (default: ${GW_VERSION})"
+    echo "   --gateway-api-crds-url URL"
+    echo "                    URL or path to the Gateway API CRDs YAML (default: GitHub release for GW_VERSION)"
     echo "   --default-ssl-certificate NAMESPACE/NAME"
     echo "                    Kubernetes TLS Secret to use as Traefik's default TLS certificate"
 }
@@ -50,6 +53,15 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             GW_VERSION="$2"
+            shift 2
+            ;;
+        --gateway-api-crds-url)
+            if [[ -z "${2:-}" || "$2" == -* ]]; then
+                echo "Missing argument for option --gateway-api-crds-url"
+                usage
+                exit 1
+            fi
+            GW_CRDS_URL="$2"
             shift 2
             ;;
         --default-ssl-certificate)
@@ -100,8 +112,12 @@ echo "Adding Traefik Helm repository"
 $HELM repo add traefik "$REPO"
 $HELM repo update traefik
 
+if [[ -z "${GW_CRDS_URL}" ]]; then
+    GW_CRDS_URL="https://github.com/kubernetes-sigs/gateway-api/releases/download/${GW_VERSION}/standard-install.yaml"
+fi
+
 echo "Installing Gateway API CRDs"
-$KUBECTL apply -f "https://github.com/kubernetes-sigs/gateway-api/releases/download/${GW_VERSION}/standard-install.yaml"
+$KUBECTL apply -f "${GW_CRDS_URL}"
 
 echo "Installing Traefik CRDs"
 TRAEFIK_CRD_DIR=$(mktemp -d)

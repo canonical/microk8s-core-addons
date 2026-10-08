@@ -346,29 +346,40 @@ def CopyExtraConfigFiles():
 def DownloadKubebench(kubebench_version: str):
     """Download kube-bench and place the wrapper script under plugins."""
     click.echo("Downloading kube-bench")
+    tmpdir = pathlib.Path(os.path.expandvars("$SNAP_DATA")) / "var" / "tmp"
+    tarbin = pathlib.Path(os.path.expandvars("$SNAP")) / "bin" / "tar"
+    shutil.rmtree(tmpdir, ignore_errors=True)
+    if not os.path.exists(tmpdir):
+        os.makedirs(tmpdir)
+    arch = get_arch()
+    url = f"https://github.com/aquasecurity/kube-bench/releases/download/v{kubebench_version}/kube-bench_{kubebench_version}_linux_{arch}.tar.gz"
+    tarball = tmpdir / "kube-bench.tar.gz"
     try:
-        tmpdir = pathlib.Path(os.path.expandvars("$SNAP_DATA")) / "var" / "tmp"
-        tarbin = pathlib.Path(os.path.expandvars("$SNAP")) / "bin" / "tar"
-        shutil.rmtree(tmpdir, ignore_errors=True)
-        if not os.path.exists(tmpdir):
-            os.makedirs(tmpdir)
-        arch = get_arch()
-        url = f"https://github.com/aquasecurity/kube-bench/releases/download/v{kubebench_version}/kube-bench_{kubebench_version}_linux_{arch}.tar.gz"
         response = requests.get(url)
-        tarball = tmpdir / "kube-bench.tar.gz"
-        kubebench = DIR / "tmp"
+        response.raise_for_status()
         open(tarball, "wb").write(response.content)
+    except requests.exceptions.RequestException as e:
+        click.echo(f"Failed to download kube-bench: {e}", err=True)
+        exit(2)
+
+    try:
+        kubebench = DIR / "tmp"
         if not os.path.exists(kubebench):
             os.mkdir(kubebench)
+        # Only extract the kube-bench binary. The rest of the archive is the
+        # upstream cfg/ tree, which we don't use: the wrapper script points
+        # --config-dir at our own committed cfg/ directory instead. Strict
+        # confinement denies writes to the addon directory below its top
+        # level, so extracting the unused cfg/ tree fails there; skip it.
         subprocess.check_call(
-            f"{tarbin} -zxf {tarball}  --no-same-owner -C {kubebench}".split()
+            f"{tarbin} -zxf {tarball} --no-same-owner -C {kubebench} kube-bench".split()
         )
         src = DIR / "kube-bench"
         dst = PLUGINS_DIR / "kube-bench"
         shutil.copyfile(src, dst)
         subprocess.check_call(f"chmod +x {dst}".split())
     except subprocess.CalledProcessError as e:
-        click.echo(f"Failed to download kube-bench: {e}", err=True)
+        click.echo(f"Failed to extract kube-bench: {e}", err=True)
         exit(2)
 
 

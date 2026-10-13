@@ -9,6 +9,7 @@ CHART_VERSION="39.0.8"  # contains Traefik v3.6.13
 GW_VERSION="v1.5.1"
 NAMESPACE="ingress"
 DEFAULT_SSL_CERTIFICATE=""
+UPSTREAM_IP=""
 
 function usage {
     echo "Usage: microk8s enable ingress [OPTIONS]"
@@ -19,6 +20,7 @@ function usage {
     echo "   -r REPOSITORY    Traefik Helm chart repository (default: ${REPO})"
     echo "   -V VERSION       Traefik Helm chart version (default: ${CHART_VERSION})"
     echo "   -g GW_VERSION    Gateway API CRD version (default: ${GW_VERSION})"
+    echo "   -t UPSTREAM_IP   Upstream trusted HTTP proxies default: [${UPSTREAM_IP}]"
     echo "   --default-ssl-certificate NAMESPACE/NAME"
     echo "                    Kubernetes TLS Secret to use as Traefik's default TLS certificate"
 }
@@ -51,6 +53,14 @@ while [[ $# -gt 0 ]]; do
             fi
             GW_VERSION="$2"
             shift 2
+            ;;
+        -t)
+            if [[ -z "${2:-}" || "$2" == -* ]]; then
+                echo "Missing argument for option -g"
+                usage
+                exit 1
+            fi
+            UPSTREAM_IP="$2"
             ;;
         --default-ssl-certificate)
             if [[ -z "${2:-}" || "$2" == -* ]]; then
@@ -117,6 +127,8 @@ $HELM upgrade --install traefik traefik/traefik \
     --create-namespace \
     --namespace "${NAMESPACE}" \
     --skip-crds \
+    --set-json 'ports.web.forwardedHeaders.trustedIPs=[${UPSTREAM_IP}]' \
+    --set-json 'ports.websecure.forwardedHeaders.trustedIPs=[${UPSTREAM_IP}]' \
     --values "${CURRENT_DIR}/values.yaml"
 
 if [[ -n "${DEFAULT_SSL_CERTIFICATE}" ]]; then

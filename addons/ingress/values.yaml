@@ -49,7 +49,7 @@ providers:
   # NGINX compatibility provider - allows existing Ingress resources with
   # ingressClassName: nginx or nginx-specific annotations to work seamlessly
   # Reference: https://doc.traefik.io/traefik/reference/install-configuration/providers/kubernetes/kubernetes-ingress-nginx/
-  kubernetesIngressNginx:
+  kubernetesIngressNGINX:
     enabled: true
 
 # Create IngressClass 'traefik'

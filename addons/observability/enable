@@ -14,7 +14,7 @@ KUBECTL="$SNAP/microk8s-kubectl.wrapper"
 echo "Enabling observability"
 
 KUBE_PROM_STACK_VALUES=
-KUBE_PROM_STACK_VERSION=77.6.2
+KUBE_PROM_STACK_VERSION=93.1.1
 LOKI_STACK_VALUES=
 LOKI_STACK_VERSION=2.10.3
 TEMPO_VALUES=
@@ -117,4 +117,6 @@ echo ""
 echo "Note: the observability stack is setup to monitor only the current nodes of the MicroK8s cluster."
 echo "For any nodes joining the cluster at a later stage this addon will need to be set up again."
 echo ""
-echo "Observability has been enabled (user/pass: admin/prom-operator)"
+echo "Observability has been enabled"
+echo "Grafana user: admin. Retrieve the Grafana admin password with:"
+echo "  microk8s kubectl get secret -n ${NAMESPACE} kube-prom-stack-grafana -o jsonpath='{.data.admin-password}' | base64 -d"

@@ -40,6 +40,23 @@ def main(force: bool):
         stderr=subprocess.DEVNULL,
     )
 
+    click.echo("Remove Ceph CSI client profiles and connections")
+    subprocess.run(
+        [
+            KUBECTL,
+            "delete",
+            "clientprofiles.csi.ceph.io,cephconnections.csi.ceph.io",
+            "--namespace=rook-ceph",
+            "--all",
+            "--ignore-not-found",
+            "--timeout=60s",
+        ],
+        stderr=subprocess.DEVNULL,
+    )
+
+    click.echo("Remove Ceph CSI drivers")
+    subprocess.run([HELM, "uninstall", "--namespace=rook-ceph", "ceph-csi-drivers"])
+
     click.echo("Remove rook operator")
     subprocess.run([HELM, "uninstall", "--namespace=rook-ceph", "rook-ceph"])
 

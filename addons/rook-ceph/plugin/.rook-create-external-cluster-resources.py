@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-# Originally https://github.com/rook/rook/blob/v1.18.7/deploy/examples/create-external-cluster-resources.py  # noqa
+# Originally https://github.com/rook/rook/blob/v1.21.2/deploy/examples/create-external-cluster-resources.py  # noqa
 
 import argparse
 import configparser
@@ -328,7 +328,14 @@ class RadosJSON:
             "--v2-port-enable",
             action="store_true",
             default=False,
-            help="Enable v2 mon port(3300) for mons",
+            help="(Deprecated) v2 port is now selected by default. This flag is ignored.",
+        )
+
+        common_group.add_argument(
+            "--v1-port-enable",
+            action="store_true",
+            default=False,
+            help="Use v1 mon port(6789) instead of the default v2 port(3300)",
         )
 
         output_group = argP.add_argument_group("output")
@@ -473,9 +480,21 @@ class RadosJSON:
             default="",
             required=False,
             help="Enable cephx key rotation for the users created by this script. This will create a new user with suffix `.{x}` and update the secrets with the new key."
-            + "Set `--cephx-key-rotation rotate` to initiate rotation."
-            + "To revert keys to the prior generation, set `--cephx-key-rotation revert`."
+            + "Set `--cephx-key-rotate rotate` to initiate rotation."
+            + "To revert keys to the prior generation, set `--cephx-key-rotate revert`."
             + "Note: If user are reverting to prior generation, then the user should manually delete the prior used user keys from the cluster after reverting",
+        )
+        output_group.add_argument(
+            "--cephx-key-type",
+            default="",
+            required=False,
+            choices=["aes", "aes256k"],
+            help="When new Ceph client keys are created or when CephX key rotation is enabled (see --cephx-key-rotate), "
+            + "this will request Ceph create a specific type of key. "
+            + "If not specified, Ceph will use its configured preferred key type. "
+            + "If keys already exist, this flag is a no-op. "
+            + "Recommended: use 'aes256k' if supported by the Linux kernel (v7.0+) running on Rook cluster nodes.",
+            # TODO(key): link to ceph docs when available.
         )
 
         upgrade_group = argP.add_argument_group("upgrade")
@@ -725,17 +744,22 @@ class RadosJSON:
         q_leader_details = q_leader_matching_list[0]
         # get the address vector of the quorum-leader
         q_leader_addrvec = q_leader_details.get("public_addrs", {}).get("addrvec", [])
+        # default to v2 address (msgr2)
         ip_addr = str(q_leader_details["public_addr"].split("/")[0])
-
-        if self._arg_parser.v2_port_enable:
+        if self._arg_parser.v1_port_enable:
+            if q_leader_addrvec[0]["type"] == "v1":
+                ip_addr = q_leader_addrvec[0]["addr"]
+            elif len(q_leader_addrvec) > 1 and q_leader_addrvec[1]["type"] == "v1":
+                ip_addr = q_leader_addrvec[1]["addr"]
+            else:
+                sys.stderr.write(
+                    "'v1' address type not present, and 'v1-port-enable' flag is provided"
+                )
+        else:
             if q_leader_addrvec[0]["type"] == "v2":
                 ip_addr = q_leader_addrvec[0]["addr"]
             elif len(q_leader_addrvec) > 1 and q_leader_addrvec[1]["type"] == "v2":
                 ip_addr = q_leader_addrvec[1]["addr"]
-            else:
-                sys.stderr.write(
-                    "'v2' address type not present, and 'v2-port-enable' flag is provided"
-                )
 
         return f"{str(q_leader_name)}={ip_addr}"
 
@@ -1072,7 +1096,13 @@ class RadosJSON:
             "format": "json",
         }
 
+        if self._arg_parser.cephx_key_type != "":
+            cmd_json["key_type"] = self._arg_parser.cephx_key_type
+
         if self._arg_parser.dry_run:
+            key_type_out = ""
+            if cmd_json.get("key_type"):
+                key_type_out = " --key-type=" + cmd_json.get("key_type")
             return (
                 self.dry_run(
                     "ceph "
@@ -1081,6 +1111,7 @@ class RadosJSON:
                     + cmd_json["entity"]
                     + " "
                     + " ".join(cmd_json["caps"])
+                    + key_type_out
                 ),
                 "",
             )
@@ -1211,7 +1242,13 @@ class RadosJSON:
             "format": "json",
         }
 
+        if self._arg_parser.cephx_key_type != "":
+            cmd_json["key_type"] = self._arg_parser.cephx_key_type
+
         if self._arg_parser.dry_run:
+            key_type_out = ""
+            if cmd_json.get("key_type"):
+                key_type_out = " --key-type=" + cmd_json.get("key_type")
             return self.dry_run(
                 "ceph "
                 + cmd_json["prefix"]
@@ -1219,6 +1256,7 @@ class RadosJSON:
                 + cmd_json["entity"]
                 + " "
                 + " ".join(cmd_json["caps"])
+                + key_type_out
             )
         # check if user already exist
         user_key = self.check_user_exist(entity)
@@ -1434,10 +1472,12 @@ class RadosJSON:
         request_url = base_url + urlencode(params)
 
         try:
+            # requests.get without a timeout could hang forever on an unresponsive endpoint
             r = requests.get(
                 request_url,
                 auth=S3Auth(access_key, secret_key, rgw_endpoint),
                 verify=verify,
+                timeout=30,
             )
         except requests.exceptions.Timeout:
             sys.stderr.write(
@@ -1865,8 +1905,7 @@ class RadosJSON:
                     },
                 }
             )
-
-        # if 'CSI_RBD_NODE_SECRET' exists, then only add 'rook-csi-rbd-provisioner' Secret
+        # if 'CSI_RBD_NODE_SECRET' && 'CSI_RBD_NODE_SECRET_NAME' exists, then only add 'rook-csi-rbd-node' Secret
         if (
             self.out_map["CSI_RBD_NODE_SECRET"]
             and self.out_map["CSI_RBD_NODE_SECRET_NAME"]
@@ -1883,7 +1922,7 @@ class RadosJSON:
                     },
                 }
             )
-        # if 'CSI_RBD_PROVISIONER_SECRET' exists, then only add 'rook-csi-rbd-provisioner' Secret
+        # if 'CSI_RBD_PROVISIONER_SECRET' && 'CSI_RBD_PROVISIONER_SECRET_NAME' exists, then only add 'rook-csi-rbd-provisioner' Secret
         if (
             self.out_map["CSI_RBD_PROVISIONER_SECRET"]
             and self.out_map["CSI_RBD_PROVISIONER_SECRET_NAME"]
@@ -1894,13 +1933,14 @@ class RadosJSON:
                     "kind": "Secret",
                     "data": {
                         "userID": self.get_user_id(
-                            self.out_map["CSI_RBD_PROVISIONER_SECRET_NAME"], generation
+                            self.out_map["CSI_RBD_PROVISIONER_SECRET_NAME"],
+                            generation,
                         ),
                         "userKey": self.out_map["CSI_RBD_PROVISIONER_SECRET"],
                     },
                 }
             )
-        # if 'CSI_CEPHFS_PROVISIONER_SECRET' exists, then only add 'rook-csi-cephfs-provisioner' Secret
+        # if 'CSI_CEPHFS_PROVISIONER_SECRET' && 'CSI_CEPHFS_PROVISIONER_SECRET_NAME' exists, then only add 'rook-csi-cephfs-provisioner' Secret
         if (
             self.out_map["CSI_CEPHFS_PROVISIONER_SECRET"]
             and self.out_map["CSI_CEPHFS_PROVISIONER_SECRET_NAME"]
@@ -1918,7 +1958,7 @@ class RadosJSON:
                     },
                 }
             )
-        # if 'CSI_CEPHFS_NODE_SECRET' exists, then only add 'rook-csi-cephfs-node' Secret
+        # if 'CSI_CEPHFS_NODE_SECRET' && 'CSI_CEPHFS_NODE_SECRET_NAME' exists, then only add 'rook-csi-cephfs-node' Secret
         if (
             self.out_map["CSI_CEPHFS_NODE_SECRET"]
             and self.out_map["CSI_CEPHFS_NODE_SECRET_NAME"]
@@ -1972,6 +2012,8 @@ class RadosJSON:
                         "csi.storage.k8s.io/provisioner-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
                         "csi.storage.k8s.io/controller-expand-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
                         "csi.storage.k8s.io/node-stage-secret-name": f"rook-{self.out_map['CSI_RBD_NODE_SECRET_NAME']}",
+                        "csi.storage.k8s.io/controller-modify-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
+                        "csi.storage.k8s.io/node-publish-secret-name": f"rook-{self.out_map['CSI_RBD_NODE_SECRET_NAME']}",
                     },
                 }
             )
@@ -1987,6 +2029,8 @@ class RadosJSON:
                             "csi.storage.k8s.io/provisioner-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
                             "csi.storage.k8s.io/controller-expand-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
                             "csi.storage.k8s.io/node-stage-secret-name": f"rook-{self.out_map['CSI_RBD_NODE_SECRET_NAME']}",
+                            "csi.storage.k8s.io/controller-modify-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
+                            "csi.storage.k8s.io/node-publish-secret-name": f"rook-{self.out_map['CSI_RBD_NODE_SECRET_NAME']}",
                         },
                     }
                 )
@@ -2000,6 +2044,8 @@ class RadosJSON:
                             "csi.storage.k8s.io/provisioner-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
                             "csi.storage.k8s.io/controller-expand-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
                             "csi.storage.k8s.io/node-stage-secret-name": f"rook-{self.out_map['CSI_RBD_NODE_SECRET_NAME']}",
+                            "csi.storage.k8s.io/controller-modify-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
+                            "csi.storage.k8s.io/node-publish-secret-name": f"rook-{self.out_map['CSI_RBD_NODE_SECRET_NAME']}",
                         },
                     }
                 )
@@ -2026,6 +2072,8 @@ class RadosJSON:
                         "csi.storage.k8s.io/provisioner-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
                         "csi.storage.k8s.io/controller-expand-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
                         "csi.storage.k8s.io/node-stage-secret-name": f"rook-{self.out_map['CSI_RBD_NODE_SECRET_NAME']}",
+                        "csi.storage.k8s.io/controller-modify-secret-name": f"rook-{self.out_map['CSI_RBD_PROVISIONER_SECRET_NAME']}",
+                        "csi.storage.k8s.io/node-publish-secret-name": f"rook-{self.out_map['CSI_RBD_NODE_SECRET_NAME']}",
                     },
                 }
             )

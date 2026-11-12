@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Originally https://github.com/rook/rook/blob/v1.18.7/deploy/examples/import-external-cluster.sh  # noqa
+# Originally https://github.com/rook/rook/blob/v1.21.2/deploy/examples/import-external-cluster.sh  # noqa
 # Changes:
 #   - Add original LICENSE text in the header
 #   - Enable setting a custom $KUBECTL binary
@@ -148,13 +148,13 @@ eof
 function importClusterID() {
   if [ -n "$RADOS_NAMESPACE" ]; then
     createRadosNamespaceCR
-    timeout 20 sh -c "until [ \$($KUBECTL -n \"$NAMESPACE\" get CephBlockPoolRadosNamespace/$RADOS_NAMESPACE -o jsonpath='{.status.phase}' | grep -c 'Ready') -eq 1 ]; do echo 'waiting for radosNamespace to get created' && sleep 1; done"
+    timeout 20 sh -c "until [ \$($KUBECTL -n $NAMESPACE get CephBlockPoolRadosNamespace/$RADOS_NAMESPACE -o jsonpath='{.status.phase}' | grep -c 'Ready') -eq 1 ]; do echo 'waiting for radosNamespace to get created' && sleep 1; done"
     CLUSTER_ID_RBD=$($KUBECTL -n "$NAMESPACE" get cephblockpoolradosnamespace.ceph.rook.io/"$RADOS_NAMESPACE" -o jsonpath='{.status.info.clusterID}')
     RBD_STORAGE_CLASS_NAME=ceph-rbd-$RADOS_NAMESPACE
   fi
   if [ -n "$SUBVOLUME_GROUP" ]; then
     createSubvolumeGroupCR
-    timeout 20 sh -c "until [ \$($KUBECTL -n \"$NAMESPACE\" get CephFilesystemSubVolumeGroup/$SUBVOLUME_GROUP -o jsonpath='{.status.phase}' | grep -c 'Ready') -eq 1 ]; do echo 'waiting for subVolumeGroup to get created' && sleep 1; done"
+    timeout 20 sh -c "until [ \$($KUBECTL -n $NAMESPACE get CephFilesystemSubVolumeGroup/$SUBVOLUME_GROUP -o jsonpath='{.status.phase}' | grep -c 'Ready') -eq 1 ]; do echo 'waiting for subVolumeGroup to get created' && sleep 1; done"
     CLUSTER_ID_CEPHFS=$($KUBECTL -n "$NAMESPACE" get cephfilesystemsubvolumegroup.ceph.rook.io/"$SUBVOLUME_GROUP" -o jsonpath='{.status.info.clusterID}')
     CEPHFS_STORAGE_CLASS_NAME=cephfs-$SUBVOLUME_GROUP
   fi
@@ -245,6 +245,7 @@ function importCsiRBDNodeSecret() {
       "rook-$CSI_RBD_NODE_SECRET_NAME" \
       -p "{\"stringData\":{\"userID\":\"$userID\",\"userKey\":\"$CSI_RBD_NODE_SECRET\"}}"
   fi
+  $KUBECTL -n "$NAMESPACE" annotate secret "rook-$CSI_RBD_NODE_SECRET_NAME" --overwrite csi.rook.io/RBDNodeSecret="true"
 }
 
 function importCsiRBDProvisionerSecret() {
@@ -266,6 +267,7 @@ function importCsiRBDProvisionerSecret() {
       "rook-$CSI_RBD_PROVISIONER_SECRET_NAME" \
       -p "{\"stringData\":{\"userID\":\"$userID\",\"userKey\":\"$CSI_RBD_PROVISIONER_SECRET\"}}"
   fi
+  $KUBECTL -n "$NAMESPACE" annotate secret "rook-$CSI_RBD_PROVISIONER_SECRET_NAME" --overwrite csi.rook.io/RBDProvisionerSecret="true"
 }
 
 function importCsiCephFSNodeSecret() {
@@ -308,6 +310,7 @@ function importCsiCephFSProvisionerSecret() {
       "rook-$CSI_CEPHFS_PROVISIONER_SECRET_NAME" \
       -p "{\"stringData\":{\"userID\":\"$userID\",\"userKey\":\"$CSI_CEPHFS_PROVISIONER_SECRET\"}}"
   fi
+  $KUBECTL -n "$NAMESPACE" annotate secret "rook-$CSI_CEPHFS_PROVISIONER_SECRET_NAME" --overwrite csi.rook.io/CephFSProvisionerSecret="true"
 }
 
 function importRGWAdminOpsUser() {
@@ -343,8 +346,14 @@ parameters:
   csi.storage.k8s.io/provisioner-secret-namespace: $NAMESPACE
   csi.storage.k8s.io/controller-expand-secret-name:  "rook-$CSI_RBD_PROVISIONER_SECRET_NAME"
   csi.storage.k8s.io/controller-expand-secret-namespace: $NAMESPACE
+  csi.storage.k8s.io/controller-publish-secret-name: "rook-$CSI_RBD_PROVISIONER_SECRET_NAME"
+  csi.storage.k8s.io/controller-publish-secret-namespace: $NAMESPACE
   csi.storage.k8s.io/node-stage-secret-name: "rook-$CSI_RBD_NODE_SECRET_NAME"
   csi.storage.k8s.io/node-stage-secret-namespace: $NAMESPACE
+  csi.storage.k8s.io/controller-modify-secret-name: "rook-$CSI_RBD_PROVISIONER_SECRET_NAME"
+  csi.storage.k8s.io/controller-modify-secret-namespace: $NAMESPACE
+  csi.storage.k8s.io/node-publish-secret-name: "rook-$CSI_RBD_NODE_SECRET_NAME"
+  csi.storage.k8s.io/node-publish-secret-namespace: $NAMESPACE
   csi.storage.k8s.io/fstype: ext4
 allowVolumeExpansion: true
 reclaimPolicy: Delete
@@ -371,8 +380,14 @@ parameters:
   csi.storage.k8s.io/provisioner-secret-namespace: $NAMESPACE
   csi.storage.k8s.io/controller-expand-secret-name:  "rook-$CSI_RBD_PROVISIONER_SECRET_NAME"
   csi.storage.k8s.io/controller-expand-secret-namespace: $NAMESPACE
+  csi.storage.k8s.io/controller-publish-secret-name: "rook-$CSI_RBD_PROVISIONER_SECRET_NAME"
+  csi.storage.k8s.io/controller-publish-secret-namespace: $NAMESPACE
   csi.storage.k8s.io/node-stage-secret-name: "rook-$CSI_RBD_NODE_SECRET_NAME"
   csi.storage.k8s.io/node-stage-secret-namespace: $NAMESPACE
+  csi.storage.k8s.io/controller-modify-secret-name: "rook-$CSI_RBD_PROVISIONER_SECRET_NAME"
+  csi.storage.k8s.io/controller-modify-secret-namespace: $NAMESPACE
+  csi.storage.k8s.io/node-publish-secret-name: "rook-$CSI_RBD_NODE_SECRET_NAME"
+  csi.storage.k8s.io/node-publish-secret-namespace: $NAMESPACE
   csi.storage.k8s.io/fstype: ext4
 allowVolumeExpansion: true
 reclaimPolicy: Delete
@@ -426,8 +441,14 @@ parameters:
   csi.storage.k8s.io/provisioner-secret-namespace: $NAMESPACE
   csi.storage.k8s.io/controller-expand-secret-name:  "rook-$CSI_RBD_PROVISIONER_SECRET_NAME"
   csi.storage.k8s.io/controller-expand-secret-namespace: $NAMESPACE
+  csi.storage.k8s.io/controller-publish-secret-name: "rook-$CSI_RBD_PROVISIONER_SECRET_NAME"
+  csi.storage.k8s.io/controller-publish-secret-namespace: $NAMESPACE
   csi.storage.k8s.io/node-stage-secret-name: "rook-$CSI_RBD_NODE_SECRET_NAME"
   csi.storage.k8s.io/node-stage-secret-namespace: $NAMESPACE
+  csi.storage.k8s.io/controller-modify-secret-name: "rook-$CSI_RBD_PROVISIONER_SECRET_NAME"
+  csi.storage.k8s.io/controller-modify-secret-namespace: $NAMESPACE
+  csi.storage.k8s.io/node-publish-secret-name: "rook-$CSI_RBD_NODE_SECRET_NAME"
+  csi.storage.k8s.io/node-publish-secret-namespace: $NAMESPACE
   csi.storage.k8s.io/fstype: ext4
 allowVolumeExpansion: true
 reclaimPolicy: Delete
@@ -454,6 +475,8 @@ parameters:
   csi.storage.k8s.io/provisioner-secret-namespace: $NAMESPACE
   csi.storage.k8s.io/controller-expand-secret-name: "rook-$CSI_CEPHFS_PROVISIONER_SECRET_NAME"
   csi.storage.k8s.io/controller-expand-secret-namespace: $NAMESPACE
+  csi.storage.k8s.io/controller-publish-secret-name: "rook-$CSI_CEPHFS_PROVISIONER_SECRET_NAME"
+  csi.storage.k8s.io/controller-publish-secret-namespace: $NAMESPACE
   csi.storage.k8s.io/node-stage-secret-name: "rook-$CSI_CEPHFS_NODE_SECRET_NAME"
   csi.storage.k8s.io/node-stage-secret-namespace: $NAMESPACE
 allowVolumeExpansion: true
@@ -469,10 +492,8 @@ eof
 ########
 checkEnvVars
 createClusterNamespace
-importClusterID
-importSecret
-importConfigMap
-createInputCommadConfigMap
+# create the csi secret before creating the mon cm
+# as the cluster controller will look for the csi secrets for creating client profile
 if [ -n "$CSI_RBD_NODE_SECRET_NAME" ] && [ -n "$CSI_RBD_NODE_SECRET" ]; then
   importCsiRBDNodeSecret
 fi
@@ -488,6 +509,13 @@ fi
 if [ -n "$CSI_CEPHFS_PROVISIONER_SECRET_NAME" ] && [ -n "$CSI_CEPHFS_PROVISIONER_SECRET" ]; then
   importCsiCephFSProvisionerSecret
 fi
+importSecret
+importConfigMap
+createInputCommadConfigMap
+# the order of creating the svg and rns is important,
+# the svg and rns controller is dependent on the ceph health,
+# so first we should create the mon secret to get the cephcluster `health ok`
+importClusterID
 if [ -n "$RBD_POOL_NAME" ]; then
   if [ -n "$RBD_METADATA_EC_POOL_NAME" ]; then
     createECRBDStorageClass

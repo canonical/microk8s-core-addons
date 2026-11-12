@@ -4,6 +4,7 @@ import os
 import shlex
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Tuple
 
@@ -90,6 +91,41 @@ def ceph_initialize_rbd_pool(ceph_conf: str, keyring: str, rbd_pool: str):
         client.shutdown()
 
 
+def wait_for_csi_config(namespace: str, timeout: int = 300):
+    """Wait until the Ceph CSI controller plugins can read the configuration of the imported
+    cluster. A PersistentVolumeClaim created before that fails with a non-retriable error
+    (the CSI provisioner does not retry volumes that failed with an infeasible error)."""
+    click.echo("Waiting for Ceph CSI drivers to pick up the cluster configuration")
+    drivers = {
+        "rook-ceph.rbd.csi.ceph.com-ctrlplugin": "csi-rbdplugin",
+        "rook-ceph.cephfs.csi.ceph.com-ctrlplugin": "csi-cephfsplugin",
+    }
+    deadline = time.monotonic() + timeout
+    for deployment, container in drivers.items():
+        while True:
+            p = subprocess.run(
+                [
+                    KUBECTL,
+                    "--namespace=rook-ceph",
+                    "exec",
+                    f"deploy/{deployment}",
+                    f"--container={container}",
+                    "--",
+                    "grep",
+                    "-q",
+                    f'"clusterID":"{namespace}"',
+                    "/etc/ceph-csi-config/config.json",
+                ],
+                capture_output=True,
+            )
+            if p.returncode == 0:
+                break
+            if time.monotonic() > deadline:
+                click.echo(f"WARNING: {deployment} did not pick up the cluster configuration yet")
+                break
+            time.sleep(5)
+
+
 def import_external_ceph_cluster(ceph_conf: str, keyring: str, namespace: str, rbd_pool: str):
     # create rook-ceph-external namespace
     click.echo(f"Creating namespace {namespace}")
@@ -142,6 +178,8 @@ def import_external_ceph_cluster(ceph_conf: str, keyring: str, namespace: str, r
         "-",
     ]
     subprocess.run(cmd, input=VALUES_YAML.encode())
+
+    wait_for_csi_config(namespace)
 
 
 @click.command()

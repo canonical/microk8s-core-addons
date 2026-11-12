@@ -17,6 +17,9 @@ HELM = SNAP / "microk8s-helm.wrapper"
 KUBELET_DIR = SNAP_COMMON / "var" / "lib" / "kubelet"
 
 # Addon specifics
+CSI_DRIVERS_REPOSITORY = "https://ceph.github.io/ceph-csi-operator"
+CSI_DRIVERS_VERSION = "1.1.0"
+CSI_DRIVERS_VALUES = DIR / "ceph-csi-drivers-values.yaml"
 ROOK_PLUGINS = [
     "connect-external-ceph",
     ".rook-create-external-cluster-resources.py",
@@ -25,7 +28,7 @@ ROOK_PLUGINS = [
 
 
 @click.command()
-@click.option("--rook-version", default="v1.18.7")
+@click.option("--rook-version", default="v1.21.2")
 @click.option("--rook-repository", default="https://charts.rook.io/release")
 @click.option("--set", "helm_set", multiple=True)
 @click.option("-f", "--values", "helm_values", multiple=True, type=click.Path(exists=True))
@@ -41,7 +44,6 @@ def main(rook_version: str, rook_repository: str, helm_set: list, helm_values: l
         f"--version={rook_version}",
         "--create-namespace",
         "--namespace=rook-ceph",
-        f"--set=csi.kubeletDirPath={KUBELET_DIR}",
     ]
 
     for arg in helm_set:
@@ -51,6 +53,26 @@ def main(rook_version: str, rook_repository: str, helm_set: list, helm_values: l
 
     click.echo(f"Install Rook version {rook_version}")
     subprocess.run([HELM, *helm_args])
+
+    # Since Rook v1.20, the Ceph CSI drivers are not deployed by the Rook operator and must
+    # be installed separately with the ceph-csi-drivers chart.
+    click.echo(f"Add Ceph CSI Helm repository {CSI_DRIVERS_REPOSITORY}")
+    subprocess.run([HELM, "repo", "add", "ceph-csi-operator", CSI_DRIVERS_REPOSITORY])
+    subprocess.run([HELM, "repo", "update", "ceph-csi-operator"])
+
+    click.echo(f"Install Ceph CSI drivers version {CSI_DRIVERS_VERSION}")
+    subprocess.run(
+        [
+            HELM,
+            "install",
+            "ceph-csi-drivers",
+            "ceph-csi-operator/ceph-csi-drivers",
+            f"--version={CSI_DRIVERS_VERSION}",
+            "--namespace=rook-ceph",
+            f"--values={CSI_DRIVERS_VALUES}",
+            f"--set=operatorConfig.driverSpecDefaults.nodePlugin.kubeletDirPath={KUBELET_DIR}",
+        ]
+    )
 
     click.echo("Creating 'microk8s connect-external-ceph' command")
     for plugin in ROOK_PLUGINS:

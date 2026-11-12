@@ -23,7 +23,7 @@ microk8s-addons:
 
     - name: "ingress"
       description: "Ingress controller for external access"
-      version: "3.6.2"
+      version: "3.7.17"
       check_status: "ingressclass.networking.k8s.io/public"
       supported_architectures:
         - arm64

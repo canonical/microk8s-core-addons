@@ -3,7 +3,7 @@
 set -e
 
 NAMESPACE="ingress"
-GW_VERSION="v1.4.0"
+GW_VERSION="v1.6.3"
 
 function usage {
     echo "Usage: microk8s disable ingress [OPTIONS]"

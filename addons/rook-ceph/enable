@@ -61,7 +61,7 @@ def main(rook_version: str, rook_repository: str, helm_set: list, helm_values: l
     subprocess.run([HELM, "repo", "update", "ceph-csi-operator"])
 
     click.echo(f"Install Ceph CSI drivers version {CSI_DRIVERS_VERSION}")
-    subprocess.run(
+    subprocess.check_call(
         [
             HELM,
             "install",

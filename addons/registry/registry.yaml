@@ -36,7 +36,7 @@ spec:
     spec:
       containers:
         - name: registry
-          image: registry:2.8.3
+          image: registry:3.1.2
           env:
             - name: REGISTRY_HTTP_ADDR
               value: :5000
@@ -44,6 +44,9 @@ spec:
               value: /var/lib/registry
             - name: REGISTRY_STORAGE_DELETE_ENABLED
               value: "yes"
+            # The v3 image's bundled config defaults to debug logging.
+            - name: REGISTRY_LOG_LEVEL
+              value: info
           ports:
             - containerPort: 5000
               name: registry

@@ -21,13 +21,13 @@ We should revisit this decision in the future. Ideally, we would want to avoid h
 
 #### `.rook-create-external-cluster-resources.py`
 
-Sourced from: https://github.com/rook/rook/blob/v1.16.6/deploy/examples/create-external-cluster-resources.py
+Sourced from: https://github.com/rook/rook/blob/v1.21.2/deploy/examples/create-external-cluster-resources.py
 
 This script is used to generate Ceph auth clients for use by the Ceph CSI node and provisioner pods.
 
 #### `.rook-import-external-cluster.sh`
 
-Sourced from: https://github.com/rook/rook/blob/v1.16.6/deploy/examples/import-external-cluster.sh
+Sourced from: https://github.com/rook/rook/blob/v1.21.2/deploy/examples/import-external-cluster.sh
 
 This script is used to create the Kubernetes secrets and configmaps for connecting to an external Ceph cluster. The following changes are applied:
 

@@ -1,10 +1,10 @@
-# Sourced from: https://raw.githubusercontent.com/metallb/metallb/v0.15.3/config/manifests/metallb-native.yaml
+# Sourced from: https://raw.githubusercontent.com/metallb/metallb/v0.16.2/config/manifests/metallb-native.yaml
 # This file only contains the CRDs.
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.22.0
   name: bfdprofiles.metallb.io
 spec:
   group: metallb.io
@@ -125,7 +125,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.22.0
   name: bgpadvertisements.metallb.io
 spec:
   group: metallb.io
@@ -194,6 +194,14 @@ spec:
                     “roll up” the /128s into a larger prefix. Defaults to 128. Works
                     for IPv6 addresses.
                   format: int32
+                  type: integer
+                asPathPrepend:
+                  description: |-
+                    Specifies the number of times to prepend the ASN to the AS-path on outgoing BGP updates,
+                    artificially lengthening the path for traffic engineering.
+                    Supported only in frr-k8s mode.
+                  maximum: 10
+                  minimum: 1
                   type: integer
                 communities:
                   description: |-
@@ -336,7 +344,75 @@ spec:
                   items:
                     type: string
                   type: array
+                serviceSelectors:
+                  description: |-
+                    ServiceSelectors limits the set of services that will be advertised via this advertisement.
+                    If empty, all services from the selected pools are advertised.
+                    This field is mutually exclusive with aggregationLength and aggregationLengthV6 -
+                    services can only be selected when using the default /32 (IPv4) or /128 (IPv6) aggregation.
+                  items:
+                    description: |-
+                      A label selector is a label query over a set of resources. The result of matchLabels and
+                      matchExpressions are ANDed. An empty label selector matches all objects. A null
+                      label selector matches no objects.
+                    properties:
+                      matchExpressions:
+                        description:
+                          matchExpressions is a list of label selector requirements.
+                          The requirements are ANDed.
+                        items:
+                          description: |-
+                            A label selector requirement is a selector that contains values, a key, and an operator that
+                            relates the key and values.
+                          properties:
+                            key:
+                              description:
+                                key is the label key that the selector applies
+                                to.
+                              type: string
+                            operator:
+                              description: |-
+                                operator represents a key's relationship to a set of values.
+                                Valid operators are In, NotIn, Exists and DoesNotExist.
+                              type: string
+                            values:
+                              description: |-
+                                values is an array of string values. If the operator is In or NotIn,
+                                the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                the values array must be empty. This array is replaced during a strategic
+                                merge patch.
+                              items:
+                                type: string
+                              type: array
+                              x-kubernetes-list-type: atomic
+                          required:
+                            - key
+                            - operator
+                          type: object
+                        type: array
+                        x-kubernetes-list-type: atomic
+                      matchLabels:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                          map is equivalent to an element of matchExpressions, whose key field is "key", the
+                          operator is "In", and the values array contains only "value". The requirements are ANDed.
+                        type: object
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  type: array
               type: object
+              x-kubernetes-validations:
+                - message:
+                    serviceSelectors and aggregationLength are mutually exclusive,
+                    can only be used together with default aggregationLength (32) and
+                    aggregationLengthV6 (128)
+                  rule:
+                    "!has(self.serviceSelectors) || self.serviceSelectors.size() ==
+                    0 || ((!has(self.aggregationLength) || self.aggregationLength == 32)
+                    && (!has(self.aggregationLengthV6) || self.aggregationLengthV6 ==
+                    128))"
             status:
               description: BGPAdvertisementStatus defines the observed state of BGPAdvertisement.
               type: object
@@ -350,7 +426,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.22.0
   name: bgppeers.metallb.io
 spec:
   conversion:
@@ -425,7 +501,7 @@ spec:
                   type: string
                 myASN:
                   description: AS number to use for the local end of the session.
-                  format: int32
+                  format: int64
                   maximum: 4294967295
                   minimum: 0
                   type: integer
@@ -466,7 +542,7 @@ spec:
                   type: string
                 peerASN:
                   description: AS number to expect from the remote end of the session.
-                  format: int32
+                  format: int64
                   maximum: 4294967295
                   minimum: 0
                   type: integer
@@ -557,6 +633,7 @@ spec:
                   default: false
                   description: |-
                     To set if we want to disable MP BGP that will separate IPv4 and IPv6 route exchanges into distinct BGP sessions.
+
                     Deprecated: DisableMP is deprecated in favor of dualStackAddressFamily.
                   type: boolean
                 dualStackAddressFamily:
@@ -579,14 +656,14 @@ spec:
                 ebgpMultiHop:
                   description:
                     To set if the BGPPeer is multi-hops away. Needed for
-                    FRR mode only.
+                    FRR-based modes (FRR-K8s, FRR) only.
                   type: boolean
                 enableGracefulRestart:
                   description: |-
                     EnableGracefulRestart allows BGP peer to continue to forward data packets
                     along known routes while the routing protocol information is being
                     restored. This field is immutable because it requires restart of the BGP
-                    session. Supported for FRR mode only.
+                    session. Supported for FRR-based modes (FRR-K8s, FRR) only.
                   type: boolean
                   x-kubernetes-validations:
                     - message: EnableGracefulRestart cannot be changed after creation
@@ -605,9 +682,20 @@ spec:
                 keepaliveTime:
                   description: Requested BGP keepalive time, per RFC4271.
                   type: string
+                localASN:
+                  description: |-
+                    LocalASN allows advertising a different AS number to the peer using BGP's
+                    local-as feature. When set, MetalLB will advertise this ASN to the peer
+                    via "neighbor <peer> local-as <ASN> no-prepend replace-as", overriding
+                    the router-level MyASN for this specific session.
+                    Not supported in native BGP mode.
+                  format: int64
+                  maximum: 4294967295
+                  minimum: 1
+                  type: integer
                 myASN:
                   description: AS number to use for the local end of the session.
-                  format: int32
+                  format: int64
                   maximum: 4294967295
                   minimum: 0
                   type: integer
@@ -695,7 +783,7 @@ spec:
                   description: |-
                     AS number to expect from the remote end of the session.
                     ASN and DynamicASN are mutually exclusive and one of them must be specified.
-                  format: int32
+                  format: int64
                   maximum: 4294967295
                   minimum: 0
                   type: integer
@@ -735,7 +823,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.22.0
   name: communities.metallb.io
 spec:
   group: metallb.io
@@ -800,7 +888,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.22.0
   name: configurationstates.metallb.io
 spec:
   group: metallb.io
@@ -936,7 +1024,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.22.0
   name: ipaddresspools.metallb.io
 spec:
   group: metallb.io
@@ -1180,7 +1268,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.22.0
   name: l2advertisements.metallb.io
 spec:
   group: metallb.io
@@ -1359,6 +1447,142 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   type: array
+                preferredNodeSelectors:
+                  description: |-
+                    PreferredNodeSelectors allows specifying soft node preferences for L2
+                    leader election. Nodes matching these selectors receive a higher score
+                    and are preferred as the announcing node. If no preferred node is
+                    available, any eligible node (per NodeSelectors) can announce.
+                    Modeled after Kubernetes PreferredSchedulingTerm.
+                  items:
+                    description: |-
+                      PreferredNodeSelector expresses a weighted soft preference for nodes.
+                      This follows the Kubernetes PreferredSchedulingTerm pattern where Weight
+                      controls relative priority and Preference selects matching nodes.
+                    properties:
+                      preference:
+                        description: |-
+                          Preference selects the nodes that receive this weight. An empty
+                          selector matches every node. Preferences only apply to nodes
+                          already eligible under the advertisement's NodeSelectors.
+                        properties:
+                          matchExpressions:
+                            description:
+                              matchExpressions is a list of label selector
+                              requirements. The requirements are ANDed.
+                            items:
+                              description: |-
+                                A label selector requirement is a selector that contains values, a key, and an operator that
+                                relates the key and values.
+                              properties:
+                                key:
+                                  description:
+                                    key is the label key that the selector
+                                    applies to.
+                                  type: string
+                                operator:
+                                  description: |-
+                                    operator represents a key's relationship to a set of values.
+                                    Valid operators are In, NotIn, Exists and DoesNotExist.
+                                  type: string
+                                values:
+                                  description: |-
+                                    values is an array of string values. If the operator is In or NotIn,
+                                    the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                    the values array must be empty. This array is replaced during a strategic
+                                    merge patch.
+                                  items:
+                                    type: string
+                                  type: array
+                                  x-kubernetes-list-type: atomic
+                              required:
+                                - key
+                                - operator
+                              type: object
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          matchLabels:
+                            additionalProperties:
+                              type: string
+                            description: |-
+                              matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                              map is equivalent to an element of matchExpressions, whose key field is "key", the
+                              operator is "In", and the values array contains only "value". The requirements are ANDed.
+                            type: object
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      weight:
+                        description: |-
+                          Weight associated with matching the corresponding preference,
+                          in the range 1-100. Higher weights rank the node higher in the
+                          L2 leader election. Weights from selectors that both match a
+                          node sum together.
+                        format: int32
+                        maximum: 100
+                        minimum: 1
+                        type: integer
+                    required:
+                      - preference
+                      - weight
+                    type: object
+                  type: array
+                serviceSelectors:
+                  description: |-
+                    ServiceSelectors limits the set of services that will be advertised via this advertisement.
+                    If empty, all services from the selected pools are advertised.
+                    Services matching the selectors cannot use the allow-shared-ip annotation.
+                  items:
+                    description: |-
+                      A label selector is a label query over a set of resources. The result of matchLabels and
+                      matchExpressions are ANDed. An empty label selector matches all objects. A null
+                      label selector matches no objects.
+                    properties:
+                      matchExpressions:
+                        description:
+                          matchExpressions is a list of label selector requirements.
+                          The requirements are ANDed.
+                        items:
+                          description: |-
+                            A label selector requirement is a selector that contains values, a key, and an operator that
+                            relates the key and values.
+                          properties:
+                            key:
+                              description:
+                                key is the label key that the selector applies
+                                to.
+                              type: string
+                            operator:
+                              description: |-
+                                operator represents a key's relationship to a set of values.
+                                Valid operators are In, NotIn, Exists and DoesNotExist.
+                              type: string
+                            values:
+                              description: |-
+                                values is an array of string values. If the operator is In or NotIn,
+                                the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                the values array must be empty. This array is replaced during a strategic
+                                merge patch.
+                              items:
+                                type: string
+                              type: array
+                              x-kubernetes-list-type: atomic
+                          required:
+                            - key
+                            - operator
+                          type: object
+                        type: array
+                        x-kubernetes-list-type: atomic
+                      matchLabels:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                          map is equivalent to an element of matchExpressions, whose key field is "key", the
+                          operator is "In", and the values array contains only "value". The requirements are ANDed.
+                        type: object
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  type: array
               type: object
             status:
               description: L2AdvertisementStatus defines the observed state of L2Advertisement.
@@ -1373,7 +1597,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.22.0
   name: servicebgpstatuses.metallb.io
 spec:
   group: metallb.io
@@ -1460,7 +1684,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.22.0
   name: servicel2statuses.metallb.io
 spec:
   group: metallb.io

@@ -3,7 +3,7 @@ microk8s-addons:
   addons:
     - name: "dns"
       description: "CoreDNS"
-      version: "1.13.1"
+      version: "1.15.0"
       check_status: "pod/coredns"
       supported_architectures:
         - amd64
@@ -23,7 +23,7 @@ microk8s-addons:
 
     - name: "ingress"
       description: "Ingress controller for external access"
-      version: "3.6.2"
+      version: "3.7.17"
       check_status: "ingressclass.networking.k8s.io/public"
       supported_architectures:
         - arm64
@@ -51,7 +51,7 @@ microk8s-addons:
 
     - name: "registry"
       description: "Private image registry exposed on localhost:32000"
-      version: "2.8.3"
+      version: "3.1.2"
       check_status: "deployment.apps/registry"
       supported_architectures:
         - arm64
@@ -61,7 +61,7 @@ microk8s-addons:
 
     - name: "metrics-server"
       description: "K8s Metrics Server for API access to service metrics"
-      version: "0.8.0"
+      version: "0.9.1"
       check_status: "pod/metrics-server"
       supported_architectures:
         - arm64
@@ -71,7 +71,7 @@ microk8s-addons:
 
     - name: "nvidia"
       description: "NVIDIA hardware (GPU and network) support"
-      version: "gpu=25.10.0/network=25.7.0/microk8s-1"
+      version: "gpu=26.7.2/network=26.7.1/microk8s-1"
       check_status: "operator-node-feature-discovery"
       confinement: "classic"
       supported_architectures:
@@ -79,7 +79,7 @@ microk8s-addons:
 
     - name: "gpu"
       description: "Alias to nvidia add-on"
-      version: "25.10.0"
+      version: "26.7.2"
       check_status: "operator-node-feature-discovery"
       confinement: "classic"
       supported_architectures:
@@ -107,7 +107,7 @@ microk8s-addons:
 
     - name: "metallb"
       description: "Loadbalancer for your Kubernetes cluster"
-      version: "0.15.2"
+      version: "0.16.2"
       check_status: "pod/speaker"
       supported_architectures:
         - amd64
@@ -153,7 +153,7 @@ microk8s-addons:
 
     - name: "observability"
       description: "A lightweight observability stack for logs, traces and metrics"
-      version: "77.6.2"
+      version: "93.1.1"
       check_status: "statefulset.apps/prometheus-kube-prom-stack-kube-prome-prometheus"
       supported_architectures:
         - amd64
@@ -171,7 +171,7 @@ microk8s-addons:
 
     - name: "cert-manager"
       description: "Cloud native certificate management"
-      version: "1.19.1"
+      version: "1.21.3"
       check_status: "deployment.apps/cert-manager"
       supported_architectures:
         - arm64
@@ -206,7 +206,7 @@ microk8s-addons:
         - arm64
 
     - name: "rook-ceph"
-      version: "1.18.7"
+      version: "1.21.2"
       description: "Distributed Ceph storage using Rook"
       check_status: "deployment.apps/rook-ceph-operator"
       supported_architectures:

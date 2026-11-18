@@ -63,5 +63,5 @@ jobs:
             export STRICT="yes"
           fi
           export SKIP_PROMETHEUS="False"
-          sudo -E venv/bin/pytest -s -ra ./tests/test-addons.py
+          sudo --preserve-env=STRICT,POD_CIDR,POD_GATEWAY,UNDER_TIME_PRESSURE,SKIP_PROMETHEUS venv/bin/pytest -s -ra ./tests/test-addons.py
           sudo snap remove microk8s --purge

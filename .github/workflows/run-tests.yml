@@ -41,7 +41,7 @@ jobs:
             # If the "strict" branch has expired, snapd can otherwise resolve the
             # channel down to the classic revision without a clear error, which is
             # exactly how the cis-hardening strict bug (#410) went undetected here.
-            confinement=$(snap info microk8s | awk '/^confinement:/ {print $2}')
+            confinement=$(snap info --verbose microk8s | awk '/confinement:/ {print $2}')
             if [[ "$confinement" != "strict" ]]; then
               echo "::error::Expected a strict-confinement microk8s snap on channel ${{ matrix.channel }}, got confinement '$confinement'. The strict snap branch has likely expired and needs a fresh publish." >&2
               exit 1

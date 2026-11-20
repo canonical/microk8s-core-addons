@@ -617,7 +617,7 @@ class RadosJSON:
                 # the directory must have been processed using the c_rehash utility supplied with OpenSSL.
                 if prefix == "https" and self._arg_parser.rgw_skip_tls:
                     verify = False
-                    r = requests.head(ep, timeout=timeout, verify=False)
+                    r = requests.head(ep, timeout=timeout, verify=False) # nosec B501
                 elif prefix == "https" and cert:
                     verify = cert
                     r = requests.head(ep, timeout=timeout, verify=cert)

@@ -13,6 +13,59 @@ KUBECTL = SNAP / "microk8s-kubectl.wrapper"
 HELM = SNAP / "microk8s-helm.wrapper"
 
 
+CSI_RESOURCES = [
+    # ClientProfiles first: their cleanup finalizer reads the CephConnection.
+    "clientprofiles.csi.ceph.io",
+    "cephconnections.csi.ceph.io",
+]
+
+
+def remove_csi_resources():
+    click.echo("Remove Ceph CSI client profiles and connections")
+    for resource in CSI_RESOURCES:
+        crd = subprocess.run(
+            [KUBECTL, "get", "crd", resource, "--ignore-not-found", "--output=name"],
+            capture_output=True,
+        )
+        if crd.returncode:
+            click.echo(f"Failed to look up {resource}: {crd.stderr.decode().strip()}")
+            sys.exit(1)
+        # Installs from before Rook v1.20 do not have this CRD.
+        if not crd.stdout.strip():
+            continue
+        p = subprocess.run(
+            [
+                KUBECTL,
+                "delete",
+                resource,
+                "--namespace=rook-ceph",
+                "--all",
+                "--ignore-not-found",
+                "--timeout=60s",
+            ]
+        )
+        if p.returncode:
+            click.echo(f"Failed to remove {resource}. Nothing else was removed. Run disable again.")
+            sys.exit(1)
+
+
+def remove_csi_drivers():
+    click.echo("Remove Ceph CSI drivers")
+    releases = subprocess.run(
+        [HELM, "list", "--namespace=rook-ceph", "--filter=^ceph-csi-drivers$", "--short"],
+        capture_output=True,
+    )
+    if releases.returncode:
+        click.echo(f"Failed to look up the Ceph CSI drivers: {releases.stderr.decode().strip()}")
+        sys.exit(1)
+    # Installs from before Rook v1.20 do not have this release.
+    if not releases.stdout.strip():
+        return
+    if subprocess.run([HELM, "uninstall", "--namespace=rook-ceph", "ceph-csi-drivers"]).returncode:
+        click.echo("Failed to remove the Ceph CSI drivers. The Rook operator was not removed.")
+        sys.exit(1)
+
+
 @click.command()
 @click.option("--force", is_flag=True, default=False)
 def main(force: bool):
@@ -39,6 +92,10 @@ def main(force: bool):
         [HELM, "uninstall", "--namespace=rook-ceph-external", "rook-ceph-external"],
         stderr=subprocess.DEVNULL,
     )
+
+    remove_csi_resources()
+
+    remove_csi_drivers()
 
     click.echo("Remove rook operator")
     subprocess.run([HELM, "uninstall", "--namespace=rook-ceph", "rook-ceph"])

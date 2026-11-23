@@ -103,26 +103,32 @@ def wait_for_csi_config(namespace: str, timeout: int = 300):
     deadline = time.monotonic() + timeout
     for deployment, container in drivers.items():
         while True:
-            p = subprocess.run(
-                [
-                    KUBECTL,
-                    "--namespace=rook-ceph",
-                    "exec",
-                    f"deploy/{deployment}",
-                    f"--container={container}",
-                    "--",
-                    "grep",
-                    "-q",
-                    f'"clusterID":"{namespace}"',
-                    "/etc/ceph-csi-config/config.json",
-                ],
-                capture_output=True,
-            )
-            if p.returncode == 0:
-                break
+            command = [
+                KUBECTL,
+                "--namespace=rook-ceph",
+                "exec",
+                f"deploy/{deployment}",
+                f"--container={container}",
+                "--",
+                "grep",
+                "-q",
+                f'"clusterID":"{namespace}"',
+                "/etc/ceph-csi-config/config.json",
+            ]
+            try:
+                # A stalled kubectl must not hold the command past the deadline.
+                remaining = max(deadline - time.monotonic(), 1)
+                p = subprocess.run(command, capture_output=True, timeout=remaining)
+                if p.returncode == 0:
+                    break
+            except subprocess.TimeoutExpired:
+                pass
             if time.monotonic() > deadline:
-                click.echo(f"WARNING: {deployment} did not pick up the cluster configuration yet")
-                break
+                raise click.ClickException(
+                    f"{deployment} did not pick up the configuration of {namespace} "
+                    f"within {timeout} seconds. The cluster is imported. Check the Ceph CSI "
+                    "controller plugins in the rook-ceph namespace before you create PVCs."
+                )
             time.sleep(5)
 
 

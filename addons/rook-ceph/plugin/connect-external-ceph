@@ -90,7 +90,7 @@ def ceph_initialize_rbd_pool(ceph_conf: str, keyring: str, rbd_pool: str):
         client.shutdown()
 
 
-def import_external_ceph_cluster(ceph_conf: str, keyring: str, namespace: str, rbd_pool: str):
+def import_external_ceph_cluster(rook_version: str, ceph_conf: str, keyring: str, namespace: str, rbd_pool: str):
     # create rook-ceph-external namespace
     click.echo(f"Creating namespace {namespace}")
     subprocess.run([KUBECTL, "create", "namespace", namespace])
@@ -138,13 +138,18 @@ def import_external_ceph_cluster(ceph_conf: str, keyring: str, namespace: str, r
         f"--namespace={shlex.quote(namespace)}",
         "rook-ceph-external",
         "rook-release/rook-ceph-cluster",
+        f"--version={rook_version}",
         "-f",
         "-",
     ]
-    subprocess.run(cmd, input=VALUES_YAML.encode())
+    subprocess.run(cmd, input=VALUES_YAML.encode(), check=True)
 
 
 @click.command()
+@click.option(
+    "--rook-version", default="v1.18.7", 
+    help="Version of rook-ceph-cluster chart. This should be compatible with the rook-ceph operator"
+)
 @click.option("--rbd-pool", default=None, help="RBD pool name to use")
 @click.option(
     "--rbd-pool-auto-create/--no-rbd-pool-auto-create",
@@ -155,7 +160,7 @@ def import_external_ceph_cluster(ceph_conf: str, keyring: str, namespace: str, r
 @click.option("--ceph-conf", default=None, help="Path to ceph.conf file")
 @click.option("--keyring", default=None, help="Path to ceph.keyring file")
 @click.option("--namespace", default="rook-ceph-external", help="Namespace to deploy cluster")
-def main(rbd_pool: str, rbd_pool_auto_create: bool, ceph_conf: str, keyring: str, namespace: str):
+def main(rook_version: str, rbd_pool: str, rbd_pool_auto_create: bool, ceph_conf: str, keyring: str, namespace: str):
     if not rbd_pool_auto_create and not rbd_pool:
         click.echo(f"--rbd-pool is required when using --no-rbd-pool-auto-create")
         sys.exit(1)
@@ -173,7 +178,7 @@ def main(rbd_pool: str, rbd_pool_auto_create: bool, ceph_conf: str, keyring: str
         ceph_initialize_rbd_pool(ceph_conf, keyring, rbd_pool)
 
     # Import external Ceph cluster
-    import_external_ceph_cluster(ceph_conf, keyring, namespace, rbd_pool)
+    import_external_ceph_cluster(rook_version, ceph_conf, keyring, namespace, rbd_pool)
 
     click.echo(
         """

@@ -5,6 +5,10 @@
 deployment:
   kind: DaemonSet
 
+# Do not create service (matching previous nginx behavior)
+service:
+  enabled: false
+
 # Expose ports on host (matching previous nginx behavior)
 ports:
   web:
